@@ -483,7 +483,20 @@ function renderAllThumbs(){
   for(let i=0; i<frames.length; i++) renderThumb(i);
 }
 
-function notify(msg){ alert(msg); }
+// Simple non-blocking toast notifications (falls back to alert)
+function showToast(msg, {timeout=3000}={}){
+  const container = document.getElementById('toastContainer');
+  if(!container){ alert(msg); return; }
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  container.appendChild(el);
+  // trigger visible state
+  requestAnimationFrame(()=> el.classList.add('visible'));
+  setTimeout(()=>{ el.classList.remove('visible'); setTimeout(()=> el.remove(), 200); }, timeout);
+}
+
+function notify(msg){ showToast(msg); }
 
 // -------------------- Undo / Redo --------------------
 // Per-frame undo/redo stacks store delta objects `{idxs, before, after}` produced by
