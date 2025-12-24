@@ -62,6 +62,8 @@ input[type="range"]{width:160px}
 .framesWrap{max-height:56vh;overflow:auto;padding-right:4px}
 .thumb{border:1px solid var(--border);background:#060a12;border-radius:12px;padding:6px;cursor:pointer;position:relative}
 .thumb.active{outline:2px solid rgba(90,162,255,.8);border-color:rgba(90,162,255,.65)}
+.thumb.dragging{opacity:0.45}
+.thumb.drag-over{outline:2px dashed rgba(90,162,255,.8);border-color:rgba(90,162,255,.65)}
 .thumb canvas{width:100%;aspect-ratio:1/1;border-radius:8px;background:#fff;image-rendering:pixelated;border:1px solid rgba(255,255,255,.06)}
 .thumb .idx{position:absolute;top:6px;left:8px;font-size:11px;padding:2px 6px;border-radius:999px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.12);color:#fff}
 
@@ -171,7 +173,7 @@ input[type="range"]{width:160px}
         </div>
       </div>
 
-      <div style="margin-top:10px;color:var(--muted);font-size:12px">Click thumbnail to edit.</div>
+      <div style="margin-top:10px;color:var(--muted);font-size:12px">Click thumbnail to edit — drag to reorder frames.</div>
     </div>
 
     <!-- Meta -->
@@ -579,6 +581,37 @@ function deleteCurrentFrame(){
   updateUI();
 }
 
+// Move a frame from index `from` to before index `to` (drop target). Updates frames and undo/redo stacks and keeps selection sensible.
+function moveFrame(from, to){
+  if(isPlaying) return;
+  if(from === to) return;
+
+  // compute insertion index: when moving forward, the target index shifts left after removal
+  const insertAt = (from < to) ? (to - 1) : to;
+
+  const f = frames.splice(from, 1)[0];
+  const u = undoStacks.splice(from, 1)[0];
+  const r = redoStacks.splice(from, 1)[0];
+
+  frames.splice(insertAt, 0, f);
+  undoStacks.splice(insertAt, 0, u);
+  redoStacks.splice(insertAt, 0, r);
+
+  // adjust current index to keep selection consistent
+  if(current === from){
+    current = insertAt;
+  }else if(from < insertAt){
+    if(current > from && current <= insertAt) current -= 1;
+  }else{
+    if(current >= insertAt && current < from) current += 1;
+  }
+
+  initThumbs(true);
+  renderAllThumbs();
+  renderMain();
+  updateUI();
+}
+
 // -------------------- Project Save/Load (FPS fixed at 12) --------------------
 // Projects store raw frame bytes base64-encoded. This keeps export/import tiny and
 // fully lossless for the internal byte representation. To switch to PNG data URIs,
@@ -884,9 +917,43 @@ function initThumbs(preserveIndex = true){
     el.appendChild(idx);
     el.appendChild(c);
 
+    // Click selects frame
     el.addEventListener('click', ()=>{
       if(isPlaying) return;
       setCurrent(i);
+    });
+
+    // Make thumbnails draggable to support reordering
+    el.draggable = true;
+
+    el.addEventListener('dragstart', ev => {
+      if(isPlaying){ ev.preventDefault(); return; }
+      try{ ev.dataTransfer.setData('text/plain', String(i)); }catch(_){ }
+      ev.dataTransfer.effectAllowed = 'move';
+      el.classList.add('dragging');
+    });
+
+    el.addEventListener('dragover', ev => {
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = 'move';
+      el.classList.add('drag-over');
+    });
+
+    el.addEventListener('dragleave', ev => {
+      el.classList.remove('drag-over');
+    });
+
+    el.addEventListener('drop', ev => {
+      ev.preventDefault();
+      el.classList.remove('drag-over');
+      const from = Number(ev.dataTransfer.getData('text/plain'));
+      const to = thumbs.indexOf(el);
+      if(Number.isNaN(from) || from === to) return;
+      moveFrame(from, to);
+    });
+
+    el.addEventListener('dragend', ev => {
+      thumbs.forEach(t=>t.classList.remove('dragging','drag-over'));
     });
 
     frameGrid.appendChild(el);
@@ -899,6 +966,10 @@ function initThumbs(preserveIndex = true){
   renderAllThumbs();
   updateProjectMetaUI();
 }
+
+// Allow dropping on the grid background to move a frame to the end
+frameGrid.addEventListener('dragover', ev => { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; });
+frameGrid.addEventListener('drop', ev => { ev.preventDefault(); const from = Number(ev.dataTransfer.getData('text/plain')); if(Number.isNaN(from)) return; moveFrame(from, frames.length); });
 
 // -------------------- Drawing --------------------
 // Pointer events (pointerdown/pointermove/pointerup) call `applyStroke()` which
