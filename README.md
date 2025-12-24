@@ -6,6 +6,16 @@ A minimal browser-based frame-by-frame animator and GIF exporter.
 - Create simple animations in the browser and export them as a project JSON or a GIF.
 - Small, dependency-light implementation using `animator.html` and `vendor/gif.js`.
 
+**GUI Screenshot**
+
+![Animator UI screenshot](./gui.png)
+
+> **Tip:** Open `animator.html` in a browser to view the UI shown above.
+
+**Example GIF**
+
+![example gif](./example/animation-2025-12-24T18-25-03-681Z.gif)
+
 ## Project layout 🔧
 - `animator.html` — main UI and app logic (canvas, frame editing, import/export).
 - `vendor/gif.js`, `vendor/gif.woker.js` — GIF encoding (used for `Export GIF`).
@@ -38,11 +48,6 @@ Schema (concise):
 - Open `animator.html` in a browser (no build step required).
 - Use UI buttons to add frames, play, import/export JSON, and export GIF.
 
-**Screenshot**
-
-![Animator UI screenshot](./gui.png)
-
-> **Tip:** Open `animator.html` in a browser to view the UI shown above.
 
 ## Tips & contributions 💡
 - Keep `frameCount` in sync with `frames.length` when generating or modifying projects programmatically.
