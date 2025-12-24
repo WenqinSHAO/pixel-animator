@@ -38,6 +38,12 @@ Schema (concise):
 - Open `animator.html` in a browser (no build step required).
 - Use UI buttons to add frames, play, import/export JSON, and export GIF.
 
+**Screenshot**
+
+![Animator UI screenshot](./gui.png)
+
+> **Tip:** Open `animator.html` in a browser to view the UI shown above.
+
 ## Tips & contributions 💡
 - Keep `frameCount` in sync with `frames.length` when generating or modifying projects programmatically.
 - PRs welcome — add tests/examples under `example/`.
