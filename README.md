@@ -18,7 +18,7 @@ A minimal browser-based frame-by-frame animator and GIF exporter.
 
 ## Project layout 🔧
 - `animator.html` — main UI and app logic (canvas, frame editing, import/export).
-- `vendor/gif.js`, `vendor/gif.woker.js` — GIF encoding (used for `Export GIF`).
+- `vendor/gif.js`, `vendor/gif.worker.js` — GIF encoding (used for `Export GIF`). Note: older repo copies may contain the misspelled `gif.woker.js`; `animator.html` will try both filenames for compatibility.
 - `example/` — saved project JSONs (examples and tests).
 
 ## Data format (project JSON) 💾
@@ -63,6 +63,7 @@ Schema (concise):
 **Configuration & maintenance tips** ✨
 
 - Change `W`, `H` for the internal raster size, `DISPLAY` for on-screen/export resolution, and `FPS` for playback frame rate.
+- Notifications now use non-blocking in-page toasts (instead of blocking `alert()`), shown in the bottom-right.
 - To support color, switch frames to RGBA arrays and update compose / draw functions accordingly.
 - To change brush shape (round vs square), adjust `drawDot()` behavior.
 - To add tools, add a UI control, set the new tool name in `setTool()`, and handle it in `applyStroke()`.

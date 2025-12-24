@@ -77,6 +77,11 @@ input[type="range"]{width:160px}
 
 .footerHint{color:var(--muted);font-size:12px;padding:6px 2px 0}
 
+/* Toast notifications */
+.toasts{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;z-index:9999;padding:0;pointer-events:none}
+.toast{pointer-events:auto;min-width:180px;max-width:360px;padding:10px 12px;border-radius:10px;background:linear-gradient(180deg,#0f1720,#0b131e);border:1px solid rgba(255,255,255,.06);color:var(--text);box-shadow:0 10px 30px rgba(0,0,0,.35);opacity:0;transform:translateY(6px);transition:opacity .18s ease,transform .18s ease}
+.toast.visible{opacity:1;transform:translateY(0)}
+
 @media (max-width:980px){
   .wrap{grid-template-columns:1fr}
   canvas#main{width:min(92vw,512px);height:min(92vw,512px)}
@@ -132,7 +137,7 @@ input[type="range"]{width:160px}
       </div>
 
       <div class="mainCanvasWrap">
-        <canvas id="main" width="512" height="512"></canvas>
+        <canvas id="main" width="512" height="512" role="img" aria-label="Drawing canvas (128×128 grayscale)" tabindex="0"></canvas>
       </div>
 
       <!-- Frame Scrubber (moved here for longer control) -->
@@ -205,6 +210,9 @@ input[type="range"]{width:160px}
 </main>
 
 <input id="loadProjectInput" type="file" accept=".json" style="display:none"/>
+
+<!-- Toast container for non-blocking notifications -->
+<div id="toastContainer" aria-live="polite" aria-atomic="true" class="toasts"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
 <script>
@@ -341,6 +349,11 @@ function setTool(next){
   tool = next;
   toolPencil.classList.toggle('primary', tool === 'pencil');
   toolEraser.classList.toggle('primary', tool === 'eraser');
+  // Reflect state for assistive technologies
+  try{
+    toolPencil.setAttribute('aria-pressed', String(tool === 'pencil'));
+    toolEraser.setAttribute('aria-pressed', String(tool === 'eraser'));
+  }catch(_){ }
 }
 
 function setCurrent(idx){
@@ -730,7 +743,8 @@ let _gifWorkerBlobUrl = null;
 async function getGifWorkerBlobUrl(){
   if(_gifWorkerBlobUrl) return _gifWorkerBlobUrl;
 
-  const candidates = ['./vendor/gif.worker.js', 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'];
+  // Try both the expected worker filename and a previously observed misspelling in this repository
+  const candidates = ['./vendor/gif.worker.js', './vendor/gif.woker.js', 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'];
   for(const url of candidates){
     try{
       const resp = await fetch(url);
@@ -738,6 +752,7 @@ async function getGifWorkerBlobUrl(){
       const text = await resp.text();
       const blob = new Blob([text], { type: 'application/javascript' });
       _gifWorkerBlobUrl = URL.createObjectURL(blob);
+      console.info('Loaded gif.worker from', url);
       return _gifWorkerBlobUrl;
     }catch(err){
       console.warn('Failed to fetch worker from', url, err);
@@ -1192,31 +1207,34 @@ window.addEventListener('keydown', e=>{
   }
 
   const k = e.key.toLowerCase();
-  if(k === 's'){
-    if(!isPlaying) saveProject();
-  }else if(k === 'g'){
-    if(!isPlaying) saveGif();
-  }else if(k === 'l'){
-    if(!isPlaying){
-      loadProjectInput.value = '';
-      loadProjectInput.click();
+  // Do not run single-letter shortcuts when any modifier key is pressed — this avoids colliding
+  // with browser or OS shortcuts like Ctrl/Cmd+S, Ctrl/Cmd+G, etc.
+  const hasModifier = e.ctrlKey || e.metaKey || e.altKey || e.shiftKey;
+  if(!hasModifier){
+    if(k === 's'){
+      if(!isPlaying){ e.preventDefault(); saveProject(); }
+    }else if(k === 'g'){
+      if(!isPlaying){ e.preventDefault(); saveGif(); }
+    }else if(k === 'l'){
+      if(!isPlaying){ e.preventDefault(); loadProjectInput.value = ''; loadProjectInput.click(); }
+    }else if(k === 'n'){
+      if(!isPlaying){
+        e.preventDefault();
+        frames = Array.from({length: 12}, ()=>makeBlankFrame());
+        undoStacks = [];
+        redoStacks = [];
+        ensureStacks(frames.length);
+        current = 0;
+        initThumbs(false);
+        renderAllThumbs();
+        renderMain();
+        updateUI();
+      }
+    }else if(k === 'a'){
+      if(!isPlaying){ e.preventDefault(); addBlankAfterCurrent(); }
+    }else if(k === 'd'){
+      if(!isPlaying){ e.preventDefault(); duplicateAfterCurrent(); }
     }
-  }else if(k === 'n'){
-    if(!isPlaying){
-      frames = Array.from({length: 12}, ()=>makeBlankFrame());
-      undoStacks = [];
-      redoStacks = [];
-      ensureStacks(frames.length);
-      current = 0;
-      initThumbs(false);
-      renderAllThumbs();
-      renderMain();
-      updateUI();
-    }
-  }else if(k === 'a'){
-    if(!isPlaying) addBlankAfterCurrent();
-  }else if(k === 'd'){
-    if(!isPlaying) duplicateAfterCurrent();
   }
 });
 
