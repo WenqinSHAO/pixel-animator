@@ -606,23 +606,33 @@ function deleteCurrentFrame(){
   updateUI();
 }
 
-// Move a frame from index `from` to before index `to` (drop target). Updates frames and undo/redo stacks and keeps selection sensible.
-function moveFrame(from, to){
+// Insert a frame from index `from` so it appears immediately BEFORE the frame at index `to` (drop target).
+// `to` should be the index of the thumbnail dropped onto, or `frames.length` to append at the end.
+// This updates frames and undo/redo stacks and keeps selection sensible.
+function insertFrameBefore(from, to){
   if(isPlaying) return;
-  if(from === to) return;
+  // No-op for invalid indices or dropping onto itself
+  if(from === to || from < 0 || to < 0) return;
 
-  // compute insertion index: when moving forward, the target index shifts left after removal
-  const insertAt = (from < to) ? (to - 1) : to;
+  // Compute an insertion index in the array *after* we remove the source frame.
+  // When moving forward (from < to), the target shifts left by 1 after removal,
+  // so we want to insert at (to - 1). Otherwise insert at `to`.
+  let insertAt = (from < to) ? (to - 1) : to;
 
+  // Remove source frame and its history first
   const f = frames.splice(from, 1)[0];
   const u = undoStacks.splice(from, 1)[0];
   const r = redoStacks.splice(from, 1)[0];
 
+  // After removal, clamp insertion position to valid bounds [0, frames.length]
+  insertAt = clamp(insertAt, 0, frames.length);
+
+  // Insert at computed position
   frames.splice(insertAt, 0, f);
   undoStacks.splice(insertAt, 0, u);
   redoStacks.splice(insertAt, 0, r);
 
-  // adjust current index to keep selection consistent
+  // Adjust current index to keep selection consistent
   if(current === from){
     current = insertAt;
   }else if(from < insertAt){
@@ -977,7 +987,7 @@ function initThumbs(preserveIndex = true){
       const from = Number(ev.dataTransfer.getData('text/plain'));
       const to = thumbs.indexOf(el);
       if(Number.isNaN(from) || from === to) return;
-      moveFrame(from, to);
+      insertFrameBefore(from, to);
     });
 
     el.addEventListener('dragend', ev => {
@@ -997,7 +1007,7 @@ function initThumbs(preserveIndex = true){
 
 // Allow dropping on the grid background to move a frame to the end
 frameGrid.addEventListener('dragover', ev => { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; });
-frameGrid.addEventListener('drop', ev => { ev.preventDefault(); const from = Number(ev.dataTransfer.getData('text/plain')); if(Number.isNaN(from)) return; moveFrame(from, frames.length); });
+frameGrid.addEventListener('drop', ev => { ev.preventDefault(); const from = Number(ev.dataTransfer.getData('text/plain')); if(Number.isNaN(from)) return; insertFrameBefore(from, frames.length); });
 
 // -------------------- Drawing --------------------
 // Pointer events (pointerdown/pointermove/pointerup) call `applyStroke()` which
