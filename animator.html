@@ -1,0 +1,1102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Frame-by-Frame Animator</title>
+<style>
+:root{--bg:#0b0f17;--panel:#121a27;--panel2:#0f1522;--text:#e6eefc;--muted:#9fb0cf;--accent:#5aa2ff;--danger:#ff5a7a;--border:#26344f}
+*{box-sizing:border-box}
+body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:linear-gradient(180deg,#081019,#070b12 55%,#05070c)}
+header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
+header h1{font-size:14px;margin:0;letter-spacing:.3px;color:var(--text);font-weight:600}
+header .hint{font-size:12px;color:var(--muted)}
+.wrap{display:grid;grid-template-columns:1fr 320px;gap:14px;padding:14px;max-width:1200px;margin:0 auto}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.stage{padding:12px;display:flex;flex-direction:column;gap:12px}
+.canvasPanel{display:flex;flex-direction:column;gap:10px}
+.mainCanvasWrap{background:#060a12;border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;justify-content:center;align-items:center}
+canvas#main{width:512px;height:512px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:#fff;image-rendering:pixelated;touch-action:none;cursor:crosshair}
+
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.group{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+button{appearance:none;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--text);padding:8px 10px;border-radius:10px;font-size:12px;font-weight:600;letter-spacing:.2px;cursor:pointer;user-select:none}
+button:hover{border-color:#35507c}
+button.primary{border-color:rgba(90,162,255,.6);background:rgba(90,162,255,.12)}
+button.danger{border-color:rgba(255,90,122,.65);background:rgba(255,90,122,.10)}
+button:disabled{opacity:.55;cursor:not-allowed}
+
+.pill{font-size:12px;color:var(--muted);padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:rgba(255,255,255,.02);display:inline-flex;gap:8px;align-items:center}
+label{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center}
+input[type="range"]{width:160px}
+
+.panelBlock{
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:rgba(0,0,0,.18);
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.panelHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.panelTitle{
+  font-size:11px;
+  color:var(--muted);
+  letter-spacing:.35px;
+  text-transform:uppercase;
+}
+
+.sidebar{padding:12px}
+.sidebar h2{margin:0 0 10px;font-size:13px;color:var(--text)}
+.sidebar .section{padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(0,0,0,.18);margin-bottom:12px}
+.sidebar .row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0;flex-wrap:wrap}
+.sidebar small{color:var(--muted)}
+.frames{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.framesWrap{max-height:56vh;overflow:auto;padding-right:4px}
+.thumb{border:1px solid var(--border);background:#060a12;border-radius:12px;padding:6px;cursor:pointer;position:relative}
+.thumb.active{outline:2px solid rgba(90,162,255,.8);border-color:rgba(90,162,255,.65)}
+.thumb canvas{width:100%;aspect-ratio:1/1;border-radius:8px;background:#fff;image-rendering:pixelated;border:1px solid rgba(255,255,255,.06)}
+.thumb .idx{position:absolute;top:6px;left:8px;font-size:11px;padding:2px 6px;border-radius:999px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.12);color:#fff}
+
+.frameOpsRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:10px}
+.frameOpsRow .group{gap:8px}
+.footerHint{color:var(--muted);font-size:12px;padding:6px 2px 0}
+
+@media (max-width:980px){
+  .wrap{grid-template-columns:1fr}
+  canvas#main{width:min(92vw,512px);height:min(92vw,512px)}
+  .frames{grid-template-columns:repeat(4,1fr)}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Frame-by-Frame Animator — 12 fps, 128×128 grayscale</h1>
+  <div class="hint">
+    Space play/pause · [ / ] or ←/→ prev/next · A add frame · D duplicate · Del delete frame · Ctrl/Cmd+Z undo · Ctrl/Cmd+Y redo · S save · G GIF · L load · N new
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="card stage">
+    <div class="canvasPanel">
+
+      <!-- Drawing Ops -->
+      <div class="panelBlock">
+        <div class="panelHeader">
+          <div class="panelTitle">Drawing</div>
+          <span class="pill">Frame <span id="frameLabel">1</span> / <span id="frameTotal">12</span></span>
+        </div>
+        <div class="toolbar">
+          <div class="group">
+            <button id="toolPencil" class="primary">Pencil</button>
+            <button id="toolEraser">Eraser</button>
+            <button id="undoBtn">Undo</button>
+            <button id="redoBtn">Redo</button>
+          </div>
+          <div class="group">
+            <label>Brush
+              <input id="brushSize" type="range" min="1" max="8" value="1"/>
+              <span id="brushSizeLabel" class="pill">1</span>
+            </label>
+          </div>
+        </div>
+        <div class="toolbar">
+          <div class="group">
+            <label>Gray
+              <input id="gray" type="range" min="0" max="255" value="0"/>
+              <span id="grayLabel" class="pill">0</span>
+            </label>
+          </div>
+          <div class="group">
+            <label>Onion
+              <input id="onion" type="range" min="0" max="8" value="5"/>
+              <span id="onionLabel" class="pill">5</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="mainCanvasWrap">
+        <canvas id="main" width="512" height="512"></canvas>
+      </div>
+
+      <!-- Project Ops -->
+      <div class="panelBlock">
+        <div class="panelHeader">
+          <div class="panelTitle">Project</div>
+          <span class="pill">12 fps fixed</span>
+        </div>
+        <div class="toolbar">
+          <div class="group">
+            <button id="playBtn" class="primary">Play</button>
+          </div>
+          <div class="group">
+            <button id="saveProjectBtn">Save Project</button>
+            <button id="loadProjectBtn">Load Project</button>
+            <button id="saveBtn">Save GIF</button>
+            <button id="newBtn" class="danger">New</button>
+          </div>
+        </div>
+        <div class="footerHint">Save Project is lossless JSON. Save GIF exports 512×512 with a white background.</div>
+      </div>
+
+    </div>
+  </section>
+
+  <aside class="card sidebar">
+    <h2>Frames</h2>
+
+    <!-- Frames + Frame Ops -->
+    <div class="section">
+      <div class="framesWrap">
+        <div class="frames" id="frameGrid"></div>
+      </div>
+
+      <div class="frameOpsRow">
+        <div class="group">
+          <button id="addFrameBtn">Add</button>
+          <button id="dupFrameBtn">Duplicate</button>
+          <button id="delFrameBtn" class="danger">Delete</button>
+        </div>
+        <div class="group">
+          <span class="pill">Selected: <span id="selectedFramePill">1</span></span>
+        </div>
+      </div>
+
+      <div style="margin-top:10px;color:var(--muted);font-size:12px">Click thumbnail to edit.</div>
+    </div>
+
+    <!-- Meta -->
+    <div class="section">
+      <div class="row"><strong>Project</strong><span id="lengthPill" class="pill">1.00 sec</span></div>
+      <div class="row"><small>FPS</small><span class="pill">12</span></div>
+      <div class="row"><small>Frames</small><span id="framesPill" class="pill">12</span></div>
+      <div class="row"><small>Canvas</small><span class="pill">128×128</span></div>
+      <div style="color:var(--muted);font-size:12px;margin-top:6px">Length updates automatically as you add/delete frames.</div>
+    </div>
+  </aside>
+</main>
+
+<input id="loadProjectInput" type="file" accept=".json" style="display:none"/>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+<script>
+(()=>{
+
+// Fixed raster + fixed FPS
+const W = 128, H = 128;
+const DISPLAY = 512;
+const FPS = 12;
+
+const MAX_FRAMES = 600;
+const UNDO_LIMIT = 100;
+
+// Frames + history (dynamic length)
+let frames = [];
+let undoStacks = [];
+let redoStacks = [];
+
+// State
+let current = 0;
+let isPlaying = false;
+let tool = 'pencil';
+let brush = 1;
+let gray = 0;
+let onionDepth = 5;
+let drawing = false;
+let lastPt = null;
+
+// Active stroke diff recording
+let activeStrokeMap = null;
+
+// DOM
+const main = document.getElementById('main');
+const ctx = main.getContext('2d', { alpha:false, willReadFrequently:true });
+ctx.imageSmoothingEnabled = false;
+
+const frameLabel = document.getElementById('frameLabel');
+const frameTotalEl = document.getElementById('frameTotal');
+const selectedFramePill = document.getElementById('selectedFramePill');
+
+const playBtn = document.getElementById('playBtn');
+const saveProjectBtn = document.getElementById('saveProjectBtn');
+const loadProjectBtn = document.getElementById('loadProjectBtn');
+const loadProjectInput = document.getElementById('loadProjectInput');
+
+const saveBtn = document.getElementById('saveBtn');
+const newBtn = document.getElementById('newBtn');
+
+const addFrameBtn = document.getElementById('addFrameBtn');
+const dupFrameBtn = document.getElementById('dupFrameBtn');
+const delFrameBtn = document.getElementById('delFrameBtn');
+
+const toolPencil = document.getElementById('toolPencil');
+const toolEraser = document.getElementById('toolEraser');
+
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
+
+const brushSize = document.getElementById('brushSize');
+const brushSizeLabel = document.getElementById('brushSizeLabel');
+
+const graySlider = document.getElementById('gray');
+const grayLabel = document.getElementById('grayLabel');
+
+const onionSlider = document.getElementById('onion');
+const onionLabel = document.getElementById('onionLabel');
+
+const frameGrid = document.getElementById('frameGrid');
+const lengthPill = document.getElementById('lengthPill');
+const framesPill = document.getElementById('framesPill');
+
+// Offscreen for 128x128 composition
+const off = document.createElement('canvas');
+off.width = W; off.height = H;
+const offCtx = off.getContext('2d', { willReadFrequently:true });
+offCtx.imageSmoothingEnabled = false;
+
+// Thumbnails
+const thumbs = [];
+const thumbCanvases = [];
+
+function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+function roundTo(n, decimals=2){
+  const p = Math.pow(10, decimals);
+  return Math.round(n*p)/p;
+}
+
+function makeBlankFrame(){
+  const a = new Uint8Array(W*H);
+  a.fill(255);
+  return a;
+}
+
+function ensureStacks(count){
+  while(undoStacks.length < count) undoStacks.push([]);
+  while(redoStacks.length < count) redoStacks.push([]);
+  if(undoStacks.length > count) undoStacks.length = count;
+  if(redoStacks.length > count) redoStacks.length = count;
+}
+
+function updateProjectMetaUI(){
+  const count = frames.length;
+  frameTotalEl.textContent = String(count);
+  framesPill.textContent = String(count);
+  lengthPill.textContent = `${roundTo(count / FPS, 2)} sec`;
+  selectedFramePill.textContent = String(current + 1);
+}
+
+function updateUI(){
+  frameLabel.textContent = String(current + 1);
+  selectedFramePill.textContent = String(current + 1);
+  updateProjectMetaUI();
+  updateUndoRedoButtons();
+}
+
+function setTool(next){
+  tool = next;
+  toolPencil.classList.toggle('primary', tool === 'pencil');
+  toolEraser.classList.toggle('primary', tool === 'eraser');
+}
+
+function setCurrent(idx){
+  current = clamp(idx, 0, frames.length - 1);
+  thumbs.forEach((el,i)=>el.classList.toggle('active', i === current));
+  updateUI();
+  renderMain();
+}
+
+function xyToIndex(x,y){ return y*W + x; }
+
+function getPointerXY(ev){
+  const rect = main.getBoundingClientRect();
+  const x = (ev.clientX - rect.left) * (W / rect.width);
+  const y = (ev.clientY - rect.top) * (H / rect.height);
+  return {
+    x: clamp(Math.floor(x), 0, W - 1),
+    y: clamp(Math.floor(y), 0, H - 1)
+  };
+}
+
+// Fixed brush: size s draws s×s square (even sizes included)
+function drawDot(frameArr, x, y, value, size){
+  const s = Math.max(1, size|0);
+  const start = -Math.floor(s/2);
+  const end = start + s - 1;
+  for(let dy = start; dy <= end; dy++){
+    for(let dx = start; dx <= end; dx++){
+      const xx = x + dx, yy = y + dy;
+      if(xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+      const idx = xyToIndex(xx, yy);
+
+      if(activeStrokeMap && !activeStrokeMap.has(idx)){
+        activeStrokeMap.set(idx, frameArr[idx]);
+      }
+      frameArr[idx] = value;
+    }
+  }
+}
+
+function drawLine(frameArr, x0, y0, x1, y1, value, size){
+  let dx = Math.abs(x1-x0);
+  let sx = x0 < x1 ? 1 : -1;
+  let dy = -Math.abs(y1-y0);
+  let sy = y0 < y1 ? 1 : -1;
+  let err = dx + dy;
+  while(true){
+    drawDot(frameArr, x0, y0, value, size);
+    if(x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if(e2 >= dy){ err += dy; x0 += sx; }
+    if(e2 <= dx){ err += dx; y0 += sy; }
+  }
+}
+
+// Onion skin unchanged
+function ghostGrayForDistance(d){ return clamp(110 + (d-1)*30, 110, 235); }
+
+function composeWithOnionSkin(frameIndex, depth){
+  const out = new Uint8ClampedArray(W*H*4);
+  const base = new Uint8Array(W*H);
+  base.fill(255);
+
+  for(let d=1; d<=depth; d++){
+    const idx = frameIndex - d;
+    if(idx < 0) break;
+    const g = ghostGrayForDistance(d);
+    const src = frames[idx];
+    for(let p=0; p<src.length; p++){
+      if(src[p] < 250){
+        if(g < base[p]) base[p] = g;
+      }
+    }
+  }
+
+  const cur = frames[frameIndex];
+  for(let p=0; p<cur.length; p++){
+    if(cur[p] < base[p]) base[p] = cur[p];
+  }
+
+  for(let p=0,o=0; p<base.length; p++,o+=4){
+    const v = base[p];
+    out[o]=v; out[o+1]=v; out[o+2]=v; out[o+3]=255;
+  }
+  return new ImageData(out, W, H);
+}
+
+function composeFrameOnly(frameIndex){
+  const out = new Uint8ClampedArray(W*H*4);
+  const src = frames[frameIndex];
+  for(let p=0,o=0; p<src.length; p++,o+=4){
+    const v = src[p];
+    out[o]=v; out[o+1]=v; out[o+2]=v; out[o+3]=255;
+  }
+  return new ImageData(out, W, H);
+}
+
+function renderMain(){
+  const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+  const target = DISPLAY * dpr;
+  if(main.width !== target || main.height !== target){
+    main.width = target;
+    main.height = target;
+    ctx.imageSmoothingEnabled = false;
+  }
+
+  offCtx.putImageData(isPlaying ? composeFrameOnly(current) : composeWithOnionSkin(current, onionDepth), 0, 0);
+  ctx.clearRect(0, 0, main.width, main.height);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(off, 0, 0, main.width, main.height);
+}
+
+function renderThumb(i){
+  const c = thumbCanvases[i];
+  const tctx = c.getContext('2d', { alpha:false });
+  tctx.imageSmoothingEnabled = false;
+
+  offCtx.putImageData(composeFrameOnly(i), 0, 0);
+  tctx.clearRect(0, 0, c.width, c.height);
+  tctx.drawImage(off, 0, 0, c.width, c.height);
+}
+
+function renderAllThumbs(){
+  for(let i=0; i<frames.length; i++) renderThumb(i);
+}
+
+function notify(msg){ alert(msg); }
+
+// -------------------- Undo / Redo --------------------
+
+function updateUndoRedoButtons(){
+  const canU = !isPlaying && undoStacks[current] && undoStacks[current].length > 0;
+  const canR = !isPlaying && redoStacks[current] && redoStacks[current].length > 0;
+  undoBtn.disabled = !canU;
+  redoBtn.disabled = !canR;
+}
+
+function beginStroke(){ activeStrokeMap = new Map(); }
+
+function commitStroke(){
+  if(!activeStrokeMap) return;
+  if(activeStrokeMap.size === 0){
+    activeStrokeMap = null;
+    return;
+  }
+
+  const idxs = new Uint32Array(activeStrokeMap.size);
+  const before = new Uint8Array(activeStrokeMap.size);
+  const after = new Uint8Array(activeStrokeMap.size);
+
+  let k = 0;
+  const frameArr = frames[current];
+  for(const [idx, prev] of activeStrokeMap.entries()){
+    idxs[k] = idx;
+    before[k] = prev;
+    after[k] = frameArr[idx];
+    k++;
+  }
+
+  undoStacks[current].push({ idxs, before, after });
+  if(undoStacks[current].length > UNDO_LIMIT) undoStacks[current].shift();
+
+  redoStacks[current].length = 0;
+
+  activeStrokeMap = null;
+  updateUndoRedoButtons();
+}
+
+function applyDelta(frameIdx, idxs, values){
+  const arr = frames[frameIdx];
+  for(let i=0; i<idxs.length; i++){
+    arr[idxs[i]] = values[i];
+  }
+}
+
+function undo(){
+  if(isPlaying) return;
+  const stack = undoStacks[current];
+  if(!stack || stack.length === 0) return;
+
+  const delta = stack.pop();
+  applyDelta(current, delta.idxs, delta.before);
+  redoStacks[current].push(delta);
+
+  renderMain();
+  renderThumb(current);
+  updateUndoRedoButtons();
+}
+
+function redo(){
+  if(isPlaying) return;
+  const stack = redoStacks[current];
+  if(!stack || stack.length === 0) return;
+
+  const delta = stack.pop();
+  applyDelta(current, delta.idxs, delta.after);
+  undoStacks[current].push(delta);
+  if(undoStacks[current].length > UNDO_LIMIT) undoStacks[current].shift();
+
+  renderMain();
+  renderThumb(current);
+  updateUndoRedoButtons();
+}
+
+// -------------------- Timeline operations (Add / Duplicate / Delete) --------------------
+
+function insertFrame(afterIndex, sourceFrameOrNull){
+  if(isPlaying) return;
+  if(frames.length >= MAX_FRAMES){
+    notify(`Max frames reached (${MAX_FRAMES}).`);
+    return;
+  }
+
+  const insertAt = clamp(afterIndex + 1, 0, frames.length);
+
+  const newFrame = makeBlankFrame();
+  if(sourceFrameOrNull instanceof Uint8Array){
+    newFrame.set(sourceFrameOrNull);
+  }
+
+  frames.splice(insertAt, 0, newFrame);
+  undoStacks.splice(insertAt, 0, []);
+  redoStacks.splice(insertAt, 0, []);
+  ensureStacks(frames.length);
+
+  initThumbs(true);
+  renderAllThumbs();
+  setCurrent(insertAt);
+  updateProjectMetaUI();
+}
+
+function addBlankAfterCurrent(){ insertFrame(current, null); }
+function duplicateAfterCurrent(){ insertFrame(current, frames[current]); }
+
+function deleteCurrentFrame(){
+  if(isPlaying) return;
+  if(frames.length <= 1){
+    notify('Cannot delete the last remaining frame.');
+    return;
+  }
+
+  const n = current + 1;
+  const ok = confirm(`Delete frame ${n}? This cannot be undone.`);
+  if(!ok) return;
+
+  frames.splice(current, 1);
+  undoStacks.splice(current, 1);
+  redoStacks.splice(current, 1);
+  ensureStacks(frames.length);
+
+  // keep selection sensible
+  current = clamp(current, 0, frames.length - 1);
+
+  initThumbs(true);
+  renderAllThumbs();
+  renderMain();
+  updateUI();
+}
+
+// -------------------- Project Save/Load (FPS fixed at 12) --------------------
+
+function saveProject(){
+  const project = {
+    version: '1.3',
+    width: W,
+    height: H,
+    fps: FPS,
+    frameCount: frames.length,
+    timestamp: new Date().toISOString(),
+    frames: frames.map(f=>{
+      let binary = '';
+      for(let i=0;i<f.length;i++) binary += String.fromCharCode(f[i]);
+      return btoa(binary);
+    })
+  };
+
+  const json = JSON.stringify(project, null, 2);
+  const blob = new Blob([json], { type:'application/json' });
+
+  const a = document.createElement('a');
+  const ts = new Date().toISOString().replace(/[:.]/g,'-');
+  a.download = `animation-project-${ts}.json`;
+  a.href = URL.createObjectURL(blob);
+
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
+}
+
+async function loadProject(file){
+  const text = await file.text();
+  const project = JSON.parse(text);
+
+  if(!project || !project.frames || !Array.isArray(project.frames)){
+    throw new Error('Invalid project file format');
+  }
+  if(project.width !== W || project.height !== H){
+    throw new Error(`Project dimensions (${project.width}×${project.height}) don't match canvas (${W}×${H})`);
+  }
+
+  const nextCount = clamp(Number(project.frameCount || project.frames.length || 1), 1, MAX_FRAMES);
+
+  frames = Array.from({length: nextCount}, ()=>makeBlankFrame());
+  undoStacks = [];
+  redoStacks = [];
+  ensureStacks(nextCount);
+
+  for(let i=0; i<nextCount; i++){
+    if(i < project.frames.length){
+      const base64 = project.frames[i];
+      const binary = atob(base64);
+      if(binary.length !== W*H){
+        throw new Error(`Frame ${i+1} has invalid length (${binary.length}); expected ${W*H}`);
+      }
+      const arr = new Uint8Array(binary.length);
+      for(let j=0; j<binary.length; j++) arr[j] = binary.charCodeAt(j);
+      frames[i].set(arr);
+    }else{
+      frames[i].fill(255);
+    }
+  }
+
+  initThumbs(false);
+  setCurrent(0);
+  renderAllThumbs();
+  renderMain();
+  updateUI();
+}
+
+// -------------------- GIF Export (512×512, white background) --------------------
+// Worker loader: try local vendor/gif.worker.js first, then fallback to CDN. Returns a blob URL.
+let _gifWorkerBlobUrl = null;
+async function getGifWorkerBlobUrl(){
+  if(_gifWorkerBlobUrl) return _gifWorkerBlobUrl;
+
+  const candidates = ['./vendor/gif.worker.js', 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'];
+  for(const url of candidates){
+    try{
+      const resp = await fetch(url);
+      if(!resp.ok) continue;
+      const text = await resp.text();
+      const blob = new Blob([text], { type: 'application/javascript' });
+      _gifWorkerBlobUrl = URL.createObjectURL(blob);
+      return _gifWorkerBlobUrl;
+    }catch(err){
+      console.warn('Failed to fetch worker from', url, err);
+      continue;
+    }
+  }
+
+  notify('Could not load gif.worker.js. Add ./vendor/gif.worker.js to your project or enable network access.');
+  throw new Error('gif.worker.js not available');
+}
+
+function setExporting(state){
+  const disable = Boolean(state);
+
+  // Project buttons
+  saveProjectBtn.disabled = disable;
+  loadProjectBtn.disabled = disable;
+  saveBtn.disabled = disable;
+  newBtn.disabled = disable;
+
+  // Frame buttons
+  addFrameBtn.disabled = disable;
+  dupFrameBtn.disabled = disable;
+  delFrameBtn.disabled = disable;
+
+  // Drawing controls
+  toolPencil.disabled = disable;
+  toolEraser.disabled = disable;
+  brushSize.disabled = disable;
+  graySlider.disabled = disable;
+  onionSlider.disabled = disable;
+
+  // Undo/redo
+  undoBtn.disabled = disable;
+  redoBtn.disabled = disable;
+
+  // Playback
+  playBtn.disabled = disable;
+
+  // Provide simple feedback
+  saveBtn.textContent = disable ? 'Exporting...' : 'Save GIF';
+}
+
+async function saveGif(){
+  setExporting(true);
+  try{
+    const workerUrl = await getGifWorkerBlobUrl();
+
+    const gif = new GIF({
+      workers: 2,
+      quality: 10,
+      width: DISPLAY,
+      height: DISPLAY,
+      repeat: 0,
+      workerScript: workerUrl
+    });
+
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = DISPLAY;
+    exportCanvas.height = DISPLAY;
+    const ectx = exportCanvas.getContext('2d', { alpha:false });
+    ectx.imageSmoothingEnabled = false;
+
+    const delay = Math.round(1000 / FPS);
+
+    for(let i=0; i<frames.length; i++){
+      offCtx.putImageData(composeFrameOnly(i), 0, 0);
+
+      ectx.setTransform(1,0,0,1,0,0);
+      ectx.clearRect(0,0,DISPLAY,DISPLAY);
+      ectx.fillStyle = '#ffffff';
+      ectx.fillRect(0,0,DISPLAY,DISPLAY);
+
+      ectx.imageSmoothingEnabled = false;
+      ectx.drawImage(off, 0, 0, DISPLAY, DISPLAY);
+
+      gif.addFrame(exportCanvas, { copy:true, delay });
+    }
+
+    await new Promise((resolve, reject)=>{
+      gif.on('finished', blob => {
+        const a = document.createElement('a');
+        const ts = new Date().toISOString().replace(/[:.]/g,'-');
+        a.download = `animation-${ts}.gif`;
+        a.href = URL.createObjectURL(blob);
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
+
+        // revoke worker blob URL if we generated it
+        if(workerUrl && workerUrl.startsWith('blob:')){
+          try{ URL.revokeObjectURL(workerUrl); }catch(_){ }
+          if(workerUrl === _gifWorkerBlobUrl) _gifWorkerBlobUrl = null;
+        }
+
+        setExporting(false);
+        resolve();
+      });
+
+      gif.on('error', err => {
+        console.error('GIF render error', err);
+        notify(`Failed to render GIF: ${err && err.message ? err.message : String(err)}`);
+        // revoke worker url on error
+        if(workerUrl && workerUrl.startsWith('blob:')){
+          try{ URL.revokeObjectURL(workerUrl); }catch(_){ }
+          if(workerUrl === _gifWorkerBlobUrl) _gifWorkerBlobUrl = null;
+        }
+        setExporting(false);
+        reject(err);
+      });
+
+      gif.render();
+    });
+
+
+
+
+
+  }catch(err){
+    console.error('saveGif error', err);
+    notify(`Failed to start GIF export: ${err && err.message ? err.message : String(err)}`);
+    setExporting(false);
+  }finally{
+    setExporting(false);
+  }
+}
+
+
+
+// -------------------- Playback --------------------
+
+let playTimer = null;
+
+function setPlaying(next){
+  isPlaying = next;
+  playBtn.textContent = isPlaying ? 'Stop' : 'Play';
+
+  const disable = isPlaying;
+
+  // Project buttons
+  saveProjectBtn.disabled = disable;
+  loadProjectBtn.disabled = disable;
+  saveBtn.disabled = disable;
+  newBtn.disabled = disable;
+
+  // Frame buttons (now in sidebar)
+  addFrameBtn.disabled = disable;
+  dupFrameBtn.disabled = disable;
+  delFrameBtn.disabled = disable;
+
+  // Drawing controls
+  toolPencil.disabled = disable;
+  toolEraser.disabled = disable;
+  brushSize.disabled = disable;
+  graySlider.disabled = disable;
+  onionSlider.disabled = disable;
+
+  // Undo/redo
+  if(disable){
+    undoBtn.disabled = true;
+    redoBtn.disabled = true;
+  }else{
+    updateUndoRedoButtons();
+  }
+
+  if(isPlaying){
+    let idx = current;
+    const interval = Math.round(1000 / FPS);
+    playTimer = setInterval(()=>{
+      current = idx;
+      thumbs.forEach((el,i)=>el.classList.toggle('active', i === current));
+      updateUI();
+      renderMain();
+      idx = (idx + 1) % frames.length;
+    }, interval);
+  }else{
+    if(playTimer){
+      clearInterval(playTimer);
+      playTimer = null;
+    }
+    renderMain();
+    updateUI();
+  }
+}
+
+// -------------------- Thumbnails --------------------
+
+function initThumbs(preserveIndex = true){
+  const prev = current;
+
+  frameGrid.innerHTML = '';
+  thumbs.length = 0;
+  thumbCanvases.length = 0;
+
+  for(let i=0; i<frames.length; i++){
+    const el = document.createElement('div');
+    el.className = 'thumb';
+    el.title = `Frame ${i+1}`;
+
+    const idx = document.createElement('div');
+    idx.className = 'idx';
+    idx.textContent = String(i+1);
+
+    const c = document.createElement('canvas');
+    c.width = 64;
+    c.height = 64;
+    c.getContext('2d', { alpha:false }).imageSmoothingEnabled = false;
+
+    el.appendChild(idx);
+    el.appendChild(c);
+
+    el.addEventListener('click', ()=>{
+      if(isPlaying) return;
+      setCurrent(i);
+    });
+
+    frameGrid.appendChild(el);
+    thumbs.push(el);
+    thumbCanvases.push(c);
+  }
+
+  const next = preserveIndex ? clamp(prev, 0, frames.length - 1) : 0;
+  setCurrent(next);
+  renderAllThumbs();
+  updateProjectMetaUI();
+}
+
+// -------------------- Drawing --------------------
+
+function applyStroke(from, to){
+  const frameArr = frames[current];
+  const value = (tool === 'eraser') ? 255 : gray;
+
+  if(!from){
+    drawDot(frameArr, to.x, to.y, value, brush);
+  }else{
+    drawLine(frameArr, from.x, from.y, to.x, to.y, value, brush);
+  }
+
+  renderMain();
+  renderThumb(current);
+}
+
+main.addEventListener('pointerdown', ev=>{
+  if(isPlaying) return;
+  drawing = true;
+  main.setPointerCapture(ev.pointerId);
+
+  beginStroke();
+  const pt = getPointerXY(ev);
+  lastPt = pt;
+  applyStroke(null, pt);
+});
+
+main.addEventListener('pointermove', ev=>{
+  if(!drawing || isPlaying) return;
+  const pt = getPointerXY(ev);
+  applyStroke(lastPt, pt);
+  lastPt = pt;
+});
+
+function endDraw(ev){
+  if(!drawing) return;
+  drawing = false;
+  lastPt = null;
+
+  commitStroke();
+
+  try{ main.releasePointerCapture(ev.pointerId); }catch(_){}
+}
+
+main.addEventListener('pointerup', endDraw);
+main.addEventListener('pointercancel', endDraw);
+
+// -------------------- UI events --------------------
+
+toolPencil.addEventListener('click', ()=>setTool('pencil'));
+toolEraser.addEventListener('click', ()=>setTool('eraser'));
+
+undoBtn.addEventListener('click', ()=>undo());
+redoBtn.addEventListener('click', ()=>redo());
+
+addFrameBtn.addEventListener('click', ()=>addBlankAfterCurrent());
+dupFrameBtn.addEventListener('click', ()=>duplicateAfterCurrent());
+delFrameBtn.addEventListener('click', ()=>deleteCurrentFrame());
+
+playBtn.addEventListener('click', ()=>setPlaying(!isPlaying));
+
+saveProjectBtn.addEventListener('click', ()=>{
+  if(isPlaying) return;
+  saveProject();
+});
+
+loadProjectBtn.addEventListener('click', ()=>{
+  if(isPlaying) return;
+  loadProjectInput.value = '';
+  loadProjectInput.click();
+});
+
+loadProjectInput.addEventListener('change', async ()=>{
+  if(isPlaying) return;
+  const file = loadProjectInput.files && loadProjectInput.files[0];
+  if(!file) return;
+  try{
+    await loadProject(file);
+  }catch(err){
+    console.error(err);
+    notify(`Failed to load project: ${err && err.message ? err.message : String(err)}`);
+  }
+});
+
+saveBtn.addEventListener('click', ()=>{
+  if(isPlaying) return;
+  saveGif();
+});
+
+newBtn.addEventListener('click', ()=>{
+  if(isPlaying) return;
+
+  // reset to 12 blank frames
+  frames = Array.from({length: 12}, ()=>makeBlankFrame());
+  undoStacks = [];
+  redoStacks = [];
+  ensureStacks(frames.length);
+
+  current = 0;
+  initThumbs(false);
+  renderAllThumbs();
+  renderMain();
+  updateUI();
+});
+
+brushSize.addEventListener('input', ()=>{
+  brush = Number(brushSize.value);
+  brushSizeLabel.textContent = String(brush);
+});
+
+graySlider.addEventListener('input', ()=>{
+  gray = Number(graySlider.value);
+  grayLabel.textContent = String(gray);
+});
+
+onionSlider.addEventListener('input', ()=>{
+  onionDepth = Number(onionSlider.value);
+  onionLabel.textContent = String(onionDepth);
+  if(!isPlaying) renderMain();
+});
+
+// Keyboard shortcuts
+window.addEventListener('keydown', e=>{
+  if(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+
+  // Undo/Redo
+  const mod = e.ctrlKey || e.metaKey;
+  if(mod && !isPlaying){
+    const k = e.key.toLowerCase();
+    if(k === 'z'){
+      e.preventDefault();
+      if(e.shiftKey) redo();
+      else undo();
+      return;
+    }
+    if(k === 'y'){
+      e.preventDefault();
+      redo();
+      return;
+    }
+  }
+
+  if(e.code === 'Space'){
+    e.preventDefault();
+    setPlaying(!isPlaying);
+    return;
+  }
+
+  // Frame navigation
+  if(!isPlaying){
+    if(e.key === '[' || e.code === 'ArrowLeft'){
+      e.preventDefault();
+      setCurrent(current - 1);
+      return;
+    }
+    if(e.key === ']' || e.code === 'ArrowRight'){
+      e.preventDefault();
+      setCurrent(current + 1);
+      return;
+    }
+  }
+
+  // Delete current frame
+  if(!isPlaying && (e.code === 'Delete' || e.code === 'Backspace')){
+    e.preventDefault();
+    deleteCurrentFrame();
+    return;
+  }
+
+  const k = e.key.toLowerCase();
+  if(k === 's'){
+    if(!isPlaying) saveProject();
+  }else if(k === 'g'){
+    if(!isPlaying) saveGif();
+  }else if(k === 'l'){
+    if(!isPlaying){
+      loadProjectInput.value = '';
+      loadProjectInput.click();
+    }
+  }else if(k === 'n'){
+    if(!isPlaying){
+      frames = Array.from({length: 12}, ()=>makeBlankFrame());
+      undoStacks = [];
+      redoStacks = [];
+      ensureStacks(frames.length);
+      current = 0;
+      initThumbs(false);
+      renderAllThumbs();
+      renderMain();
+      updateUI();
+    }
+  }else if(k === 'a'){
+    if(!isPlaying) addBlankAfterCurrent();
+  }else if(k === 'd'){
+    if(!isPlaying) duplicateAfterCurrent();
+  }
+});
+
+// -------------------- Init --------------------
+
+function init(){
+  frames = Array.from({length: 12}, ()=>makeBlankFrame());
+  ensureStacks(frames.length);
+
+  setTool('pencil');
+  brushSizeLabel.textContent = brushSize.value;
+  grayLabel.textContent = graySlider.value;
+  onionLabel.textContent = onionSlider.value;
+
+  initThumbs(false);
+  renderMain();
+  updateUI();
+
+  window.addEventListener('resize', ()=>renderMain());
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>
