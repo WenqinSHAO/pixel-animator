@@ -69,6 +69,12 @@ input[type="range"]{width:160px}
 
 .frameOpsRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:10px}
 .frameOpsRow .group{gap:8px}
+
+/* Controls placed inside the Frames block: play, frame indicator, and scrubber */
+.frameControls{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:8px}
+.frameControls .group{gap:8px}
+.frameControls .scrubber{width:100%;height:28px}
+
 .footerHint{color:var(--muted);font-size:12px;padding:6px 2px 0}
 
 @media (max-width:980px){
@@ -94,7 +100,6 @@ input[type="range"]{width:160px}
       <div class="panelBlock">
         <div class="panelHeader">
           <div class="panelTitle">Drawing</div>
-          <span class="pill">Frame <span id="frameLabel">1</span> / <span id="frameTotal">12</span></span>
         </div>
         <div class="toolbar">
           <div class="group">
@@ -138,9 +143,6 @@ input[type="range"]{width:160px}
         </div>
         <div class="toolbar">
           <div class="group">
-            <button id="playBtn" class="primary">Play</button>
-          </div>
-          <div class="group">
             <button id="saveProjectBtn">Save Project</button>
             <button id="loadProjectBtn">Load Project</button>
             <button id="saveBtn">Save GIF</button>
@@ -158,6 +160,17 @@ input[type="range"]{width:160px}
 
     <!-- Frames + Frame Ops -->
     <div class="section">
+
+      <div class="frameControls">
+        <div class="group">
+          <button id="playBtn" class="primary">Play</button>
+          <span class="pill">Frame <span id="frameLabel">1</span> / <span id="frameTotal">12</span></span>
+        </div>
+        <div style="flex:1; margin-left:10px;">
+          <input id="frameScrubber" class="scrubber" type="range" min="1" max="12" value="1" />
+        </div>
+      </div>
+
       <div class="framesWrap">
         <div class="frames" id="frameGrid"></div>
       </div>
@@ -264,6 +277,7 @@ const onionLabel = document.getElementById('onionLabel');
 const frameGrid = document.getElementById('frameGrid');
 const lengthPill = document.getElementById('lengthPill');
 const framesPill = document.getElementById('framesPill');
+const frameScrubber = document.getElementById('frameScrubber');
 
 // Offscreen for 128x128 composition
 const off = document.createElement('canvas');
@@ -303,6 +317,13 @@ function updateProjectMetaUI(){
   framesPill.textContent = String(count);
   lengthPill.textContent = `${roundTo(count / FPS, 2)} sec`;
   selectedFramePill.textContent = String(current + 1);
+
+  // scrubber sync (if present)
+  if(frameScrubber){
+    frameScrubber.max = String(count);
+    // ensure value remains within bounds
+    frameScrubber.value = String(current + 1);
+  }
 }
 
 function updateUI(){
@@ -742,6 +763,9 @@ function setExporting(state){
   // Playback
   playBtn.disabled = disable;
 
+  // Scrubber (in Frames block)
+  if(frameScrubber) frameScrubber.disabled = disable;
+
   // Provide simple feedback
   saveBtn.textContent = disable ? 'Exporting...' : 'Save GIF';
 }
@@ -1034,6 +1058,16 @@ dupFrameBtn.addEventListener('click', ()=>duplicateAfterCurrent());
 delFrameBtn.addEventListener('click', ()=>deleteCurrentFrame());
 
 playBtn.addEventListener('click', ()=>setPlaying(!isPlaying));
+
+// Scrubber: dragging to scrub frames (also pauses playback)
+if(frameScrubber){
+  frameScrubber.addEventListener('pointerdown', ()=>{ if(isPlaying) setPlaying(false); });
+  frameScrubber.addEventListener('input', ()=>{
+    if(isPlaying) setPlaying(false);
+    setCurrent(Number(frameScrubber.value) - 1);
+  });
+}
+
 
 saveProjectBtn.addEventListener('click', ()=>{
   if(isPlaying) return;
