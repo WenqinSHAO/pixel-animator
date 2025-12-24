@@ -18,7 +18,10 @@ A minimal browser-based frame-by-frame animator and GIF exporter.
 
 ## Project layout 🔧
 - `animator.html` — main UI and app logic (canvas, frame editing, import/export).
-- `vendor/gif.js`, `vendor/gif.worker.js` — GIF encoding (used for `Export GIF`). Note: older repo copies may contain the misspelled `gif.woker.js`; `animator.html` will try both filenames for compatibility.
+- `vendor/gif.js`, `vendor/gif.worker.js` — GIF encoding (used for `Export GIF`). This project includes a bundled copy of gif.js (https://github.com/jnordberg/gif.js) for offline builds — gif.js is MIT-licensed; include or reference its LICENSE when redistributing.
+
+**Example projects**
+- The `example/` folder contains saved project JSONs you can load from the UI using **Project Actions → Load Project**. To validate those files locally, run `node scripts/validate_examples.js` (checks `frameCount` and per-frame byte lengths).
 - `example/` — saved project JSONs (examples and tests).
 
 ## Data format (project JSON) 💾
