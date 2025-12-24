@@ -49,12 +49,6 @@ Schema (concise):
 - Use UI buttons to add frames, play, import/export JSON, and export GIF.
 
 
-## Tips & contributions 💡
-- Keep `frameCount` in sync with `frames.length` when generating or modifying projects programmatically.
-- PRs welcome — add tests/examples under `example/`.
-
----
-
 ## Implementation details — `animator.html` 🔍
 
 - **Data model**: `frames` is an Array of `Uint8Array` (length `W*H`), one byte per pixel (0 = black, 255 = white). New frames are created with `makeBlankFrame()`.
@@ -76,5 +70,3 @@ Schema (concise):
 - Keep `frameCount` in sync with `frames.length`; `loadProject()` checks lengths and will error on mismatch.
 
 > Note: frames are raw byte payloads base64-encoded in the project file; if you prefer portable images (PNG) swap to data-URI encoding in `saveProject()`/`loadProject()`.
-
-Short and focused. If you want, I can add a `USAGE.md` with command examples or expand the schema with exact encoding details.
