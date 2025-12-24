@@ -135,22 +135,14 @@ input[type="range"]{width:160px}
         <canvas id="main" width="512" height="512"></canvas>
       </div>
 
-      <!-- Project Ops -->
-      <div class="panelBlock">
-        <div class="panelHeader">
-          <div class="panelTitle">Project</div>
-          <span class="pill">12 fps fixed</span>
+      <!-- Frame Scrubber (moved here for longer control) -->
+      <div class="frameControls" style="margin-top:6px;">
+        <div style="flex:1;">
+          <input id="frameScrubber" class="scrubber" type="range" min="1" max="12" value="1" />
         </div>
-        <div class="toolbar">
-          <div class="group">
-            <button id="saveProjectBtn">Save Project</button>
-            <button id="loadProjectBtn">Load Project</button>
-            <button id="saveBtn">Save GIF</button>
-            <button id="newBtn" class="danger">New</button>
-          </div>
-        </div>
-        <div class="footerHint">Save Project is lossless JSON. Save GIF exports 512×512 with a white background.</div>
       </div>
+
+
 
     </div>
   </section>
@@ -165,9 +157,6 @@ input[type="range"]{width:160px}
         <div class="group">
           <button id="playBtn" class="primary">Play</button>
           <span class="pill">Frame <span id="frameLabel">1</span> / <span id="frameTotal">12</span></span>
-        </div>
-        <div style="flex:1; margin-left:10px;">
-          <input id="frameScrubber" class="scrubber" type="range" min="1" max="12" value="1" />
         </div>
       </div>
 
@@ -195,7 +184,22 @@ input[type="range"]{width:160px}
       <div class="row"><small>FPS</small><span class="pill">12</span></div>
       <div class="row"><small>Frames</small><span id="framesPill" class="pill">12</span></div>
       <div class="row"><small>Canvas</small><span class="pill">128×128</span></div>
+
       <div style="color:var(--muted);font-size:12px;margin-top:6px">Length updates automatically as you add/delete frames.</div>
+    </div>
+
+    <!-- Project Actions -->
+    <div class="section">
+      <div class="panelHeader">
+        <div class="panelTitle">Project Actions</div>
+      </div>
+      <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <button id="saveProjectBtn">Save Project</button>
+        <button id="loadProjectBtn">Load Project</button>
+        <button id="saveBtn">Save GIF</button>
+        <button id="newBtn" class="danger">New</button>
+      </div>
+      <div class="footerHint" style="margin-top:8px">Save Project is lossless JSON. Save GIF exports 512×512 with a white background.</div>
     </div>
   </aside>
 </main>
