@@ -192,6 +192,10 @@ input[type="range"]{width:160px}
 (()=>{
 
 // Fixed raster + fixed FPS
+// CONFIG: change these to adjust internal raster, exported display size, and playback rate:
+//  - W, H: internal frame resolution (frames stored as W*H bytes).
+//  - DISPLAY: visible canvas / GIF export resolution (can be larger than W to upscale).
+//  - FPS: playback and GIF framerate (used for playback interval and GIF frame delay).
 const W = 128, H = 128;
 const DISPLAY = 512;
 const FPS = 12;
@@ -200,6 +204,8 @@ const MAX_FRAMES = 600;
 const UNDO_LIMIT = 100;
 
 // Frames + history (dynamic length)
+// NOTE: `frames` holds Uint8Array instances (W*H bytes each) representing grayscale pixels
+// (0 = black, 255 = white). `undoStacks` / `redoStacks` are per-frame arrays of stroke deltas.
 let frames = [];
 let undoStacks = [];
 let redoStacks = [];
@@ -274,6 +280,9 @@ function roundTo(n, decimals=2){
 }
 
 function makeBlankFrame(){
+  // Creates a blank grayscale frame as a byte array (1 byte per pixel).
+  // To switch to color or RGBA frames, replace this with a Uint8ClampedArray(W*H*4)
+  // and update compose/draw functions accordingly.
   const a = new Uint8Array(W*H);
   a.fill(255);
   return a;
@@ -327,6 +336,9 @@ function getPointerXY(ev){
 }
 
 // Fixed brush: size s draws s×s square (even sizes included)
+// Brush implementation is intentionally simple (square). To make a round brush:
+// - replace this with a circular mask (distance check from center)
+// - or implement alpha blending for softer strokes.
 function drawDot(frameArr, x, y, value, size){
   const s = Math.max(1, size|0);
   const start = -Math.floor(s/2);
@@ -434,6 +446,9 @@ function renderAllThumbs(){
 function notify(msg){ alert(msg); }
 
 // -------------------- Undo / Redo --------------------
+// Per-frame undo/redo stacks store delta objects `{idxs, before, after}` produced by
+// `commitStroke()`. This keeps memory bounded and allows frame-level undo without
+// copying entire frames.
 
 function updateUndoRedoButtons(){
   const canU = !isPlaying && undoStacks[current] && undoStacks[current].length > 0;
@@ -565,7 +580,9 @@ function deleteCurrentFrame(){
 }
 
 // -------------------- Project Save/Load (FPS fixed at 12) --------------------
-
+// Projects store raw frame bytes base64-encoded. This keeps export/import tiny and
+// fully lossless for the internal byte representation. To switch to PNG data URIs,
+// change `saveProject()` to encode `off.toDataURL()` per-frame and update `loadProject()` accordingly.
 function saveProject(){
   const project = {
     version: '1.3',
@@ -637,6 +654,9 @@ async function loadProject(file){
 }
 
 // -------------------- GIF Export (512×512, white background) --------------------
+// Export composes each frame to a DISPLAY×DISPLAY canvas (white background) and feeds
+// frames to `gif.js`. `getGifWorkerBlobUrl()` prefers `./vendor/gif.worker.js` and falls
+// back to CDN; keep `vendor/gif.worker.js` in-project for offline builds.
 // Worker loader: try local vendor/gif.worker.js first, then fallback to CDN. Returns a blob URL.
 let _gifWorkerBlobUrl = null;
 async function getGifWorkerBlobUrl(){
@@ -837,6 +857,8 @@ function setPlaying(next){
 }
 
 // -------------------- Thumbnails --------------------
+// `initThumbs(preserveIndex)` builds the thumbnail grid. If `preserveIndex=false` the
+// selection is reset to the first frame (useful after load/new).
 
 function initThumbs(preserveIndex = true){
   const prev = current;
@@ -879,6 +901,9 @@ function initThumbs(preserveIndex = true){
 }
 
 // -------------------- Drawing --------------------
+// Pointer events (pointerdown/pointermove/pointerup) call `applyStroke()` which
+// records deltas via `beginStroke()` / `commitStroke()`. To add a new tool,
+// handle it in `applyStroke()` and set state via `setTool()`.
 
 function applyStroke(from, to){
   const frameArr = frames[current];
@@ -1077,6 +1102,8 @@ window.addEventListener('keydown', e=>{
 });
 
 // -------------------- Init --------------------
+// Initializes a default 12-frame blank project. Modify this to change default
+// startup state (e.g., load a sample file or change initial frame count).
 
 function init(){
   frames = Array.from({length: 12}, ()=>makeBlankFrame());
