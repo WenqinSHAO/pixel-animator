@@ -92,12 +92,17 @@ input[type="range"]{width:160px}
 
 /* Montage sidebar styles */
 #montageSidebar .section{padding:10px}
-#montageChunks{max-height:300px;overflow-y:auto}
-#montageChunks .chunk-item{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.02);cursor:pointer;gap:10px}
+#montageChunks{max-height:400px;overflow-y:auto}
+#montageChunks .chunk-item{display:grid;grid-template-columns:48px 1fr auto;align-items:start;padding:8px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.02);cursor:pointer;gap:8px}
 #montageChunks .chunk-item:hover{border-color:#35507c}
 #montageChunks .chunk-item.active{outline:2px solid rgba(90,162,255,.8);border-color:rgba(90,162,255,.65);background:linear-gradient(180deg,rgba(90,162,255,.06),rgba(255,255,255,.02))}
-#montageChunks .chunk-meta{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
-#montageChunks .chunk-controls{display:flex;gap:6px}
+#montageChunks .chunk-thumb{width:48px;height:48px;border-radius:4px;background:rgba(0,0,0,.2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);overflow:hidden}
+#montageChunks .chunk-thumb canvas{width:100%;height:100%;image-rendering:pixelated}
+#montageChunks .chunk-info{display:flex;flex-direction:column;gap:4px;min-width:0}
+#montageChunks .chunk-badges{display:flex;gap:4px;flex-wrap:wrap}
+#montageChunks .chunk-alias{font-size:11px;font-weight:600;color:var(--text);width:100%;padding:2px 4px;background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:4px}
+#montageChunks .chunk-alias::placeholder{color:var(--muted);opacity:.6}
+#montageChunks .chunk-controls{display:flex;gap:4px;flex-wrap:wrap}
 
 /* Trim bar */
 #trimBarCanvas{position:relative}
@@ -1532,7 +1537,7 @@ window.addEventListener('keydown', e=>{
 // -------------------- Montage UI helpers --------------------
 
 // Montage in-memory model
-let montageChunks = []; // {id,name,source:{type,ref|project}, frameRange:{start,end}, derived:boolean, _project:optional}
+let montageChunks = []; // {id,name,source:{type,ref|project}, frameRange:{start,end}, derived:boolean, _project:optional, alias:optional}
 let montagePlaying = false;
 let selectedChunkIdx = -1;
 let _trimDragging = null;
@@ -1773,95 +1778,110 @@ function addMontageChunk(obj){
   if(montageChunks.length === 1){ selectMontageChunk(0); }
 }
 
+// Extract thumbnail frame index from chunk - picks a frame a few frames in for better representation
+function getChunkThumbnailFrameIndex(chunk){
+  const start = chunk.frameRange.start || 0;
+  const end = chunk.frameRange.end || 0;
+  const frameCount = end - start;
+  
+  if(frameCount <= 3) return start; // too short, use first frame
+  
+  // Pick frame at ~15% into the chunk, or frame 3-5, whichever is smaller
+  const offset = Math.min(5, Math.floor(frameCount * 0.15));
+  return start + offset;
+}
+
 function renderMontageChunks(){
   const container = document.getElementById('montageChunks');
   container.innerHTML = '';
   montageChunks.forEach((ch, idx)=>{
     const div = document.createElement('div');
     div.className = 'chunk-item';
+    div.title = ch.name; // Show full filename on hover
 
-    // show per-chunk duration badge
-    const durationBadge = document.createElement('span'); durationBadge.className = 'pill'; durationBadge.style.marginRight = '8px'; durationBadge.textContent = `${(ch.frameRange.end - ch.frameRange.start)}f`;
-    div.appendChild(durationBadge);
+    // Thumbnail
+    const thumb = document.createElement('div');
+    thumb.className = 'chunk-thumb';
+    if(ch._project && ch._project.frames && ch._project.frames.length > 0){
+      const thumbCanvas = document.createElement('canvas');
+      const thumbFrameIdx = getChunkThumbnailFrameIndex(ch);
+      const thumbFrame = ch._project.frames[thumbFrameIdx];
+      if(thumbFrame && thumbFrame.imageData){
+        thumbCanvas.width = ch._project.width || 64;
+        thumbCanvas.height = ch._project.height || 64;
+        const thumbCtx = thumbCanvas.getContext('2d');
+        const imgData = thumbCtx.createImageData(thumbCanvas.width, thumbCanvas.height);
+        imgData.data.set(thumbFrame.imageData);
+        thumbCtx.putImageData(imgData, 0, 0);
+        thumb.appendChild(thumbCanvas);
+      } else {
+        thumb.textContent = '🎬';
+      }
+    } else {
+      thumb.textContent = '🎬';
+    }
+    div.appendChild(thumb);
 
-    // show embedded/reference badge
-    const sourceBadge = document.createElement('span'); sourceBadge.className = 'pill'; sourceBadge.style.marginRight = '8px'; sourceBadge.textContent = ch.source && ch.source.type === 'embedded' ? 'embedded' : 'ref';
-    div.appendChild(sourceBadge);
+    // Info section
+    const info = document.createElement('div');
+    info.className = 'chunk-info';
 
-    const left = document.createElement('div');
-    left.style.display = 'flex'; left.style.gap = '10px'; left.style.alignItems = 'center';
-    const title = document.createElement('div');
-    title.style.display = 'flex'; title.style.flexDirection = 'column'; title.style.gap = '4px';
-    const nameEl = document.createElement('div'); nameEl.innerHTML = `<strong>${ch.name}</strong>`;
-    const metaEl = document.createElement('div'); metaEl.className = 'chunk-meta';
-    const startInput = document.createElement('input'); startInput.type = 'number'; startInput.value = String(ch.frameRange.start); startInput.min = 0; startInput.style.width = '62px'; startInput.className = 'trim-start-input';
-    const endInput = document.createElement('input'); endInput.type = 'number'; endInput.value = String(ch.frameRange.end); endInput.min = (Number(ch.frameRange.start) + 1) ; endInput.style.width = '62px'; endInput.className = 'trim-end-input';
-    metaEl.appendChild(startInput); metaEl.appendChild(document.createTextNode(' – ')); metaEl.appendChild(endInput);
-    title.appendChild(nameEl); title.appendChild(metaEl);
+    // Badges
+    const badges = document.createElement('div');
+    badges.className = 'chunk-badges';
+    const durationBadge = document.createElement('span'); 
+    durationBadge.className = 'pill'; 
+    durationBadge.textContent = `${(ch.frameRange.end - ch.frameRange.start)}f`;
+    const sourceBadge = document.createElement('span'); 
+    sourceBadge.className = 'pill'; 
+    sourceBadge.textContent = ch.source && ch.source.type === 'embedded' ? 'emb' : 'ref';
+    badges.appendChild(durationBadge);
+    badges.appendChild(sourceBadge);
+    info.appendChild(badges);
+
+    // Alias input
+    const aliasInput = document.createElement('input');
+    aliasInput.type = 'text';
+    aliasInput.className = 'chunk-alias';
+    aliasInput.placeholder = 'Alias (optional)';
+    aliasInput.value = ch.alias || '';
+    aliasInput.addEventListener('input', (e)=>{
+      e.stopPropagation();
+      ch.alias = aliasInput.value.trim();
+      updateMontageScrubberUI();
+    });
+    aliasInput.addEventListener('click', (e)=>e.stopPropagation());
+    info.appendChild(aliasInput);
+
+    div.appendChild(info);
+
+    // Controls section
+    const controls = document.createElement('div');
+    controls.className = 'chunk-controls';
 
     // events: select on click
     div.addEventListener('click', ()=>{ selectMontageChunk(idx); });
 
-    // trim inputs
-    startInput.addEventListener('change', ()=>{
-      const tot = (ch._project && (ch._project.frameCount || (ch._project.frames && ch._project.frames.length))) || ch.frameRange.end;
-      let si = clamp(Number(startInput.value), 0, tot-1);
-      let ei = clamp(Number(endInput.value), si+1, tot);
-      ch.frameRange = {start: si, end: ei}; ch.derived = true; renderMontageChunks(); updateMontageMetaUI(); updateTrimBar(); updateMontageScrubberUI(); notify('Chunk trimmed (non-destructive).');
-    });
-    endInput.addEventListener('change', ()=>{
-      const tot = (ch._project && (ch._project.frameCount || (ch._project.frames && ch._project.frames.length))) || ch.frameRange.end;
-      let si = clamp(Number(startInput.value), 0, tot-1);
-      let ei = clamp(Number(endInput.value), si+1, tot);
-      ch.frameRange = {start: si, end: ei}; ch.derived = true; renderMontageChunks(); updateMontageMetaUI(); updateTrimBar(); updateMontageScrubberUI(); notify('Chunk trimmed (non-destructive).');
-    });
-
-    const controls = document.createElement('div');
-    controls.className = 'chunk-controls';
-
-    // Note: per-chunk Trim button removed in favor of inline inputs + trim bar
-
-
-    const saveTrimBtn = document.createElement('button'); saveTrimBtn.textContent = 'Save trimmed';
-    saveTrimBtn.addEventListener('click', ()=>{
-      if(!ch._project){ notify('Source project not loaded in-memory. Cannot save trimmed chunk.'); return; }
-      const start = ch.frameRange.start; const end = ch.frameRange.end;
-      const project = ch._project;
-      const newFrames = project.frames.slice(start, end);
-      const out = {
-        version: project.version || '1.x',
-        width: project.width, height: project.height, fps: project.fps,
-        frameCount: newFrames.length, timestamp: new Date().toISOString(), frames: newFrames
-      };
-      const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = `${ch.name || ch.id}-trimmed.json`;
-      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-      notify('Saved trimmed chunk as new project JSON.');
-    });
-
     const upBtn = document.createElement('button'); upBtn.className = 'iconBtn'; upBtn.title = 'Move Up'; upBtn.textContent = '▴';
-    upBtn.addEventListener('click', ()=>{ if(idx === 0) return; [montageChunks[idx-1], montageChunks[idx]] = [montageChunks[idx], montageChunks[idx-1]]; renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); });
+    upBtn.addEventListener('click', (e)=>{ e.stopPropagation(); if(idx === 0) return; [montageChunks[idx-1], montageChunks[idx]] = [montageChunks[idx], montageChunks[idx-1]]; renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); });
 
     const downBtn = document.createElement('button'); downBtn.className = 'iconBtn'; downBtn.title = 'Move Down'; downBtn.textContent = '▾';
-    downBtn.addEventListener('click', ()=>{ if(idx === montageChunks.length-1) return; [montageChunks[idx+1], montageChunks[idx]] = [montageChunks[idx], montageChunks[idx+1]]; renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); });
+    downBtn.addEventListener('click', (e)=>{ e.stopPropagation(); if(idx === montageChunks.length-1) return; [montageChunks[idx+1], montageChunks[idx]] = [montageChunks[idx], montageChunks[idx+1]]; renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); });
 
     const delBtn = document.createElement('button'); delBtn.className = 'iconBtn danger'; delBtn.title = 'Delete'; delBtn.textContent = '✖';
-    delBtn.addEventListener('click', ()=>{ montageChunks.splice(idx,1); renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); });
+    delBtn.addEventListener('click', (e)=>{ e.stopPropagation(); montageChunks.splice(idx,1); renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); });
 
-    // per-chunk trim button intentionally removed in favor of inline inputs + trim bar
-    controls.appendChild(saveTrimBtn);
     controls.appendChild(upBtn);
     controls.appendChild(downBtn);
     controls.appendChild(delBtn);
 
-    left.appendChild(title);
-    div.appendChild(left);
     div.appendChild(controls);
 
-    div.addEventListener('dblclick', ()=>{ // on dblclick select and focus start input
+    div.addEventListener('dblclick', (e)=>{ // on dblclick select and focus alias input
+      e.stopPropagation();
       selectMontageChunk(idx);
-      const si = div.querySelector('.trim-start-input'); if(si) si.focus();
+      aliasInput.focus();
+      aliasInput.select();
     });
 
     container.appendChild(div);
