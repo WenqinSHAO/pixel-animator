@@ -47,6 +47,54 @@ Schema (concise):
 
 > Note: frames are stored as base64 image data (payload strings). The app expects the array order to be the playback order.
 
+## Montage (Film) Editor — Draft spec 🎞️
+
+**Goal:** arrange animation "chunks" (segments from existing project JSONs) in a timeline, supporting batch import, insert-before, drag-to-reorder, non-destructive **trimming** (time-axis, by frames), and save/load of a montage project. The UI will remain **vanilla** and simple; imports must match the montage `width`/`height`/`fps` (validated, see `scripts/validate_examples.js`).
+
+**Montage project JSON (draft):**
+
+```json
+{
+  "version": "montage-1.0",
+  "width": 128,
+  "height": 128,
+  "fps": 12,
+  "timestamp": "2025-12-25T09:00:00Z",
+  "chunks": [
+    {
+      "id": "chunk-uuid-1",
+      "name": "intro",
+      "source": {
+        "type": "reference",
+        "ref": "example/animation-project-2025-12-24T17-33-23-167Z.json"
+      },
+      "frameRange": { "start": 0, "end": 15 },
+      "derived": true,
+      "meta": {}
+    },
+    {
+      "id": "chunk-uuid-2",
+      "name": "embedded",
+      "source": {
+        "type": "embedded",
+        "project": { /* full original project JSON */ }
+      },
+      "frameRange": { "start": 0, "end": 31 },
+      "derived": false
+    }
+  ]
+}
+```
+
+**Notes:**
+- Each chunk references (by default) an existing project JSON and a 0-based frame range `[start, end)` (start inclusive, end exclusive). The montage **must not** modify the original project — trimming is non-destructive and stored only as metadata in the montage file (the original project JSON is left unchanged).
+- **Embedding:** later we can allow `source.type = "embedded"` to store a full copy of the original project inside the montage file (useful for portability); for now, prefer references.
+- **Validation:** imported chunks must match the montage `width`, `height`, and `fps`; use `scripts/validate_examples.js` as a starting point for enforcement. Auto-scaling is out-of-scope for this phase.
+- **Trimming (time-based):** use `frameRange` to select the subset of frames from the source for playback in the montage. Trimming a chunk creates a derived chunk (new `id`) visible in the montage timeline. Offer a UI action **"Save trimmed chunk"** to export the derived chunk as a standalone project JSON if the user wants it saved separately.
+- **Ordering:** the `chunks` array is ordered; the UI will show per-chunk duration and total timeline length, and allow drag-drop to reorder and insert-before a selected chunk.
+- **Interactions:** planned interactions with the existing chunk editor (e.g., insert current chunk into the montage, edit selected chunk in frame editor) are noted but deferred.
+- **Saving:** use a new `montage-1.0` version field for the montage project format. We'll add example montage files to `example/` and extend the validator as we implement imports.
+
 ## How to use ✨
 - Open `animator.html` in a browser (no build step required).
 - Use UI buttons to add frames, play, import/export JSON, and export GIF.
