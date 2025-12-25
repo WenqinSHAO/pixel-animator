@@ -24,11 +24,19 @@ const state: ExtendedAppState = createInitialState();
 
 // Canvas elements
 const mainCanvas = document.getElementById('main') as HTMLCanvasElement;
+const montagePreviewCanvas = document.getElementById('montagePreview') as HTMLCanvasElement;
 const offCanvas = document.createElement('canvas');
 offCanvas.width = W;
 offCanvas.height = H;
 const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
 if (offCtx) offCtx.imageSmoothingEnabled = false;
+
+// Montage-specific off-screen canvas for rendering
+const montageOffCanvas = document.createElement('canvas');
+montageOffCanvas.width = W;
+montageOffCanvas.height = H;
+const montageOffCtx = montageOffCanvas.getContext('2d', { willReadFrequently: true });
+if (montageOffCtx) montageOffCtx.imageSmoothingEnabled = false;
 
 // Thumbnail manager
 const thumbnailManager: ThumbnailManager = {
@@ -487,10 +495,23 @@ function updateModeUI(): void {
   if (drawingPanel) drawingPanel.style.display = isChunk ? '' : 'none';
   if (trimBar) trimBar.style.display = isMontage ? '' : 'none';
 
+  // Toggle canvases
+  if (mainCanvas) mainCanvas.style.display = isChunk ? '' : 'none';
+  if (montagePreviewCanvas) montagePreviewCanvas.style.display = isMontage ? '' : 'none';
+
   const chunkBtn = document.getElementById('modeChunkBtn');
   const montageBtn = document.getElementById('modeMontageBtn');
   if (chunkBtn) chunkBtn.classList.toggle('primary', isChunk);
   if (montageBtn) montageBtn.classList.toggle('primary', isMontage);
+  
+  // Clear montage canvas when switching to montage mode
+  if (isMontage && montagePreviewCanvas) {
+    const ctx = montagePreviewCanvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fillRect(0, 0, montagePreviewCanvas.width, montagePreviewCanvas.height);
+    }
+  }
 }
 
 /**
@@ -513,11 +534,19 @@ function handleChunkSelect(idx: number): void {
   
   updateTrimBar(state, trimBarCanvas);
   
-  // Render preview of first frame in selected chunk
+  // Render preview of first frame in selected chunk to MONTAGE canvas
   if (chunk && chunk._project) {
-    const result = getFrameAtMontagePosition(state.montage.chunks, idx);
+    const result = getFrameAtMontagePosition(state.montage.chunks, 0);
     if (result.frame) {
-      renderMain(mainCanvas, offCanvas, [result.frame], 0, false, 0);
+      // Render to montage preview canvas, not the main canvas
+      renderMain(montagePreviewCanvas, montageOffCanvas, [result.frame], 0, false, 0);
+    }
+  } else {
+    // Clear montage preview if no valid chunk
+    const ctx = montagePreviewCanvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fillRect(0, 0, montagePreviewCanvas.width, montagePreviewCanvas.height);
     }
   }
 }
