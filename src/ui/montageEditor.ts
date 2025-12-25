@@ -135,7 +135,7 @@ export function updateTrimBar(
   const chunk = state.montage.chunks[selectedIdx];
   if (!chunk._project) return;
   
-  const project = chunk._project as any;
+  const project = chunk._project as { frameCount?: number; frames?: unknown[] };
   const total = project.frameCount || (project.frames && project.frames.length) || 0;
   if (total <= 0) return;
   
@@ -182,7 +182,7 @@ export function setupTrimBarHandlers(
     const chunk = state.montage.chunks[selectedIdx];
     if (!chunk._project) return 0;
     
-    const project = chunk._project as any;
+    const project = chunk._project as { frameCount?: number; frames?: unknown[] };
     const total = project.frameCount || (project.frames && project.frames.length) || 0;
     
     const rect = trimBarCanvas.getBoundingClientRect();
@@ -196,7 +196,7 @@ export function setupTrimBarHandlers(
     const chunk = state.montage.chunks[state.montage.selectedChunkIdx];
     if (!chunk._project) return;
     
-    const project = chunk._project as any;
+    const project = chunk._project as { frameCount?: number; frames?: unknown[] };
     const total = project.frameCount || (project.frames && project.frames.length) || 0;
     const f = getFrameFromX(ev.clientX);
     
