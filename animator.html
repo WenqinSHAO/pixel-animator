@@ -258,21 +258,12 @@ input[type="range"]{width:160px}
 
     <div class="section">
       <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-        <div style="display:flex;gap:8px;align-items:center;">
-          <button id="montageImportBtn">Import projects...</button>
-          <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)"><input id="montageEmbedCheckbox" type="checkbox"/> Embed projects</label>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <button id="saveMontageBtn">Save Montage</button>
-          <button id="montagePlayBtn" class="primary">Play</button>
-        </div>
+        <button id="montagePlayBtn" class="primary">Play</button>
       </div>
 
       <div style="margin-top:10px" class="row"><small>Total frames</small><span id="montageTotalFrames" class="pill">0</span></div>
       <div style="margin-top:6px" class="row"><small>Playback</small><span id="montagePlayPos" class="pill">0 / 0f</span></div>
       <div style="margin-top:6px;color:var(--muted);font-size:12px">Import multiple JSON projects; trim (time-based) and reorder to compose a film.</div>
-
-      <!-- End import block -->
     </div>
 
     <div class="section" style="padding-top:8px">
@@ -282,6 +273,16 @@ input[type="range"]{width:160px}
 
     <div class="section" style="margin-top:10px">
       <div style="color:var(--muted);font-size:12px">Double-click a chunk to trim (frame range). Use Move Up/Down to reorder (drag-drop later).</div>
+    </div>
+
+    <!-- Import/Save at bottom -->
+    <div class="section" style="margin-top:auto">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <button id="montageImportBtn" title="Import multiple JSON projects to compose a film">Import</button>
+        <span style="color:var(--border)">|</span>
+        <button id="saveMontageBtn" title="Save montage as JSON with optional embedded projects">Save</button>
+        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)" title="Include all project data in saved file (otherwise only frame references)"><input id="montageEmbedCheckbox" type="checkbox"/> Self-contained</label>
+      </div>
     </div>
   </aside>
 </main>
