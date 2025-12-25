@@ -2,29 +2,29 @@
 
 A minimal browser-based frame-by-frame animator and GIF exporter.
 
-## What it is for ✅
+## What it is for 
+
 - Create simple animations in the browser and export them as a project JSON or a GIF.
 - Small, dependency-light implementation using `animator.html` and `vendor/gif.js`.
 
-**GUI Screenshot**
+GUI Screenshot
 
 ![Animator UI screenshot](./gui.png)
 
 > **Tip:** Open `animator.html` in a browser to view the UI shown above.
 
-**Example GIF**
+Example GIF
+![ex 2](./example/animation-2025-12-24T21-11-00-028Z.gif)
 
-![example gif](./example/animation-2025-12-24T18-25-03-681Z.gif)
+## Project layout 
 
-## Project layout 🔧
 - `animator.html` — main UI and app logic (canvas, frame editing, import/export).
-- `vendor/gif.js`, `vendor/gif.worker.js` — GIF encoding (used for `Export GIF`). This project includes a bundled copy of gif.js (https://github.com/jnordberg/gif.js) for offline builds — gif.js is MIT-licensed; include or reference its LICENSE when redistributing.
-
-**Example projects**
+- `vendor/gif.js`, `vendor/gif.worker.js` — GIF encoding (used for `Export GIF`). This project includes a bundled copy of gif.js [https://github.com/jnordberg/gif.js](https://github.com/jnordberg/gif.js) for offline builds — gif.js is MIT-licensed; include or reference its LICENSE when redistributing.
 - The `example/` folder contains saved project JSONs you can load from the UI using **Project Actions → Load Project**. To validate those files locally, run `node scripts/validate_examples.js` (checks `frameCount` and per-frame byte lengths).
 - `example/` — saved project JSONs (examples and tests).
 
-## Data format (project JSON) 💾
+## Data format (project JSON) 
+
 Schema (concise):
 
 ```json
@@ -38,6 +38,7 @@ Schema (concise):
   "frames": [ "<base64-image>", "<base64-image>", ... ]
 }
 ```
+
 - `version`: project format version string.
 - `width`, `height`: canvas size in pixels.
 - `fps`: frames per second for playback/export.
@@ -47,7 +48,7 @@ Schema (concise):
 
 > Note: frames are stored as base64 image data (payload strings). The app expects the array order to be the playback order.
 
-## Montage (Film) Editor — Draft spec 🎞️
+## Montage (Film) Editor — Draft spec 
 
 **Goal:** arrange animation "chunks" (segments from existing project JSONs) in a timeline, supporting batch import, insert-before, drag-to-reorder, non-destructive **trimming** (time-axis, by frames), and save/load of a montage project. The UI will remain **vanilla** and simple; imports must match the montage `width`/`height`/`fps` (validated, see `scripts/validate_examples.js`).
 
@@ -87,6 +88,7 @@ Schema (concise):
 ```
 
 **Notes:**
+
 - Each chunk references (by default) an existing project JSON and a 0-based frame range `[start, end)` (start inclusive, end exclusive). The montage **must not** modify the original project — trimming is non-destructive and stored only as metadata in the montage file (the original project JSON is left unchanged).
 - **Embedding:** later we can allow `source.type = "embedded"` to store a full copy of the original project inside the montage file (useful for portability); for now, prefer references.
 - **Validation:** imported chunks must match the montage `width`, `height`, and `fps`; use `scripts/validate_examples.js` as a starting point for enforcement. Auto-scaling is out-of-scope for this phase.
@@ -97,58 +99,12 @@ Schema (concise):
 
 **Wireframes & interaction details:** See `docs/montage-wireframes.md` for ASCII wireframes, interaction notes, and a short implementation-ready API list.
 
-## How to use ✨
+## How to use 
+
 - Open `animator.html` in a browser (no build step required).
 - Use UI buttons to add frames, play, import/export JSON, and export GIF.
 
-
-## Development & CI — tests and the project validator 🔧
-
-- **Validator**: The shared validator is in `lib/validateProject.js`. It exports a single function:
-
-  ```js
-  // Node
-  const validateProject = require('./lib/validateProject');
-  const res = validateProject(projectJson, { width: 128, height: 128, fps: 12 });
-  // res -> { ok: boolean, errors: string[] }
-
-  // Browser
-  // Included in `animator.html` as `./lib/validateProject.js` and exposed as `window.validateProject`.
-  ```
-
-  The validator checks that `frames` is an array, `frameCount` matches `frames.length`, `width`/`height` are numeric, and per-frame base64 payloads decode to the expected byte length.
-
-- **Example validator script**: `scripts/validate_examples.js` uses the shared validator to validate all files in `example/`. Run it locally with:
-
-  ```bash
-  npm run validate
-  ```
-
-- **Unit tests**: Jest tests live in `tests/` (e.g. `tests/validateProject.test.js`) and exercise the validator logic.
-
-  Run tests with:
-  ```bash
-  npm test
-  ```
-
-- **Linting**: ESLint is configured to run against `scripts/`; run it locally with:
-
-  ```bash
-  npm run lint
-  ```
-
-- **CI**: A GitHub Actions workflow (`.github/workflows/ci.yml`) runs `npm ci`, `npm test`, `npm run validate`, and `npm run lint` on pushes and pull requests (branches `main`/`master`). This ensures that example projects remain valid, unit tests pass, and script-level style rules are enforced.
-
-  **Add a CI badge (optional):** add the badge markdown to the top of this `README.md` to show build status (replace `<OWNER>/<REPO>` with your GitHub repo):
-
-  ```markdown
-  ![CI](https://github.com/<OWNER>/<REPO>/actions/workflows/ci.yml/badge.svg)
-  ```
-
-  The workflow file is at `.github/workflows/ci.yml`. Tests live in `tests/` (e.g. `tests/validateProject.test.js`), the shared validator is `lib/validateProject.js`, and the example validator script is `scripts/validate_examples.js` (run locally with `npm run validate`).
-
-
-## Implementation details — `animator.html` 🔍
+## Implementation details — `animator.html` 
 
 - **Data model**: `frames` is an Array of `Uint8Array` (length `W*H`), one byte per pixel (0 = black, 255 = white). New frames are created with `makeBlankFrame()`.
 - **Save / Load**: `saveProject()` serializes raw bytes as base64 (`btoa(String.fromCharCode(...))`); `loadProject()` decodes with `atob()` and validates `width`, `height`, and frame lengths.
@@ -159,7 +115,7 @@ Schema (concise):
 - **Playback**: `setPlaying()` uses `setInterval` with `FPS` to step frames and disables editing while playing.
 - **GIF Export**: `saveGif()` composes frames at `DISPLAY` (512) onto a white background and uses `gif.js`; `getGifWorkerBlobUrl()` loads `./vendor/gif.worker.js` or falls back to CDN.
 
-**Configuration & maintenance tips** ✨
+**Configuration & maintenance tips** 
 
 - Change `W`, `H` for the internal raster size, `DISPLAY` for on-screen/export resolution, and `FPS` for playback frame rate.
 - Notifications now use non-blocking in-page toasts (instead of blocking `alert()`), shown in the bottom-right.
