@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Frame-by-Frame Animator</title>
+</head>
+<body>
+<header>
+  <h1 id="title">Frame-by-Frame Animator — 12 fps, 128×128 grayscale</h1>
+  <div class="hint">
+    Space play/pause · [ / ] or ←/→ prev/next · A add frame · D duplicate · Del delete frame · Ctrl/Cmd+Z undo · Ctrl/Cmd+Y redo · S save · G GIF · L load · N new
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="card stage">
+    <div class="canvasPanel">
+
+      <!-- Drawing Ops -->
+      <div class="panelBlock">
+        <div class="panelHeader">
+          <div class="panelTitle">Drawing</div>
+        </div>
+        <div class="toolbar">
+          <div class="group">
+            <button id="toolPencil" class="primary">Pencil</button>
+            <button id="toolEraser">Eraser</button>
+            <button id="toolSoft">Soft</button>
+            <button id="undoBtn">Undo</button>
+            <button id="redoBtn">Redo</button>
+          </div>
+          <div class="group">
+            <label>Brush
+              <input id="brushSize" type="range" min="1" max="8" value="1"/>
+              <span id="brushSizeLabel" class="pill">1</span>
+            </label>
+          </div>
+        </div>
+        <div class="toolbar">
+          <div class="group">
+            <label>Gray
+              <input id="gray" type="range" min="0" max="255" value="0"/>
+              <span id="grayLabel" class="pill">0</span>
+            </label>
+          </div>
+          <div class="group">
+            <label>Onion
+              <input id="onion" type="range" min="0" max="8" value="5"/>
+              <span id="onionLabel" class="pill">5</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="mainCanvasWrap">
+        <canvas id="main" width="512" height="512" role="img" aria-label="Drawing canvas (128×128 grayscale)" tabindex="0"></canvas>
+      </div>
+
+      <!-- Frame Scrubber (moved here for longer control) -->
+      <div class="frameControls" style="margin-top:6px;">
+        <div style="flex:1;">
+          <input id="frameScrubber" class="scrubber" type="range" min="1" max="12" value="1" />
+        </div>
+      </div>
+
+
+
+    </div>
+  </section>
+
+  <aside class="card sidebar">
+    <h2>Frames</h2>
+
+    <!-- Frames + Frame Ops -->
+    <div class="section">
+
+      <div class="frameControls">
+        <div class="group">
+          <button id="playBtn" class="primary">Play</button>
+          <span class="pill">Frame <span id="frameLabel">1</span> / <span id="frameTotal">12</span></span>
+        </div>
+      </div>
+
+      <div class="framesWrap">
+        <div class="frames" id="frameGrid"></div>
+      </div>
+
+      <div class="frameOpsRow">
+        <div class="group">
+          <button id="addFrameBtn">Add</button>
+          <button id="dupFrameBtn">Duplicate</button>
+          <button id="delFrameBtn" class="danger">Delete</button>
+        </div>
+        <div class="group">
+          <span class="pill">Selected: <span id="selectedFramePill">1</span></span>
+        </div>
+      </div>
+
+      <div style="margin-top:10px;color:var(--muted);font-size:12px">Click thumbnail to edit — drag to reorder frames.</div>
+    </div>
+
+    <!-- Meta -->
+    <div class="section">
+      <div class="row"><strong>Project</strong><span id="lengthPill" class="pill">1.00 sec</span></div>
+      <div class="row"><small>FPS</small><span class="pill">12</span></div>
+      <div class="row"><small>Frames</small><span id="framesPill" class="pill">12</span></div>
+      <div class="row"><small>Canvas</small><span class="pill">128×128</span></div>
+
+      <div style="color:var(--muted);font-size:12px;margin-top:6px">Length updates automatically as you add/delete frames.</div>
+    </div>
+
+    <!-- Project Actions -->
+    <div class="section">
+      <div class="panelHeader">
+        <div class="panelTitle">Project Actions</div>
+      </div>
+      <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <button id="saveProjectBtn">Save Project</button>
+        <button id="loadProjectBtn">Load Project</button>
+        <button id="saveBtn">Save GIF</button>
+        <button id="newBtn" class="danger">New</button>
+      </div>
+      <div class="footerHint" style="margin-top:8px">Save Project is lossless JSON. Save GIF exports 512×512 with a white background.</div>
+    </div>
+  </aside>
+</main>
+
+<input id="loadProjectInput" type="file" accept=".json" style="display:none"/>
+
+<!-- Toast container for non-blocking notifications -->
+<div id="toastContainer" aria-live="polite" aria-atomic="true" class="toasts"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
