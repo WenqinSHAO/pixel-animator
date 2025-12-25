@@ -1,10 +1,11 @@
 # Animator
 
-A minimal browser-based frame-by-frame animator and GIF exporter.
+A minimal browser-based frame-by-frame animator and GIF exporter with montage editing capabilities.
 
 ## What it is for ✅
 - Create simple animations in the browser and export them as a project JSON or a GIF.
-- Built with TypeScript and modern web technologies for better maintainability and development experience.
+- **NEW:** Montage editor for combining multiple animation projects into sequences.
+- Supports both standalone frame-by-frame editing and montage composition.
 
 **GUI Screenshot**
 
@@ -16,38 +17,34 @@ A minimal browser-based frame-by-frame animator and GIF exporter.
 
 ## Project Structure 🔧
 
-The project has been refactored from a monolithic HTML file into a well-organized TypeScript codebase:
+This repository contains two versions:
 
-### Main Files
-- `index.html` — Main HTML entry point
-- `src/main.ts` — Application entry point and orchestration
-- `src/styles.css` — All application styles
-- `public/vendor/` — GIF.js library files
+### 1. **animator.html** (Main/Production - Monolithic, 2,156 lines)
+The primary production version with all latest features:
+- Frame-by-frame animation editor
+- **Montage editor** for combining animations
+- Layout optimizations for better workspace
+- Trim controls for montage chunks
+- Import/export for both individual animations and montages
+- All features in a single, self-contained HTML file
 
-### Source Code Organization
-- `src/core/` — Core business logic
-  - `config.ts` — Configuration constants
-  - `frame.ts` — Frame creation and management
-  - `renderer.ts` — Canvas rendering logic
-  - `drawing.ts` — Drawing tools (pencil, eraser, soft brush)
-  - `history.ts` — Undo/redo system
-  - `project.ts` — Project save/load functionality
-  - `gifExport.ts` — GIF export functionality
-  - `playback.ts` — Animation playback
-  - `state.ts` — Application state management
-- `src/ui/` — UI-related modules
-  - `uiState.ts` — UI state updates and management
-  - `thumbnails.ts` — Thumbnail grid management
+### 2. TypeScript Refactored Version (Development/Legacy)
+A modular TypeScript codebase (currently behind on features):
+- `index.html` — HTML entry point
+- `src/main.ts` — Application entry point
+- `src/core/` — Core business logic modules
+- `src/ui/` — UI management modules
 - `src/types/` — TypeScript type definitions
 - `src/utils/` — Utility functions
-  - `helpers.ts` — General helper functions
-  - `toast.ts` — Toast notification system
 
-### Legacy Files
-- `animator.html` — Original monolithic implementation (kept for reference)
+**Note:** The TypeScript version does not yet include the montage editor features. It represents an earlier refactoring effort of the original single-file animator.
 
-**Example projects**
-- The `example/` folder contains saved project JSONs you can load from the UI using **Project Actions → Load Project**. 
+### Files
+- `animator.html` — **Main production file** with montage editor (use this for all features)
+- `index.html` + `src/` — TypeScript refactored version (legacy, missing montage features)
+- `vendor/` — GIF.js library files
+- `example/` — Sample project JSONs
+- `scripts/` — Validation utilities 
 - To validate example files: `node scripts/validate_examples.js` (checks `frameCount` and per-frame byte lengths).
 
 ## Data format (project JSON) 💾
@@ -75,69 +72,94 @@ Schema (concise):
 
 ## How to use ✨
 
-### Development
+### Using animator.html (Recommended - Full Features)
+Open `animator.html` directly in a modern browser - no build step required!
+
+Features:
+- **Frame Editor**: Create individual frames with drawing tools
+- **Montage Editor**: Combine multiple animations into sequences
+- **Layout optimized** for both modes
+- All keyboard shortcuts work in both modes
+
+### Using the TypeScript Version (Legacy)
+The TypeScript version requires build tools but doesn't have montage features yet:
+
 1. Install dependencies:
    ```bash
    npm install
    ```
 
-2. Start the development server:
+2. Start development server:
    ```bash
    npm run dev
    ```
-   This will open the application at `http://localhost:3000`
 
 3. Build for production:
    ```bash
    npm run build
    ```
-   The built files will be in the `dist/` directory.
 
-4. Preview production build:
-   ```bash
-   npm run preview
-   ```
-
-### Using the Application
-- Use UI buttons to add frames, play, import/export JSON, and export GIF.
-- Keyboard shortcuts are available (see header hint bar).
-
-### Using the Legacy Version
-- For the original monolithic version, open `animator.html` directly in a browser (no build step required).
+**Note:** For full features including montage editor, use `animator.html`.
 
 
 ## Implementation details 🔍
 
-### Architecture
-The application follows a modular TypeScript architecture with clear separation of concerns:
+### animator.html (Monolithic - 2,156 lines)
+The main implementation now includes:
 
-- **Data model**: `frames` is an Array of `Uint8Array` (length `W*H`), one byte per pixel (0 = black, 255 = white). New frames are created with `makeBlankFrame()` in `src/core/frame.ts`.
-- **Save / Load**: `saveProject()` in `src/core/project.ts` serializes raw bytes as base64; `loadProject()` decodes and validates dimensions and frame lengths.
-- **Rendering**: Uses an offscreen canvas composed via `composeWithOnionSkin()` or `composeFrameOnly()`, then scaled to the visible canvas by `renderMain()` (all in `src/core/renderer.ts`).
-- **Drawing & tools**: `src/core/drawing.ts` implements `drawDot()` (square brush) and `drawLine()` (Bresenham) for pencil/eraser, plus soft brush variants with radial falloff.
-- **Undo / Redo**: `src/core/history.ts` manages per-frame undo/redo stacks with stroke deltas recorded as `{idxs, before, after}`.
-- **Timeline & thumbnails**: `src/core/state.ts` and `src/ui/thumbnails.ts` handle frame operations and thumbnail grid management.
-- **Playback**: `src/core/playback.ts` uses `setInterval` with configurable FPS to step through frames.
-- **GIF Export**: `src/core/gifExport.ts` composes frames at 512×512 onto white background and uses gif.js library.
+**Frame Editor Mode:**
+- Data model: `frames` array of `Uint8Array` (W×H bytes, grayscale pixels)
+- Drawing tools: pencil, eraser, soft brush with Bresenham line algorithm
+- Undo/redo: per-frame delta compression
+- Onion skinning for animation preview
+- Project save/load (JSON with base64-encoded frames)
+- GIF export (512×512 with white background)
+
+**Montage Editor Mode (NEW):**
+- **Chunk management**: Import multiple animation projects as "chunks"
+- **Non-destructive trimming**: Adjust frame ranges without modifying source
+- **Sequence playback**: Play through all chunks in order
+- **Visual timeline**: Trim bar with draggable handles
+- **Combined export**: Save montage as single animation or with embedded chunks
+- **Alias support**: Name chunks for better organization
+
+**Mode Switching:**
+- Toggle between "Chunk Editor" (single animation) and "Montage Editor" (sequence)
+- Drawing disabled in montage mode (view-only)
+- Shared scrubber adapts to current mode
+- Layout optimizations for sidebar space management
+
+### TypeScript Version (src/ directory)
+The modular codebase (currently missing montage features):
+- Organized into core/, ui/, types/, utils/ modules
+- Strict TypeScript configuration
+- Vite build system
+- ESLint for code quality
+- Same data format as monolithic version for frame projects
 
 **Configuration & maintenance tips** ✨
 
-- Change `W`, `H` in `src/core/config.ts` for internal raster size, `DISPLAY` for on-screen/export resolution, and `FPS` for playback frame rate.
-- Notifications use non-blocking in-page toasts (implementation in `src/utils/toast.ts`).
-- To support color, switch frames to RGBA arrays in `src/core/frame.ts` and update compose/draw functions in `src/core/renderer.ts` and `src/core/drawing.ts`.
-- To change brush shape (round vs square), adjust `drawDot()` behavior in `src/core/drawing.ts`.
-- To add tools, extend the `Tool` type in `src/types/index.ts`, add UI controls in `index.html`, and handle the new tool in `applyStroke()` in `src/core/drawing.ts`.
-- For autosave or cloud sync, hook into project changes in `src/main.ts` and reuse `saveProject()`/`loadProject()` from `src/core/project.ts`.
+**For animator.html:**
+- Change `W`, `H` for internal raster size, `DISPLAY` for on-screen/export resolution, and `FPS` for playback frame rate (all near line 357).
+- Notifications use non-blocking in-page toasts.
+- To support color: switch frames to RGBA arrays and update compose/draw functions.
+- To change brush shape: adjust `drawDot()` behavior.
+- To add tools: add UI control, set the tool name in `setTool()`, and handle it in `applyStroke()`.
+- **Montage mode**: chunks stored in `montageChunks` array, mode toggled via `currentMode` variable.
+- **Trim functionality**: non-destructive, stores frameRange without modifying source projects.
 
-### TypeScript Development
-- The codebase uses strict TypeScript configuration for better type safety.
-- All modules are organized by function: `core/` for business logic, `ui/` for UI management, `utils/` for helpers.
-- Type definitions are centralized in `src/types/index.ts`.
-- Linting is configured with ESLint and TypeScript-ESLint plugins.
+**For TypeScript version (if continuing development):**
+- Same configuration constants in `src/core/config.ts`
+- Modular architecture makes it easier to add features
+- Would need montage editor modules added (chunks, trimming, mode switching)
+- Type definitions in `src/types/index.ts` and `src/types/montage.ts` (started but incomplete)
 
-### Testing the Refactored Version
-Both versions (TypeScript refactored and original) are functionally identical. To compare:
-- TypeScript version: `npm run dev` (or build and preview)
-- Original version: Open `animator.html` directly in a browser
+### Future Development
+To bring the TypeScript version up to date with animator.html:
+1. Extract montage functionality into `src/core/montage.ts`
+2. Add mode switching logic to `src/core/state.ts`
+3. Create `src/ui/montageEditor.ts` for chunk management UI
+4. Update `src/main.ts` to handle both modes
+5. Add montage-specific UI components to `index.html`
 
-> Note: frames are base64-encoded raw byte payloads in project files; if you prefer portable images (PNG), swap to data-URI encoding in `src/core/project.ts`.
+> Note: frames are base64-encoded raw byte payloads in project files. Montage projects can optionally embed source chunks.
