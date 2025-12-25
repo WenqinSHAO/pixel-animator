@@ -112,7 +112,7 @@ input[type="range"]{width:160px}
 </head>
 <body>
 <header>
-  <h1 id="title">Frame-by-Frame Animator — 12 fps, 128×128 grayscale</h1>
+  <h1 id="title">Frame-by-Frame Animator</h1>
   <div class="hint">
     Space play/pause · [ / ] or ←/→ prev/next · A add frame · D duplicate · Del delete frame · Ctrl/Cmd+Z undo · Ctrl/Cmd+Y redo · S save · G GIF · L load · N new
   </div>
@@ -127,7 +127,7 @@ input[type="range"]{width:160px}
     <div class="canvasPanel">
 
       <!-- Drawing Ops -->
-      <div class="panelBlock">
+      <div id="drawingPanel" class="panelBlock">
         <div class="panelHeader">
           <div class="panelTitle">Drawing</div>
         </div>
@@ -1734,6 +1734,9 @@ function setMode(mode){
 
   // trim bar should be visible only in montage mode
   const trimBar = document.getElementById('trimBar'); if(trimBar) trimBar.style.display = isMontage ? '' : 'none';
+
+  // hide drawing panel in montage mode
+  const drawingPanel = document.getElementById('drawingPanel'); if(drawingPanel) drawingPanel.style.display = isMontage ? 'none' : '';
 
   // disable drawing/frame-edit controls while in montage mode
   const drawingControls = [toolPencil, toolEraser, toolSoft, undoBtn, redoBtn, addFrameBtn, dupFrameBtn, delFrameBtn, brushSize, graySlider, onionSlider];
