@@ -4,9 +4,9 @@
  */
 
 import './styles.css';
-import type { AppState } from './types';
+import type { ExtendedAppState } from './core/state';
 import { W, H } from './core/config';
-import { createInitialState, setCurrent, setTool, addBlankAfterCurrent, duplicateAfterCurrent, deleteCurrentFrame, newProject, loadFrames, getPointerXY } from './core/state';
+import { createInitialState, setCurrent, setTool, setMode, addBlankAfterCurrent, duplicateAfterCurrent, deleteCurrentFrame, newProject, loadFrames, getPointerXY } from './core/state';
 import { renderMain, renderThumb } from './core/renderer';
 import { applyStroke } from './core/drawing';
 import { beginStroke, commitStroke, undo, redo } from './core/history';
@@ -16,9 +16,11 @@ import { setPlaying } from './core/playback';
 import { initThumbs, renderAllThumbs, type ThumbnailManager } from './ui/thumbnails';
 import { updateUI, updateToolButtons, updateThumbnailActive, setExportingUI } from './ui/uiState';
 import { notify } from './utils/toast';
+import { importChunks, addChunk, removeChunk, selectChunk, updateChunkRange, resetChunkRange, exportMontage, getFrameAtMontagePosition } from './core/montage';
+import { renderMontageChunks, updateMontageMetaUI, updateTrimBar, setupTrimBarHandlers } from './ui/montageEditor';
 
 // Initialize application state
-const state: AppState = createInitialState();
+const state: ExtendedAppState = createInitialState();
 
 // Canvas elements
 const mainCanvas = document.getElementById('main') as HTMLCanvasElement;
@@ -37,6 +39,17 @@ const thumbnailManager: ThumbnailManager = {
 // DOM elements
 const frameGrid = document.getElementById('frameGrid') as HTMLElement;
 const loadProjectInput = document.getElementById('loadProjectInput') as HTMLInputElement;
+
+// Montage DOM elements
+const montageImportInput = document.getElementById('montageImportInput') as HTMLInputElement;
+const montageChunksContainer = document.getElementById('montageChunks') as HTMLElement;
+const trimBarCanvas = document.getElementById('trimBarCanvas') as HTMLElement;
+const trimStartInput = document.getElementById('trimStartInput') as HTMLInputElement;
+const trimEndInput = document.getElementById('trimEndInput') as HTMLInputElement;
+const chunkSidebar = document.getElementById('chunkSidebar') as HTMLElement;
+const montageSidebar = document.getElementById('montageSidebar') as HTMLElement;
+const drawingPanel = document.getElementById('drawingPanel') as HTMLElement;
+const trimBar = document.getElementById('trimBar') as HTMLElement;
 
 /**
  * Setup all event handlers.
@@ -379,6 +392,146 @@ function setupEventHandlers(): void {
   window.addEventListener('resize', () => {
     renderMain(mainCanvas, offCanvas, state.frames, state.current, state.isPlaying, state.onionDepth);
   });
+
+  // Mode switching
+  document.getElementById('modeChunkBtn')?.addEventListener('click', () => {
+    setMode(state, 'chunk');
+    updateModeUI();
+    notify('Switched to Chunk Editor');
+  });
+
+  document.getElementById('modeMontageBtn')?.addEventListener('click', () => {
+    setMode(state, 'montage');
+    updateModeUI();
+    notify('Switched to Montage Editor');
+  });
+
+  // Montage import
+  document.getElementById('montageImportBtn')?.addEventListener('click', () => {
+    montageImportInput?.click();
+  });
+
+  montageImportInput?.addEventListener('change', async (e) => {
+    const files = (e.target as HTMLInputElement).files;
+    if (!files || files.length === 0) return;
+
+    const chunks = await importChunks(files);
+    chunks.forEach(chunk => addChunk(state.montage, chunk));
+    
+    renderMontageChunks(state, montageChunksContainer, handleChunkSelect, handleChunkRemove);
+    updateMontageMetaUI(state);
+    notify(`Imported ${chunks.length} chunk(s)`);
+
+    montageImportInput.value = '';
+  });
+
+  // Montage save
+  document.getElementById('montageSaveBtn')?.addEventListener('click', () => {
+    const embedCheckbox = document.getElementById('montageEmbedCheckbox') as HTMLInputElement;
+    const embed = embedCheckbox?.checked || false;
+    
+    const project = exportMontage(state.montage.chunks, embed);
+    const json = JSON.stringify(project, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `montage-${new Date().toISOString()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    notify('Montage saved!');
+  });
+
+  // Trim controls
+  document.getElementById('trimApplyBtn')?.addEventListener('click', () => {
+    const start = Number(trimStartInput.value);
+    const end = Number(trimEndInput.value);
+    if (updateChunkRange(state.montage, state.montage.selectedChunkIdx, start, end)) {
+      renderMontageChunks(state, montageChunksContainer, handleChunkSelect, handleChunkRemove);
+      updateMontageMetaUI(state);
+      updateTrimBar(state, trimBarCanvas);
+      notify('Chunk trimmed (non-destructive)');
+    }
+  });
+
+  document.getElementById('trimResetBtn')?.addEventListener('click', () => {
+    if (resetChunkRange(state.montage, state.montage.selectedChunkIdx)) {
+      const chunk = state.montage.chunks[state.montage.selectedChunkIdx];
+      trimStartInput.value = String(chunk.frameRange.start);
+      trimEndInput.value = String(chunk.frameRange.end);
+      renderMontageChunks(state, montageChunksContainer, handleChunkSelect, handleChunkRemove);
+      updateMontageMetaUI(state);
+      updateTrimBar(state, trimBarCanvas);
+      notify('Trim reset (restored full range)');
+    }
+  });
+
+  // Setup trim bar drag handlers
+  if (trimBarCanvas && trimStartInput && trimEndInput) {
+    setupTrimBarHandlers(state, trimBarCanvas, trimStartInput, trimEndInput, () => {
+      renderMontageChunks(state, montageChunksContainer, handleChunkSelect, handleChunkRemove);
+      updateMontageMetaUI(state);
+    });
+  }
+}
+
+/**
+ * Update UI based on current mode.
+ */
+function updateModeUI(): void {
+  const isChunk = state.mode === 'chunk';
+  const isMontage = state.mode === 'montage';
+
+  if (chunkSidebar) chunkSidebar.style.display = isChunk ? '' : 'none';
+  if (montageSidebar) montageSidebar.style.display = isMontage ? '' : 'none';
+  if (drawingPanel) drawingPanel.style.display = isChunk ? '' : 'none';
+  if (trimBar) trimBar.style.display = isMontage ? '' : 'none';
+
+  const chunkBtn = document.getElementById('modeChunkBtn');
+  const montageBtn = document.getElementById('modeMontageBtn');
+  if (chunkBtn) chunkBtn.classList.toggle('primary', isChunk);
+  if (montageBtn) montageBtn.classList.toggle('primary', isMontage);
+}
+
+/**
+ * Handle chunk selection in montage mode.
+ */
+function handleChunkSelect(idx: number): void {
+  selectChunk(state.montage, idx);
+  renderMontageChunks(state, montageChunksContainer, handleChunkSelect, handleChunkRemove);
+  
+  const chunk = state.montage.chunks[idx];
+  if (chunk) {
+    trimStartInput.value = String(chunk.frameRange.start);
+    trimEndInput.value = String(chunk.frameRange.end);
+    
+    const trimApply = document.getElementById('trimApplyBtn') as HTMLButtonElement;
+    const trimReset = document.getElementById('trimResetBtn') as HTMLButtonElement;
+    if (trimApply) trimApply.disabled = !chunk._project;
+    if (trimReset) trimReset.disabled = !chunk._project;
+  }
+  
+  updateTrimBar(state, trimBarCanvas);
+  
+  // Render preview of first frame in selected chunk
+  if (chunk && chunk._project) {
+    const result = getFrameAtMontagePosition(state.montage.chunks, idx);
+    if (result.frame) {
+      renderMain(mainCanvas, offCanvas, [result.frame], 0, false, 0);
+    }
+  }
+}
+
+/**
+ * Handle chunk removal in montage mode.
+ */
+function handleChunkRemove(idx: number): void {
+  if (removeChunk(state.montage, idx)) {
+    renderMontageChunks(state, montageChunksContainer, handleChunkSelect, handleChunkRemove);
+    updateMontageMetaUI(state);
+    updateTrimBar(state, trimBarCanvas);
+    notify('Chunk removed');
+  }
 }
 
 /**

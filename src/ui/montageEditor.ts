@@ -3,9 +3,8 @@
  * Handles chunk list rendering, trim bar, and montage-specific UI updates.
  */
 
-import type { MontageChunk, MontageState } from '../types/montage';
 import type { ExtendedAppState } from '../core/state';
-import { computeMontageTotalFrames, selectChunk } from '../core/montage';
+import { computeMontageTotalFrames } from '../core/montage';
 import { clamp } from '../utils/helpers';
 
 /**
