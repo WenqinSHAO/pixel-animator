@@ -1,0 +1,16 @@
+{
+  "name": "animator",
+  "version": "0.0.0",
+  "description": "Minimal browser-based frame-by-frame animator",
+  "license": "MIT",
+  "scripts": {
+    "validate": "node scripts/validate_examples.js",
+    "lint": "eslint \"scripts/**/*.js\" --max-warnings=0"
+  },
+  "devDependencies": {
+    "eslint": "^8.45.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

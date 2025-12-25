@@ -1,0 +1,5 @@
+/vendor/
+/example/
+/dist/
+/node_modules/
+*.min.js
