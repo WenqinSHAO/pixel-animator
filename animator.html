@@ -184,8 +184,10 @@ input[type="range"]{width:160px}
         </div>
       </div>
 
-      <!-- Montage Scrubber (single source-of-truth) -->
+      <!-- Unified Scrubber (used in both chunk and montage modes) -->
       <div class="frameControls" style="margin-top:6px;">
+        <button id="playBtn" class="primary">Play</button>
+        <button id="montagePlayBtn" class="primary">Play</button>
         <div style="flex:1;">
           <input id="montageScrubber" class="scrubber" type="range" min="1" max="1" value="1" />
         </div>
@@ -203,10 +205,7 @@ input[type="range"]{width:160px}
     <div class="section">
 
       <div class="frameControls">
-        <div class="group">
-          <button id="playBtn" class="primary">Play</button>
-          <span class="pill">Frame <span id="frameLabel">1</span> / <span id="frameTotal">12</span></span>
-        </div>
+        <span class="pill">Frame <span id="frameLabel">1</span> / <span id="frameTotal">12</span></span>
       </div>
 
       <div class="framesWrap">
@@ -257,10 +256,6 @@ input[type="range"]{width:160px}
     <h2>Montage</h2>
 
     <div class="section">
-      <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-        <button id="montagePlayBtn" class="primary">Play</button>
-      </div>
-
       <div style="margin-top:10px" class="row"><small>Total frames</small><span id="montageTotalFrames" class="pill">0</span></div>
       <div style="margin-top:6px" class="row"><small>Playback</small><span id="montagePlayPos" class="pill">0 / 0f</span></div>
       <div style="margin-top:6px;color:var(--muted);font-size:12px">Import multiple JSON projects; trim (time-based) and reorder to compose a film.</div>
@@ -1732,6 +1727,10 @@ function setMode(mode){
   // trim bar should be visible only in montage mode
   const trimBar = document.getElementById('trimBar'); if(trimBar) trimBar.style.display = isMontage ? '' : 'none';
 
+  // show appropriate play button based on mode
+  if(playBtn) playBtn.style.display = isMontage ? 'none' : '';
+  if(montagePlayBtn) montagePlayBtn.style.display = isMontage ? '' : 'none';
+
   // hide drawing panel in montage mode
   const drawingPanel = document.getElementById('drawingPanel'); if(drawingPanel) drawingPanel.style.display = isMontage ? 'none' : '';
 
@@ -2134,6 +2133,10 @@ function init(){
 
   // initial montage UI state
   selectMontageChunk(-1);
+
+  // set initial button visibility (chunk mode by default)
+  if(playBtn) playBtn.style.display = '';
+  if(montagePlayBtn) montagePlayBtn.style.display = 'none';
 
   window.addEventListener('resize', ()=>renderMain());
 }
