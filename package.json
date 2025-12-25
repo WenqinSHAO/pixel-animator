@@ -5,10 +5,12 @@
   "license": "MIT",
   "scripts": {
     "validate": "node scripts/validate_examples.js",
-    "lint": "eslint \"scripts/**/*.js\" --max-warnings=0"
+    "lint": "eslint \"scripts/**/*.js\" --max-warnings=0",
+    "test": "jest --runInBand"
   },
   "devDependencies": {
-    "eslint": "^8.45.0"
+    "eslint": "^8.45.0",
+    "jest": "^29.7.0"
   },
   "engines": {
     "node": ">=18"

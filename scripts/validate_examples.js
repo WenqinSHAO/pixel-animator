@@ -27,19 +27,17 @@ for(const f of files){
     ok = false;
   }
 
-  const expectedLen = W*H;
-  frames.forEach((b64, i)=>{
-    if(typeof b64 !== 'string') return;
-    let buf;
-    try{ buf = Buffer.from(b64, 'base64'); }catch(e){ console.error(`${f}: frame ${i} invalid base64`); ok = false; return; }
-    if(buf.length !== expectedLen){
-      console.error(`${f}: frame ${i} length ${buf.length} !== expected ${expectedLen}`);
-      ok = false;
-    }
-  });
-
-  if(ok) console.log(`${f}: OK (${frames.length} frames ${W}x${H})`);
+  // Delegate validation to lib/validateProject.js so logic is shared and testable
+  const validateProject = require('../lib/validateProject');
+  const res = validateProject(proj, { width: W, height: H, fps: proj.fps });
+  if(!res.ok){
+    console.error(`${f}: ${res.errors.join('; ')}`);
+    ok = false;
+  } else {
+    console.log(`${f}: OK (${frames.length} frames ${W}x${H})`);
+  }
 }
+
 if(!ok){
   console.error('\nOne or more example files failed validation.');
   process.exit(2);
