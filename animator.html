@@ -93,9 +93,10 @@ input[type="range"]{width:160px}
 /* Montage sidebar styles */
 #montageSidebar .section{padding:10px}
 #montageChunks{max-height:300px;overflow-y:auto}
-#montageChunks .chunk-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.02)}
-#montageChunks .chunk-item.active{outline:2px solid rgba(90,162,255,.8);border-color:rgba(90,162,255,.65);background:linear-gradient(180deg,rgba(90,162,255,.02),rgba(255,255,255,.01))}
-#montageChunks .chunk-meta{font-size:12px;color:var(--muted);}
+#montageChunks .chunk-item{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.02);cursor:pointer;gap:10px}
+#montageChunks .chunk-item:hover{border-color:#35507c}
+#montageChunks .chunk-item.active{outline:2px solid rgba(90,162,255,.8);border-color:rgba(90,162,255,.65);background:linear-gradient(180deg,rgba(90,162,255,.06),rgba(255,255,255,.02))}
+#montageChunks .chunk-meta{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
 #montageChunks .chunk-controls{display:flex;gap:6px}
 
 /* Trim bar */
@@ -256,9 +257,8 @@ input[type="range"]{width:160px}
     <h2>Montage</h2>
 
     <div class="section">
-      <div style="margin-top:10px" class="row"><small>Total frames</small><span id="montageTotalFrames" class="pill">0</span></div>
-      <div style="margin-top:6px" class="row"><small>Playback</small><span id="montagePlayPos" class="pill">0 / 0f</span></div>
-      <div style="margin-top:6px;color:var(--muted);font-size:12px">Import multiple JSON projects; trim (time-based) and reorder to compose a film.</div>
+      <div class="row"><small>Total frames</small><span id="montageTotalFrames" class="pill">0</span></div>
+      <div style="margin-top:6px" class="row"><small>Position</small><span id="montagePlayPos" class="pill">0 / 0f</span></div>
     </div>
 
     <div class="section" style="padding-top:8px">
@@ -266,17 +266,13 @@ input[type="range"]{width:160px}
       <div id="montageChunks" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
     </div>
 
-    <div class="section" style="margin-top:10px">
-      <div style="color:var(--muted);font-size:12px">Double-click a chunk to trim (frame range). Use Move Up/Down to reorder (drag-drop later).</div>
-    </div>
-
     <!-- Import/Save at bottom -->
     <div class="section" style="margin-top:auto">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <button id="montageImportBtn" title="Import multiple JSON projects to compose a film">Import</button>
+        <button id="montageImportBtn">Import</button>
         <span style="color:var(--border)">|</span>
-        <button id="saveMontageBtn" title="Save montage as JSON with optional embedded projects">Save</button>
-        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)" title="Include all project data in saved file (otherwise only frame references)"><input id="montageEmbedCheckbox" type="checkbox"/> Self-contained</label>
+        <button id="saveMontageBtn">Save</button>
+        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)"><input id="montageEmbedCheckbox" type="checkbox"/> Embed</label>
       </div>
     </div>
   </aside>
@@ -1795,18 +1791,12 @@ function renderMontageChunks(){
     const left = document.createElement('div');
     left.style.display = 'flex'; left.style.gap = '10px'; left.style.alignItems = 'center';
     const title = document.createElement('div');
-    title.style.display = 'flex'; title.style.flexDirection = 'column';
+    title.style.display = 'flex'; title.style.flexDirection = 'column'; title.style.gap = '4px';
     const nameEl = document.createElement('div'); nameEl.innerHTML = `<strong>${ch.name}</strong>`;
     const metaEl = document.createElement('div'); metaEl.className = 'chunk-meta';
     const startInput = document.createElement('input'); startInput.type = 'number'; startInput.value = String(ch.frameRange.start); startInput.min = 0; startInput.style.width = '62px'; startInput.className = 'trim-start-input';
     const endInput = document.createElement('input'); endInput.type = 'number'; endInput.value = String(ch.frameRange.end); endInput.min = (Number(ch.frameRange.start) + 1) ; endInput.style.width = '62px'; endInput.className = 'trim-end-input';
-    const refInput = document.createElement('input'); refInput.type = 'text'; refInput.value = (ch.source && ch.source.ref) ? ch.source.ref : ''; refInput.style.width = '160px'; refInput.className = 'ref-input';
-    const setCanonBtn = document.createElement('button'); setCanonBtn.textContent = `Use example/${ch.name}.json`;
-    metaEl.appendChild(document.createTextNode('frames: ')); metaEl.appendChild(startInput); metaEl.appendChild(document.createTextNode(' .. ')); metaEl.appendChild(endInput);
-    metaEl.appendChild(document.createTextNode(` (${ch.frameRange.end - ch.frameRange.start}f)`));
-    metaEl.appendChild(document.createElement('br'));
-    const refLabel = document.createElement('small'); refLabel.style.color = 'var(--muted)'; refLabel.textContent = 'ref: ';
-    metaEl.appendChild(refLabel); metaEl.appendChild(refInput); metaEl.appendChild(setCanonBtn);
+    metaEl.appendChild(startInput); metaEl.appendChild(document.createTextNode(' – ')); metaEl.appendChild(endInput);
     title.appendChild(nameEl); title.appendChild(metaEl);
 
     // events: select on click
@@ -1825,9 +1815,6 @@ function renderMontageChunks(){
       let ei = clamp(Number(endInput.value), si+1, tot);
       ch.frameRange = {start: si, end: ei}; ch.derived = true; renderMontageChunks(); updateMontageMetaUI(); updateTrimBar(); updateMontageScrubberUI(); notify('Chunk trimmed (non-destructive).');
     });
-
-    refInput.addEventListener('change', ()=>{ if(!ch.source) ch.source = {type:'reference', ref: refInput.value}; else ch.source.ref = refInput.value; notify('Reference updated.'); });
-    setCanonBtn.addEventListener('click', ()=>{ refInput.value = `example/${ch.name}.json`; refInput.dispatchEvent(new Event('change')); });
 
     const controls = document.createElement('div');
     controls.className = 'chunk-controls';
