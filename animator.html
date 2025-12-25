@@ -104,6 +104,12 @@ input[type="range"]{width:160px}
 #montageChunks .chunk-alias::placeholder{color:var(--muted);opacity:.6}
 #montageChunks .chunk-controls{display:flex;gap:4px;flex-wrap:wrap}
 
+/* Insert zone for chunk insertion */
+.chunk-insert-zone{display:flex;align-items:center;justify-content:center;padding:4px;opacity:0.5;transition:opacity 0.2s ease}
+.chunk-insert-zone:hover{opacity:1}
+.chunk-insert-zone button{padding:4px 8px;font-size:11px;border-radius:6px;background:rgba(90,162,255,.08);border:1px dashed rgba(90,162,255,.4);color:var(--accent);cursor:pointer;min-width:auto;width:100%}
+.chunk-insert-zone button:hover{background:rgba(90,162,255,.15);border-color:rgba(90,162,255,.6)}
+
 /* Trim bar */
 #trimBarCanvas{position:relative}
 .trim-handle{position:absolute;top:0;height:100%;width:10px;background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(0,0,0,.08));cursor:ew-resize;border-left:1px solid rgba(0,0,0,.18);border-right:1px solid rgba(255,255,255,.06);}
@@ -120,7 +126,7 @@ input[type="range"]{width:160px}
 <body>
 <header>
   <h1 id="title">Frame-by-Frame Animator</h1>
-  <div class="hint">
+  <div id="headerHint" class="hint">
     Space play/pause · [ / ] or ←/→ prev/next · A add frame · D duplicate · Del delete frame · Ctrl/Cmd+Z undo · Ctrl/Cmd+Y redo · S save · G GIF · L load · N new
   </div>
   <div id="editorToggle" style="display:flex;gap:8px;align-items:center">
@@ -273,11 +279,16 @@ input[type="range"]{width:160px}
 
     <!-- Import/Save at bottom -->
     <div class="section" style="margin-top:auto">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
         <button id="montageImportBtn">Import</button>
         <span style="color:var(--border)">|</span>
         <button id="saveMontageBtn">Save</button>
         <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)"><input id="montageEmbedCheckbox" type="checkbox"/> Embed</label>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div style="font-size:11px;color:var(--muted);letter-spacing:.35px;text-transform:uppercase;width:100%;margin-bottom:4px">Export</div>
+        <button id="exportMontageGifBtn">GIF</button>
+        <button id="exportMontageMp4Btn">MP4</button>
       </div>
     </div>
   </aside>
@@ -1542,6 +1553,7 @@ let montagePlaying = false;
 let selectedChunkIdx = -1;
 let _trimDragging = null;
 let currentMode = 'chunk'; // 'chunk' | 'montage' - used to gate drawing and UI state
+let _pendingInsertPosition = null; // null or number - position to insert next imported chunk
  // 'left'|'right' or null
 
 function generateId(prefix='chunk'){
@@ -1693,7 +1705,43 @@ const trimApplyBtnObs = function(){ const si = Number(document.getElementById('t
 const trimResetBtnObs = function(){ if(selectedChunkIdx>=0){ const ch = montageChunks[selectedChunkIdx]; ch.frameRange = {start:0, end: (ch._project && (ch._project.frameCount || (ch._project.frames && ch._project.frames.length))) || ch.frameRange.end}; ch.derived = false; renderMontageChunks(); updateMontageMetaUI(); updateTrimBar(); updateMontageScrubberUI(); notify('Trim reset (restored full range).'); }};
 
 // Global pointer handlers for draggable trim (single listeners to avoid accumulation)
-function _globalTrimPointerMove(ev){ if(!_trimDragging || selectedChunkIdx < 0) return; const c = document.getElementById('trimBarCanvas'); if(!c) return; const ch = montageChunks[selectedChunkIdx]; if(!ch._project) return; const total = ch._project.frameCount || (ch._project.frames && ch._project.frames.length) || 0; if(total <= 0) return; const rect = c.getBoundingClientRect(); const rel = clamp((ev.clientX - rect.left) / rect.width, 0, 1); const f = Math.round(rel * total); if(_trimDragging === 'left'){ const newStart = clamp(Math.min(f, ch.frameRange.end - 1), 0, total - 1); ch.frameRange.start = newStart; document.getElementById('trimStartInput').value = String(ch.frameRange.start); }else if(_trimDragging === 'right'){ const newEnd = clamp(Math.max(f, ch.frameRange.start + 1), 1, total); ch.frameRange.end = newEnd; document.getElementById('trimEndInput').value = String(ch.frameRange.end); } updateTrimBar(); }
+function _globalTrimPointerMove(ev){ 
+  if(!_trimDragging || selectedChunkIdx < 0) return; 
+  const c = document.getElementById('trimBarCanvas'); 
+  if(!c) return; 
+  const ch = montageChunks[selectedChunkIdx]; 
+  if(!ch._project) return; 
+  const total = ch._project.frameCount || (ch._project.frames && ch._project.frames.length) || 0; 
+  if(total <= 0) return; 
+  const rect = c.getBoundingClientRect(); 
+  const rel = clamp((ev.clientX - rect.left) / rect.width, 0, 1); 
+  const f = Math.round(rel * total); 
+  
+  let frameToPreview = -1;
+  if(_trimDragging === 'left'){ 
+    const newStart = clamp(Math.min(f, ch.frameRange.end - 1), 0, total - 1); 
+    ch.frameRange.start = newStart; 
+    document.getElementById('trimStartInput').value = String(ch.frameRange.start);
+    frameToPreview = newStart;
+  }else if(_trimDragging === 'right'){ 
+    const newEnd = clamp(Math.max(f, ch.frameRange.start + 1), 1, total); 
+    ch.frameRange.end = newEnd; 
+    document.getElementById('trimEndInput').value = String(ch.frameRange.end);
+    frameToPreview = Math.max(0, newEnd - 1);
+  } 
+  
+  updateTrimBar(); 
+  
+  // Show preview of the frame being trimmed
+  if(frameToPreview >= 0 && frameToPreview < total){
+    try{
+      const bytes = _decodeFrameFromProject(ch._project, frameToPreview);
+      renderPreviewFrameBytes(bytes);
+    }catch(e){
+      console.error('Failed to preview frame during trim', e);
+    }
+  }
+}
 function _globalTrimPointerUp(ev){ if(!_trimDragging) return; _trimDragging = null; renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); notify('Chunk trimmed (non-destructive).'); }
 window.addEventListener('pointermove', _globalTrimPointerMove);
 window.addEventListener('pointerup', _globalTrimPointerUp);
@@ -1716,6 +1764,16 @@ function setMode(mode){
   currentMode = newMode;
   console.debug('setMode ->', currentMode);
   notify(`Switched to ${currentMode === 'montage' ? 'Montage Editor' : 'Chunk Editor'}`);
+
+  // Update header hint text based on mode
+  const headerHint = document.getElementById('headerHint');
+  if(headerHint){
+    if(isMontage){
+      headerHint.textContent = 'Space play/pause · Click chunk to select · Drag trim handles to adjust range · Import chunks to assemble montage';
+    }else{
+      headerHint.textContent = 'Space play/pause · [ / ] or ←/→ prev/next · A add frame · D duplicate · Del delete frame · Ctrl/Cmd+Z undo · Ctrl/Cmd+Y redo · S save · G GIF · L load · N new';
+    }
+  }
 
   document.getElementById('montageSidebar').style.display = isMontage ? '' : 'none';
   // hide the frames sidebar when in montage mode
@@ -1769,8 +1827,15 @@ function setMode(mode){
   }
 } 
 
-function addMontageChunk(obj){
-  montageChunks.push(obj);
+function addMontageChunk(obj, insertPosition = null){
+  if(insertPosition !== null && typeof insertPosition === 'number'){
+    // Insert at specific position
+    const pos = clamp(insertPosition, 0, montageChunks.length);
+    montageChunks.splice(pos, 0, obj);
+  }else{
+    // Default: append at end
+    montageChunks.push(obj);
+  }
   renderMontageChunks();
   updateMontageMetaUI();
   updateMontageScrubberUI();
@@ -1794,6 +1859,29 @@ function getChunkThumbnailFrameIndex(chunk){
 function renderMontageChunks(){
   const container = document.getElementById('montageChunks');
   container.innerHTML = '';
+  
+  // Helper function to create insert button
+  function createInsertZone(insertIdx, label){
+    const zone = document.createElement('div');
+    zone.className = 'chunk-insert-zone';
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    btn.title = `Click to insert imported chunk at position ${insertIdx}`;
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      // Trigger import and insert at specific position
+      _pendingInsertPosition = insertIdx;
+      montageImportInputEl.click();
+    });
+    zone.appendChild(btn);
+    return zone;
+  }
+  
+  // Add "Insert at beginning" button if there are chunks
+  if(montageChunks.length > 0){
+    container.appendChild(createInsertZone(0, '+ Insert at beginning'));
+  }
+  
   montageChunks.forEach((ch, idx)=>{
     const div = document.createElement('div');
     div.className = 'chunk-item';
@@ -1803,18 +1891,36 @@ function renderMontageChunks(){
     const thumb = document.createElement('div');
     thumb.className = 'chunk-thumb';
     if(ch._project && ch._project.frames && ch._project.frames.length > 0){
-      const thumbCanvas = document.createElement('canvas');
-      const thumbFrameIdx = getChunkThumbnailFrameIndex(ch);
-      const thumbFrame = ch._project.frames[thumbFrameIdx];
-      if(thumbFrame && thumbFrame.imageData){
-        thumbCanvas.width = ch._project.width || 64;
-        thumbCanvas.height = ch._project.height || 64;
-        const thumbCtx = thumbCanvas.getContext('2d');
-        const imgData = thumbCtx.createImageData(thumbCanvas.width, thumbCanvas.height);
-        imgData.data.set(thumbFrame.imageData);
-        thumbCtx.putImageData(imgData, 0, 0);
+      try{
+        const thumbCanvas = document.createElement('canvas');
+        const thumbFrameIdx = getChunkThumbnailFrameIndex(ch);
+        const w = ch._project.width || W;
+        const h = ch._project.height || H;
+        thumbCanvas.width = 48;
+        thumbCanvas.height = 48;
+        const thumbCtx = thumbCanvas.getContext('2d', { alpha:false });
+        thumbCtx.imageSmoothingEnabled = false;
+        
+        // Decode frame bytes and render to thumbnail
+        const frameBytes = _decodeFrameFromProject(ch._project, thumbFrameIdx);
+        const imgData = new Uint8ClampedArray(w * h * 4);
+        for(let p=0, o=0; p<frameBytes.length; p++, o+=4){
+          const v = frameBytes[p];
+          imgData[o] = v; imgData[o+1] = v; imgData[o+2] = v; imgData[o+3] = 255;
+        }
+        
+        // Create temporary canvas for source frame
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = w;
+        tempCanvas.height = h;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.putImageData(new ImageData(imgData, w, h), 0, 0);
+        
+        // Scale to thumbnail size
+        thumbCtx.drawImage(tempCanvas, 0, 0, 48, 48);
         thumb.appendChild(thumbCanvas);
-      } else {
+      }catch(e){
+        console.error('Failed to render chunk thumbnail', ch.name, e);
         thumb.textContent = '🎬';
       }
     } else {
@@ -1885,6 +1991,9 @@ function renderMontageChunks(){
     });
 
     container.appendChild(div);
+    
+    // Add insertion zone after this chunk
+    container.appendChild(createInsertZone(idx + 1, '+ Insert here'));
   });
 }
 
@@ -1901,12 +2010,20 @@ const montagePlayBtn = document.getElementById('montagePlayBtn');
 setMode('chunk');
 
 // toggle event handlers are wired on DOMContentLoaded to ensure elements exist
-montageImportBtn.addEventListener('click', ()=> montageImportInputEl.click());
+montageImportBtn.addEventListener('click', ()=> {
+  _pendingInsertPosition = null; // Clear pending position when using main import button
+  montageImportInputEl.click();
+});
 
 montageImportInputEl.addEventListener('change', (ev)=>{
   const files = Array.from(ev.target.files || []);
   if(files.length === 0) return;
-  files.forEach(f => {
+  
+  // Capture insert position for this batch of imports
+  const insertPos = _pendingInsertPosition;
+  let actualInsertPos = insertPos;
+  
+  files.forEach((f, fileIdx) => {
     const fr = new FileReader();
     fr.onload = async ()=>{
       try{
@@ -1940,7 +2057,11 @@ montageImportInputEl.addEventListener('change', (ev)=>{
           derived: false,
           _project: json
         };
-        addMontageChunk(ch);
+        
+        // Insert at the specified position, incrementing for multiple files
+        const currentInsertPos = (actualInsertPos !== null) ? (actualInsertPos + fileIdx) : null;
+        addMontageChunk(ch, currentInsertPos);
+        
         // if no selection yet, select this chunk
         if(selectedChunkIdx === -1) selectMontageChunk(0);
         notify(`Imported ${f.name}`);
@@ -1956,6 +2077,8 @@ montageImportInputEl.addEventListener('change', (ev)=>{
   });
   // clear input so same file can be reselected
   montageImportInputEl.value = '';
+  // Clear pending insert position after import is initiated
+  _pendingInsertPosition = null;
 });
 
 saveMontageBtn.addEventListener('click', ()=>{
@@ -1972,6 +2095,248 @@ saveMontageBtn.addEventListener('click', ()=>{
   const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `montage-${new Date().toISOString().replace(/[:.]/g,'-')}.json`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   notify('Montage saved.');
 });
+
+// Export montage as GIF
+const exportMontageGifBtn = document.getElementById('exportMontageGifBtn');
+if(exportMontageGifBtn){
+  exportMontageGifBtn.addEventListener('click', async ()=>{
+    if(montageChunks.length === 0){
+      notify('No chunks to export');
+      return;
+    }
+    
+    // Collect all frames from all chunks
+    const allFrames = [];
+    for(const ch of montageChunks){
+      if(!ch._project || !ch._project.frames) continue;
+      const start = ch.frameRange.start || 0;
+      const end = ch.frameRange.end || 0;
+      for(let i = start; i < end; i++){
+        if(i >= ch._project.frames.length) break;
+        try{
+          const frameBytes = _decodeFrameFromProject(ch._project, i);
+          allFrames.push(frameBytes);
+        }catch(e){
+          console.error('Failed to decode frame', i, 'from chunk', ch.name, e);
+        }
+      }
+    }
+    
+    if(allFrames.length === 0){
+      notify('No frames to export');
+      return;
+    }
+    
+    setExporting(true);
+    try{
+      const workerUrl = await getGifWorkerBlobUrl();
+      
+      const gif = new GIF({
+        workers: 2,
+        quality: 10,
+        width: DISPLAY,
+        height: DISPLAY,
+        repeat: 0,
+        workerScript: workerUrl
+      });
+      
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = DISPLAY;
+      exportCanvas.height = DISPLAY;
+      const ectx = exportCanvas.getContext('2d', { alpha:false });
+      ectx.imageSmoothingEnabled = false;
+      
+      const delay = Math.round(1000 / FPS);
+      
+      for(let i=0; i<allFrames.length; i++){
+        const frameBytes = allFrames[i];
+        const imgData = new Uint8ClampedArray(W*H*4);
+        for(let p=0, o=0; p<frameBytes.length; p++, o+=4){
+          const v = frameBytes[p];
+          imgData[o]=v; imgData[o+1]=v; imgData[o+2]=v; imgData[o+3]=255;
+        }
+        offCtx.putImageData(new ImageData(imgData, W, H), 0, 0);
+        
+        ectx.setTransform(1,0,0,1,0,0);
+        ectx.clearRect(0,0,DISPLAY,DISPLAY);
+        ectx.fillStyle = '#ffffff';
+        ectx.fillRect(0,0,DISPLAY,DISPLAY);
+        
+        ectx.imageSmoothingEnabled = false;
+        ectx.drawImage(off, 0, 0, DISPLAY, DISPLAY);
+        
+        gif.addFrame(exportCanvas, { copy:true, delay });
+      }
+      
+      await new Promise((resolve, reject)=>{
+        gif.on('finished', blob => {
+          const a = document.createElement('a');
+          const ts = new Date().toISOString().replace(/[:.]/g,'-');
+          a.download = `montage-${ts}.gif`;
+          a.href = URL.createObjectURL(blob);
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
+          
+          if(workerUrl && workerUrl.startsWith('blob:')){
+            try{ URL.revokeObjectURL(workerUrl); }catch(_){ }
+            if(workerUrl === _gifWorkerBlobUrl) _gifWorkerBlobUrl = null;
+          }
+          
+          setExporting(false);
+          notify('Montage GIF exported.');
+          resolve();
+        });
+        
+        gif.on('error', err => {
+          console.error('GIF render error', err);
+          notify(`Failed to render GIF: ${err && err.message ? err.message : String(err)}`);
+          if(workerUrl && workerUrl.startsWith('blob:')){
+            try{ URL.revokeObjectURL(workerUrl); }catch(_){ }
+            if(workerUrl === _gifWorkerBlobUrl) _gifWorkerBlobUrl = null;
+          }
+          setExporting(false);
+          reject(err);
+        });
+        
+        gif.render();
+      });
+    }catch(err){
+      console.error('exportMontageGif error', err);
+      notify(`Failed to export GIF: ${err && err.message ? err.message : String(err)}`);
+      setExporting(false);
+    }
+  });
+}
+
+// Export montage as MP4
+const exportMontageMp4Btn = document.getElementById('exportMontageMp4Btn');
+if(exportMontageMp4Btn){
+  exportMontageMp4Btn.addEventListener('click', async ()=>{
+    if(montageChunks.length === 0){
+      notify('No chunks to export');
+      return;
+    }
+    
+    // Check if MediaRecorder is supported
+    if(!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream){
+      notify('MP4 export not supported in this browser. Try Chrome or Firefox.');
+      return;
+    }
+    
+    // Collect all frames
+    const allFrames = [];
+    for(const ch of montageChunks){
+      if(!ch._project || !ch._project.frames) continue;
+      const start = ch.frameRange.start || 0;
+      const end = ch.frameRange.end || 0;
+      for(let i = start; i < end; i++){
+        if(i >= ch._project.frames.length) break;
+        try{
+          const frameBytes = _decodeFrameFromProject(ch._project, i);
+          allFrames.push(frameBytes);
+        }catch(e){
+          console.error('Failed to decode frame', i, 'from chunk', ch.name, e);
+        }
+      }
+    }
+    
+    if(allFrames.length === 0){
+      notify('No frames to export');
+      return;
+    }
+    
+    setExporting(true);
+    try{
+      // Create a canvas for recording
+      const recordCanvas = document.createElement('canvas');
+      recordCanvas.width = DISPLAY;
+      recordCanvas.height = DISPLAY;
+      const rctx = recordCanvas.getContext('2d', { alpha:false });
+      rctx.imageSmoothingEnabled = false;
+      
+      // Get canvas stream
+      const stream = recordCanvas.captureStream(FPS);
+      
+      // Determine MIME type
+      let mimeType = 'video/webm;codecs=vp9';
+      if(!MediaRecorder.isTypeSupported(mimeType)){
+        mimeType = 'video/webm;codecs=vp8';
+        if(!MediaRecorder.isTypeSupported(mimeType)){
+          mimeType = 'video/webm';
+        }
+      }
+      
+      const chunks = [];
+      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 2500000 });
+      
+      recorder.ondataavailable = (e)=>{ if(e.data && e.data.size > 0) chunks.push(e.data); };
+      
+      recorder.onstop = ()=>{
+        const blob = new Blob(chunks, { type: mimeType });
+        const a = document.createElement('a');
+        const ts = new Date().toISOString().replace(/[:.]/g,'-');
+        const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+        a.download = `montage-${ts}.${ext}`;
+        a.href = URL.createObjectURL(blob);
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
+        setExporting(false);
+        notify(`Montage video exported as ${ext.toUpperCase()}.`);
+      };
+      
+      recorder.onerror = (e)=>{
+        console.error('MediaRecorder error', e);
+        notify('Failed to record video');
+        setExporting(false);
+      };
+      
+      recorder.start();
+      
+      // Render frames at the correct frame rate
+      const frameDelay = Math.round(1000 / FPS);
+      let frameIdx = 0;
+      
+      const renderNextFrame = ()=>{
+        if(frameIdx >= allFrames.length){
+          // Done rendering all frames - stop recorder
+          recorder.stop();
+          return;
+        }
+        
+        const frameBytes = allFrames[frameIdx];
+        const imgData = new Uint8ClampedArray(W*H*4);
+        for(let p=0, o=0; p<frameBytes.length; p++, o+=4){
+          const v = frameBytes[p];
+          imgData[o]=v; imgData[o+1]=v; imgData[o+2]=v; imgData[o+3]=255;
+        }
+        offCtx.putImageData(new ImageData(imgData, W, H), 0, 0);
+        
+        rctx.setTransform(1,0,0,1,0,0);
+        rctx.clearRect(0,0,DISPLAY,DISPLAY);
+        rctx.fillStyle = '#ffffff';
+        rctx.fillRect(0,0,DISPLAY,DISPLAY);
+        rctx.imageSmoothingEnabled = false;
+        rctx.drawImage(off, 0, 0, DISPLAY, DISPLAY);
+        
+        frameIdx++;
+        setTimeout(renderNextFrame, frameDelay);
+      };
+      
+      // Start rendering frames
+      renderNextFrame();
+      
+    }catch(err){
+      console.error('exportMontageMp4 error', err);
+      notify(`Failed to export MP4: ${err && err.message ? err.message : String(err)}`);
+      setExporting(false);
+    }
+  });
+}
+
 
 let _montageTimer = null;
 let _montagePos = { chunkIdx: 0, frameIdx: 0 };
