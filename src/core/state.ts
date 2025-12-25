@@ -3,15 +3,24 @@
  */
 
 import type { AppState, Frame, Delta, Tool, Point } from '../types';
+import type { MontageState, AppMode } from '../types/montage';
 import { W, H, MAX_FRAMES } from './config';
 import { makeBlankFrame, ensureStacks } from './frame';
+import { createMontageState } from './montage';
 import { clamp } from '../utils/helpers';
 import { notify } from '../utils/toast';
 
 /**
+ * Extended application state with montage.
+ */
+export interface ExtendedAppState extends AppState {
+  montage: MontageState;
+}
+
+/**
  * Create initial application state.
  */
-export function createInitialState(): AppState {
+export function createInitialState(): ExtendedAppState {
   const frames: Frame[] = Array.from({ length: 12 }, () => makeBlankFrame());
   const undoStacks: Delta[][] = [];
   const redoStacks: Delta[][] = [];
@@ -29,7 +38,9 @@ export function createInitialState(): AppState {
     onionDepth: 5,
     drawing: false,
     lastPt: null,
-    activeStrokeMap: null
+    activeStrokeMap: null,
+    mode: 'chunk',
+    montage: createMontageState()
   };
 }
 
@@ -45,6 +56,13 @@ export function setCurrent(state: AppState, idx: number): void {
  */
 export function setTool(state: AppState, tool: Tool): void {
   state.tool = tool;
+}
+
+/**
+ * Set the application mode (chunk or montage).
+ */
+export function setMode(state: ExtendedAppState, mode: AppMode): void {
+  state.mode = mode;
 }
 
 /**

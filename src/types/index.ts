@@ -2,6 +2,9 @@
  * Type definitions for the pixel animator application.
  */
 
+// Re-export montage types
+export * from './montage';
+
 /** Drawing tool types */
 export type Tool = 'pencil' | 'eraser' | 'soft';
 
@@ -46,4 +49,5 @@ export interface AppState {
   drawing: boolean;
   lastPt: Point | null;
   activeStrokeMap: Map<number, number> | null;
+  mode: import('./montage').AppMode;
 }
