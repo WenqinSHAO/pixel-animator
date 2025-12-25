@@ -1335,13 +1335,19 @@ if(montageScrubber){
     if(montagePlaying) stopMontagePlayback();
   });
   montageScrubber.addEventListener('input', ()=>{
+    // Unified scrubber handler for both chunk editor and montage modes
+    // This is the single 'input' listener for montageScrubber - handles both:
+    // 1. Chunk editor mode (currentMode !== 'montage'): calls setCurrent() to select frame
+    // 2. Montage mode: interprets scrubber as global montage frame index and renders accordingly
+    
     // always pause active playback modes when user scrubs
     if(isPlaying) setPlaying(false);
     if(montagePlaying) stopMontagePlayback();
 
-    // Normal frame mode: select the frame
+    // Normal frame mode: select the frame and render it
     if(currentMode !== 'montage'){
       setCurrent(Number(montageScrubber.value) - 1);
+      renderMain(); // Explicitly render to ensure canvas updates
       return;
     }
 
@@ -1384,46 +1390,13 @@ if(montageScrubber){
 }
 
 // Dedicated montage scrubber (per-frame across all chunks)
+// Note: The 'input' event listener for montageScrubber is defined earlier (line ~1337)
+// and handles both chunk editor mode and montage mode. The 'pointerdown' listener
+// is kept here for consistency with other scrubber controls.
 if(montageScrubber){
   montageScrubber.addEventListener('pointerdown', ()=>{
     if(isPlaying) setPlaying(false);
     if(montagePlaying) stopMontagePlayback();
-  });
-  montageScrubber.addEventListener('input', ()=>{
-    if(isPlaying) setPlaying(false);
-    if(montagePlaying) stopMontagePlayback();
-
-    const totalMontage = computeMontageTotalFrames();
-    const pos = clamp(Number(montageScrubber.value), 1, Math.max(1, totalMontage));
-
-    let acc = 0;
-    let found = false;
-    for(let i=0;i<montageChunks.length;i++){
-      const ch = montageChunks[i];
-      const len = (ch.frameRange && (ch.frameRange.end - ch.frameRange.start)) || 0;
-      if(pos <= acc + len){
-        const frameIdx = pos - acc - 1;
-        _montagePos.chunkIdx = i;
-        _montagePos.frameIdx = frameIdx;
-        if(ch._project){
-          const frameInSource = ch.frameRange.start + frameIdx;
-          if(frameInSource < (ch._project.frameCount || (ch._project.frames && ch._project.frames.length))){
-            const bytes = _decodeFrameFromProject(ch._project, frameInSource);
-            renderPreviewFrameBytes(bytes);
-          }
-        }
-        selectMontageChunk(i, false);
-        const playPosEl = document.getElementById('montagePlayPos'); if(playPosEl) playPosEl.textContent = `${pos} / ${totalMontage}f`;
-        found = true;
-        break;
-      }
-      acc += len;
-    }
-
-    if(!found){
-      const blank = new Uint8Array(W*H); blank.fill(240); renderPreviewFrameBytes(blank);
-      const playPosEl = document.getElementById('montagePlayPos'); if(playPosEl) playPosEl.textContent = `0 / ${totalMontage}f`;
-    }
   });
 }
 
@@ -1786,7 +1759,12 @@ function setMode(mode){
   }else{
     // restore chunk editor view and cursor
     renderMain();
-    if(montageScrubber) montageScrubber.style.display = 'none';
+    if(montageScrubber) {
+      montageScrubber.style.display = '';
+      montageScrubber.step = '1';
+      montageScrubber.max = String(frames.length);
+      montageScrubber.value = String(current + 1);
+    }
     main.style.cursor = 'crosshair';
   }
 } 
