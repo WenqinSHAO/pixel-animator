@@ -80,3 +80,22 @@ input[type="range"]{width:160px}
   canvas#main{width:min(92vw,512px);height:min(92vw,512px)}
   .frames{grid-template-columns:repeat(4,1fr)}
 }
+
+/* Montage sidebar styles */
+#montageSidebar .section{padding:10px}
+#montageChunks .chunk-item{display:grid;grid-template-columns:48px 1fr auto;align-items:start;padding:8px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.02);cursor:pointer;gap:8px}
+#montageChunks .chunk-item:hover{border-color:#35507c}
+#montageChunks .chunk-item.active{outline:2px solid rgba(90,162,255,.8);border-color:rgba(90,162,255,.65);background:linear-gradient(180deg,rgba(90,162,255,.06),rgba(255,255,255,.02))}
+#montageChunks .chunk-thumb{width:48px;height:48px;border-radius:4px;background:rgba(0,0,0,.2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);overflow:hidden}
+#montageChunks .chunk-info{display:flex;flex-direction:column;gap:4px;min-width:0}
+#montageChunks .chunk-badges{display:flex;gap:4px;flex-wrap:wrap}
+#montageChunks .chunk-alias{font-size:11px;font-weight:600;color:var(--text);width:100%;padding:2px 4px;background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:4px}
+#montageChunks .chunk-alias::placeholder{color:var(--muted);opacity:.6}
+#montageChunks .chunk-controls{display:flex;gap:4px;flex-wrap:wrap}
+
+/* Trim bar */
+#trimBarCanvas{position:relative}
+.trim-handle{position:absolute;top:0;height:100%;width:10px;background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(0,0,0,.08));cursor:ew-resize;border-left:1px solid rgba(0,0,0,.18);border-right:1px solid rgba(255,255,255,.06)}
+.trim-selection{position:absolute;top:0;height:100%;background:linear-gradient(90deg, rgba(90,162,255,.12), rgba(90,162,255,.06));pointer-events:none}
+
+.icon-btn{padding:4px 8px;font-size:14px;min-width:auto}

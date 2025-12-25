@@ -11,6 +11,10 @@
   <div class="hint">
     Space play/pause · [ / ] or ←/→ prev/next · A add frame · D duplicate · Del delete frame · Ctrl/Cmd+Z undo · Ctrl/Cmd+Y redo · S save · G GIF · L load · N new
   </div>
+  <div class="group">
+    <button id="modeChunkBtn">Chunk Editor</button>
+    <button id="modeMontageBtn">Montage Editor</button>
+  </div>
 </header>
 
 <main class="wrap">
@@ -18,7 +22,7 @@
     <div class="canvasPanel">
 
       <!-- Drawing Ops -->
-      <div class="panelBlock">
+      <div id="drawingPanel" class="panelBlock">
         <div class="panelHeader">
           <div class="panelTitle">Drawing</div>
         </div>
@@ -57,8 +61,25 @@
         <canvas id="main" width="512" height="512" role="img" aria-label="Drawing canvas (128×128 grayscale)" tabindex="0"></canvas>
       </div>
 
+      <!-- Trim Bar for Montage -->
+      <div id="trimBar" style="display:none; margin-top:10px;">
+        <div class="panelBlock">
+          <div class="panelHeader"><div class="panelTitle">Trim selected chunk</div></div>
+          <div id="trimBarCanvas" style="position:relative;height:40px;margin-top:8px;border-radius:8px;background:linear-gradient(90deg, rgba(255,255,255,.02), rgba(255,255,255,.01));border:1px solid var(--border);overflow:hidden">
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+            <div style="font-size:12px;color:var(--muted)">Range:</div>
+            <label style="font-size:12px;color:var(--muted)">Start <input id="trimStartInput" type="number" style="width:70px"/></label>
+            <label style="font-size:12px;color:var(--muted)">End <input id="trimEndInput" type="number" style="width:70px"/></label>
+            <button id="trimApplyBtn">Apply</button>
+            <button id="trimResetBtn">Reset</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Frame Scrubber (moved here for longer control) -->
       <div class="frameControls" style="margin-top:6px;">
+        <button id="playBtn" class="primary">Play</button>
         <div style="flex:1;">
           <input id="frameScrubber" class="scrubber" type="range" min="1" max="12" value="1" />
         </div>
@@ -69,17 +90,14 @@
     </div>
   </section>
 
-  <aside class="card sidebar">
+  <aside class="card sidebar" id="chunkSidebar">
     <h2>Frames</h2>
 
     <!-- Frames + Frame Ops -->
     <div class="section">
 
       <div class="frameControls">
-        <div class="group">
-          <button id="playBtn" class="primary">Play</button>
-          <span class="pill">Frame <span id="frameLabel">1</span> / <span id="frameTotal">12</span></span>
-        </div>
+        <span class="pill">Frame <span id="frameLabel">1</span> / <span id="frameTotal">12</span></span>
       </div>
 
       <div class="framesWrap">
@@ -124,9 +142,34 @@
       <div class="footerHint" style="margin-top:8px">Save Project is lossless JSON. Save GIF exports 512×512 with a white background.</div>
     </div>
   </aside>
+
+  <!-- Montage Sidebar -->
+  <aside id="montageSidebar" class="card sidebar" style="display:none">
+    <h2>Montage</h2>
+
+    <div class="section">
+      <div class="row"><small>Total frames</small><span id="montageTotalFrames" class="pill">0</span></div>
+      <div style="margin-top:6px" class="row"><small>Position</small><span id="montagePlayPos" class="pill">0 / 0f</span></div>
+    </div>
+
+    <div class="section" style="padding-top:8px">
+      <div class="panelHeader"><div class="panelTitle">Chunks</div></div>
+      <div id="montageChunks" style="display:flex;flex-direction:column;gap:8px;margin-top:8px; max-height:400px; overflow-y:auto"></div>
+    </div>
+
+    <div class="section" style="margin-top:auto">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <button id="montageImportBtn">Import</button>
+        <span style="color:var(--border)">|</span>
+        <button id="montageSaveBtn">Save</button>
+        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)"><input id="montageEmbedCheckbox" type="checkbox"/> Embed</label>
+      </div>
+    </div>
+  </aside>
 </main>
 
 <input id="loadProjectInput" type="file" accept=".json" style="display:none"/>
+<input id="montageImportInput" type="file" accept=".json" multiple style="display:none"/>
 
 <!-- Toast container for non-blocking notifications -->
 <div id="toastContainer" aria-live="polite" aria-atomic="true" class="toasts"></div>
