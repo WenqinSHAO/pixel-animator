@@ -95,9 +95,57 @@ Schema (concise):
 - **Interactions:** planned interactions with the existing chunk editor (e.g., insert current chunk into the montage, edit selected chunk in frame editor) are noted but deferred.
 - **Saving:** use a new `montage-1.0` version field for the montage project format. We'll add example montage files to `example/` and extend the validator as we implement imports.
 
+**Wireframes & interaction details:** See `docs/montage-wireframes.md` for ASCII wireframes, interaction notes, and a short implementation-ready API list.
+
 ## How to use ✨
 - Open `animator.html` in a browser (no build step required).
 - Use UI buttons to add frames, play, import/export JSON, and export GIF.
+
+
+## Development & CI — tests and the project validator 🔧
+
+- **Validator**: The shared validator is in `lib/validateProject.js`. It exports a single function:
+
+  ```js
+  // Node
+  const validateProject = require('./lib/validateProject');
+  const res = validateProject(projectJson, { width: 128, height: 128, fps: 12 });
+  // res -> { ok: boolean, errors: string[] }
+
+  // Browser
+  // Included in `animator.html` as `./lib/validateProject.js` and exposed as `window.validateProject`.
+  ```
+
+  The validator checks that `frames` is an array, `frameCount` matches `frames.length`, `width`/`height` are numeric, and per-frame base64 payloads decode to the expected byte length.
+
+- **Example validator script**: `scripts/validate_examples.js` uses the shared validator to validate all files in `example/`. Run it locally with:
+
+  ```bash
+  npm run validate
+  ```
+
+- **Unit tests**: Jest tests live in `tests/` (e.g. `tests/validateProject.test.js`) and exercise the validator logic.
+
+  Run tests with:
+  ```bash
+  npm test
+  ```
+
+- **Linting**: ESLint is configured to run against `scripts/`; run it locally with:
+
+  ```bash
+  npm run lint
+  ```
+
+- **CI**: A GitHub Actions workflow (`.github/workflows/ci.yml`) runs `npm ci`, `npm test`, `npm run validate`, and `npm run lint` on pushes and pull requests (branches `main`/`master`). This ensures that example projects remain valid, unit tests pass, and script-level style rules are enforced.
+
+  **Add a CI badge (optional):** add the badge markdown to the top of this `README.md` to show build status (replace `<OWNER>/<REPO>` with your GitHub repo):
+
+  ```markdown
+  ![CI](https://github.com/<OWNER>/<REPO>/actions/workflows/ci.yml/badge.svg)
+  ```
+
+  The workflow file is at `.github/workflows/ci.yml`. Tests live in `tests/` (e.g. `tests/validateProject.test.js`), the shared validator is `lib/validateProject.js`, and the example validator script is `scripts/validate_examples.js` (run locally with `npm run validate`).
 
 
 ## Implementation details — `animator.html` 🔍
