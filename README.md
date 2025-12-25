@@ -122,12 +122,22 @@ The application follows a modular TypeScript architecture with clear separation 
 
 **Configuration & maintenance tips** ✨
 
-- Change `W`, `H` for the internal raster size, `DISPLAY` for on-screen/export resolution, and `FPS` for playback frame rate.
-- Notifications now use non-blocking in-page toasts (instead of blocking `alert()`), shown in the bottom-right.
-- To support color, switch frames to RGBA arrays and update compose / draw functions accordingly.
-- To change brush shape (round vs square), adjust `drawDot()` behavior.
-- To add tools, add a UI control, set the new tool name in `setTool()`, and handle it in `applyStroke()`.
-- For autosave or cloud sync, hook into project changes and reuse `saveProject()`/`loadProject()` logic.
-- Keep `frameCount` in sync with `frames.length`; `loadProject()` checks lengths and will error on mismatch.
+- Change `W`, `H` in `src/core/config.ts` for internal raster size, `DISPLAY` for on-screen/export resolution, and `FPS` for playback frame rate.
+- Notifications use non-blocking in-page toasts (implementation in `src/utils/toast.ts`).
+- To support color, switch frames to RGBA arrays in `src/core/frame.ts` and update compose/draw functions in `src/core/renderer.ts` and `src/core/drawing.ts`.
+- To change brush shape (round vs square), adjust `drawDot()` behavior in `src/core/drawing.ts`.
+- To add tools, extend the `Tool` type in `src/types/index.ts`, add UI controls in `index.html`, and handle the new tool in `applyStroke()` in `src/core/drawing.ts`.
+- For autosave or cloud sync, hook into project changes in `src/main.ts` and reuse `saveProject()`/`loadProject()` from `src/core/project.ts`.
 
-> Note: frames are raw byte payloads base64-encoded in the project file; if you prefer portable images (PNG) swap to data-URI encoding in `saveProject()`/`loadProject()`.
+### TypeScript Development
+- The codebase uses strict TypeScript configuration for better type safety.
+- All modules are organized by function: `core/` for business logic, `ui/` for UI management, `utils/` for helpers.
+- Type definitions are centralized in `src/types/index.ts`.
+- Linting is configured with ESLint and TypeScript-ESLint plugins.
+
+### Testing the Refactored Version
+Both versions (TypeScript refactored and original) are functionally identical. To compare:
+- TypeScript version: `npm run dev` (or build and preview)
+- Original version: Open `animator.html` directly in a browser
+
+> Note: frames are base64-encoded raw byte payloads in project files; if you prefer portable images (PNG), swap to data-URI encoding in `src/core/project.ts`.

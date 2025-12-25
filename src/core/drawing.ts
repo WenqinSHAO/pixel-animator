@@ -50,12 +50,13 @@ export function drawLine(
   size: number,
   activeStrokeMap: Map<number, number> | null
 ): void {
-  let dx = Math.abs(x1 - x0);
+  const dx = Math.abs(x1 - x0);
   const sx = x0 < x1 ? 1 : -1;
-  let dy = -Math.abs(y1 - y0);
+  const dy = -Math.abs(y1 - y0);
   const sy = y0 < y1 ? 1 : -1;
   let err = dx + dy;
   
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     drawDot(frameArr, x0, y0, value, size, activeStrokeMap);
     if (x0 === x1 && y0 === y1) break;
@@ -125,12 +126,13 @@ export function drawLineSoft(
   size: number,
   activeStrokeMap: Map<number, number> | null
 ): void {
-  let dx = Math.abs(x1 - x0);
+  const dx = Math.abs(x1 - x0);
   const sx = x0 < x1 ? 1 : -1;
-  let dy = -Math.abs(y1 - y0);
+  const dy = -Math.abs(y1 - y0);
   const sy = y0 < y1 ? 1 : -1;
   let err = dx + dy;
   
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     drawSoftDot(frameArr, x0, y0, value, size, activeStrokeMap);
     if (x0 === x1 && y0 === y1) break;
