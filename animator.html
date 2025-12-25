@@ -53,13 +53,15 @@ input[type="range"]{width:160px}
   text-transform:uppercase;
 }
 
-.sidebar{padding:12px}
-.sidebar h2{margin:0 0 10px;font-size:13px;color:var(--text)}
-.sidebar .section{padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(0,0,0,.18);margin-bottom:12px}
+.sidebar{padding:12px;display:flex;flex-direction:column;height:calc(100vh - 180px);overflow:hidden}
+.sidebar h2{display:none}
+.sidebar .section{padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(0,0,0,.18);margin-bottom:12px;flex-shrink:0}
+.sidebar .section:first-of-type{flex-shrink:1;display:flex;flex-direction:column;min-height:0}
+.sidebar .section:first-of-type::before{content:'Frames';display:block;font-size:11px;color:var(--muted);letter-spacing:.35px;text-transform:uppercase;margin:0 0 10px;flex-shrink:0}
 .sidebar .row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0;flex-wrap:wrap}
 .sidebar small{color:var(--muted)}
 .frames{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
-.framesWrap{max-height:56vh;overflow:auto;padding-right:4px}
+.framesWrap{flex:1;overflow:auto;padding-right:4px;min-height:0}
 .thumb{border:1px solid var(--border);background:#060a12;border-radius:12px;padding:6px;cursor:pointer;position:relative}
 .thumb.active{outline:2px solid rgba(90,162,255,.8);border-color:rgba(90,162,255,.65)}
 .thumb.dragging{opacity:0.45}
@@ -226,7 +228,7 @@ input[type="range"]{width:160px}
 
     <!-- Meta -->
     <div class="section">
-      <div class="row"><strong>Project</strong><span id="lengthPill" class="pill">1.00 sec</span></div>
+      <div class="row"><small>Project</small><span id="lengthPill" class="pill">1.00 sec</span></div>
       <div class="row"><small>FPS</small><span class="pill">12</span></div>
       <div class="row"><small>Frames</small><span id="framesPill" class="pill">12</span></div>
       <div class="row"><small>Canvas</small><span class="pill">128×128</span></div>
@@ -296,8 +298,62 @@ input[type="range"]{width:160px}
 <div id="toastContainer" aria-live="polite" aria-atomic="true" class="toasts"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
-<script src="./lib/validateProject.js"></script>
 <script>
+// validateProject - inline validation function
+function validateProject(project, opts = {}){
+  const errors = [];
+  if(!project || typeof project !== 'object'){
+    errors.push('Invalid project object');
+    return { ok: false, errors };
+  }
+
+  if(!Array.isArray(project.frames)){
+    errors.push('missing frames array');
+    return { ok: false, errors };
+  }
+
+  const width = Number(project.width);
+  const height = Number(project.height);
+  if(!Number.isFinite(width) || !Number.isFinite(height)){
+    errors.push('invalid width/height');
+  }
+
+  if(typeof opts.width !== 'undefined' && Number(opts.width) !== width){
+    errors.push(`width mismatch (${width} != ${opts.width})`);
+  }
+  if(typeof opts.height !== 'undefined' && Number(opts.height) !== height){
+    errors.push(`height mismatch (${height} != ${opts.height})`);
+  }
+  if(typeof opts.fps !== 'undefined' && typeof project.fps !== 'undefined' && Number(project.fps) !== Number(opts.fps)){
+    errors.push(`fps mismatch (${project.fps} != ${opts.fps})`);
+  }
+
+  const frameCount = Number(project.frameCount || project.frames.length || 0);
+  if(frameCount !== project.frames.length){
+    errors.push(`frameCount (${frameCount}) does not match frames.length (${project.frames.length})`);
+  }
+
+  const expectedLen = (Number.isFinite(width) && Number.isFinite(height)) ? (width * height) : null;
+  if(expectedLen !== null){
+    for(let i = 0; i < project.frames.length; i++){
+      const b64 = project.frames[i];
+      if(typeof b64 !== 'string'){
+        errors.push(`frame ${i} not a string`);
+        break;
+      }
+      try{
+        const bin = atob(b64);
+        if(bin.length !== expectedLen){ errors.push(`frame ${i} length ${bin.length} != ${expectedLen}`); break; }
+      }catch(e){
+        errors.push(`frame ${i} invalid base64`);
+        break;
+      }
+    }
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
 (()=>{
 
 // Fixed raster + fixed FPS
