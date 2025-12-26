@@ -57,10 +57,10 @@ input[type="range"]{width:160px}
 .sidebar h2{display:none}
 .sidebar .section{padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(0,0,0,.18);margin-bottom:12px;flex-shrink:0}
 .sidebar .section:first-of-type{flex-shrink:1;display:flex;flex-direction:column;min-height:0}
-.sidebar .section:first-of-type::before{content:'Frames';display:block;font-size:11px;color:var(--muted);letter-spacing:.35px;text-transform:uppercase;margin:0 0 10px;flex-shrink:0}
+
 .sidebar .row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0;flex-wrap:wrap}
 .sidebar small{color:var(--muted)}
-.frames{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.frames{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .framesWrap{flex:1;overflow:auto;padding-right:4px;min-height:0}
 .thumb{border:1px solid var(--border);background:#060a12;border-radius:12px;padding:6px;cursor:pointer;position:relative}
 .thumb.active{outline:2px solid rgba(90,162,255,.8);border-color:rgba(90,162,255,.65)}
@@ -92,15 +92,20 @@ input[type="range"]{width:160px}
 
 /* Montage sidebar styles */
 #montageSidebar .section{padding:10px}
-#montageChunks{max-height:400px;overflow-y:auto}
-#montageChunks .chunk-item{display:grid;grid-template-columns:48px 1fr auto;align-items:start;padding:8px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.02);cursor:pointer;gap:8px}
+#montageChunks{overflow-y:auto;flex:1}
+#montageChunks .chunk-item{display:grid;grid-template-columns:56px 1fr;grid-template-rows:auto auto;align-items:start;padding:8px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.02);cursor:move;gap:6px 8px;transition:opacity 0.2s ease}
 #montageChunks .chunk-item:hover{border-color:#35507c}
 #montageChunks .chunk-item.active{outline:2px solid rgba(90,162,255,.8);border-color:rgba(90,162,255,.65);background:linear-gradient(180deg,rgba(90,162,255,.06),rgba(255,255,255,.02))}
-#montageChunks .chunk-thumb{width:48px;height:48px;border-radius:4px;background:rgba(0,0,0,.2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);overflow:hidden}
+#montageChunks .chunk-item.dragging{opacity:0.4;cursor:grabbing}
+#montageChunks .chunk-item.drag-over{outline:2px dashed rgba(90,162,255,.8);border-color:rgba(90,162,255,.65);background:rgba(90,162,255,.1)}
+#montageChunks .chunk-thumb{width:56px;height:56px;border-radius:4px;background:rgba(0,0,0,.2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);overflow:hidden;grid-row:1/3}
 #montageChunks .chunk-thumb canvas{width:100%;height:100%;image-rendering:pixelated}
-#montageChunks .chunk-info{display:flex;flex-direction:column;gap:4px;min-width:0}
-#montageChunks .chunk-badges{display:flex;gap:4px;flex-wrap:wrap}
-#montageChunks .chunk-alias{font-size:11px;font-weight:600;color:var(--text);width:100%;padding:2px 4px;background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:4px}
+#montageChunks .chunk-info{display:flex;flex-direction:column;gap:6px;min-width:0}
+#montageChunks .chunk-row1{display:flex;gap:6px;align-items:center;width:100%;min-width:0}
+#montageChunks .chunk-row2{display:flex;gap:4px;align-items:center}
+#montageChunks .chunk-duration{font-size:10px;color:var(--muted);padding:3px 6px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:4px;white-space:nowrap;flex-shrink:0}
+.chunk-color-picker{width:24px;height:24px;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:0;background:none;flex-shrink:0}
+#montageChunks .chunk-alias{font-size:11px;font-weight:600;color:var(--text);flex:1 1 0;min-width:0;padding:4px 6px;background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #montageChunks .chunk-alias::placeholder{color:var(--muted);opacity:.6}
 #montageChunks .chunk-controls{display:flex;gap:4px;flex-wrap:wrap}
 
@@ -140,36 +145,35 @@ input[type="range"]{width:160px}
     <div class="canvasPanel">
 
       <!-- Drawing Ops -->
-      <div id="drawingPanel" class="panelBlock">
-        <div class="panelHeader">
-          <div class="panelTitle">Drawing</div>
+      <div id="drawingPanel" class="panelBlock" style="padding:8px">
+        <div class="panelHeader" style="margin-bottom:6px">
+          <div class="panelTitle">Drawing Tools</div>
         </div>
-        <div class="toolbar">
-          <div class="group">
-            <button id="toolPencil" class="primary">Pencil</button>
-            <button id="toolEraser">Eraser</button>
-            <button id="toolSoft">Soft</button>
-            <button id="undoBtn">Undo</button>
-            <button id="redoBtn">Redo</button>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <!-- Tools row -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button id="toolPencil" class="primary" style="padding:6px 10px">Pencil</button>
+            <button id="toolEraser" style="padding:6px 10px">Eraser</button>
+            <button id="toolSoft" style="padding:6px 10px">Soft</button>
+            <button id="toolSelect" style="padding:6px 10px">Select</button>
+            <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
+            <button id="undoBtn" style="padding:6px 10px">Undo</button>
+            <button id="redoBtn" style="padding:6px 10px">Redo</button>
+            <button id="gridToggleBtn" style="padding:6px 10px;margin-left:auto">Grid Off</button>
           </div>
-          <div class="group">
-            <label>Brush
-              <input id="brushSize" type="range" min="1" max="8" value="1"/>
-              <span id="brushSizeLabel" class="pill">1</span>
+          <!-- Settings row -->
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11px">
+            <label style="gap:6px">Brush
+              <input id="brushSize" type="range" min="1" max="8" value="1" style="width:100px"/>
+              <span id="brushSizeLabel" class="pill" style="padding:3px 6px;font-size:10px">1</span>
             </label>
-          </div>
-        </div>
-        <div class="toolbar">
-          <div class="group">
-            <label>Gray
-              <input id="gray" type="range" min="0" max="255" value="0"/>
-              <span id="grayLabel" class="pill">0</span>
+            <label style="gap:6px">Gray
+              <input id="gray" type="range" min="0" max="255" value="0" style="width:100px"/>
+              <span id="grayLabel" class="pill" style="padding:3px 6px;font-size:10px">0</span>
             </label>
-          </div>
-          <div class="group">
-            <label>Onion
-              <input id="onion" type="range" min="0" max="8" value="5"/>
-              <span id="onionLabel" class="pill">5</span>
+            <label style="gap:6px">Onion
+              <input id="onion" type="range" min="0" max="8" value="5" style="width:100px"/>
+              <span id="onionLabel" class="pill" style="padding:3px 6px;font-size:10px">5</span>
             </label>
           </div>
         </div>
@@ -199,8 +203,8 @@ input[type="range"]{width:160px}
 
       <!-- Unified Scrubber (used in both chunk and montage modes) -->
       <div class="frameControls" style="margin-top:6px;">
-        <button id="playBtn" class="primary">Play</button>
-        <button id="montagePlayBtn" class="primary">Play</button>
+        <button id="playBtn" class="primary" style="min-width:65px">Play</button>
+        <button id="montagePlayBtn" class="primary" style="min-width:65px">Play</button>
         <div style="flex:1;position:relative;">
           <!-- Montage info above scrubber (only shown in montage mode) -->
           <div id="montageInfo" style="display:none;font-size:11px;color:var(--muted);margin-bottom:4px">
@@ -236,6 +240,7 @@ input[type="range"]{width:160px}
 
     <!-- Frames + Frame Ops -->
     <div class="section">
+      <div class="panelTitle" style="margin-bottom:10px">Frames</div>
 
       <div class="frameControls">
         <span class="pill">Frame <span id="frameLabel">1</span> / <span id="frameTotal">12</span></span>
@@ -251,28 +256,18 @@ input[type="range"]{width:160px}
           <button id="dupFrameBtn">Duplicate</button>
           <button id="delFrameBtn" class="danger">Delete</button>
         </div>
-        <div class="group">
-          <span class="pill">Selected: <span id="selectedFramePill">1</span></span>
-        </div>
       </div>
 
       <div style="margin-top:10px;color:var(--muted);font-size:12px">Click thumbnail to edit — drag to reorder frames.</div>
-    </div>
-
-    <!-- Meta -->
-    <div class="section">
-      <div class="row"><small>Project</small><span id="lengthPill" class="pill">1.00 sec</span></div>
-      <div class="row"><small>FPS</small><span class="pill">12</span></div>
-      <div class="row"><small>Frames</small><span id="framesPill" class="pill">12</span></div>
-      <div class="row"><small>Canvas</small><span class="pill">128×128</span></div>
-
-      <div style="color:var(--muted);font-size:12px;margin-top:6px">Length updates automatically as you add/delete frames.</div>
     </div>
 
     <!-- Project Actions -->
     <div class="section">
       <div class="panelHeader">
         <div class="panelTitle">Project Actions</div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--muted);line-height:1.4">
+        <div>Length: <span id="lengthPill" style="color:var(--text)">1.00 sec</span> | FPS: 12 | Frames: <span id="framesPill" style="color:var(--text)">12</span> | Canvas: 128×128</div>
       </div>
       <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         <button id="saveProjectBtn">Save Project</button>
@@ -402,6 +397,11 @@ const FPS = 12;
 const MAX_FRAMES = 600;
 const UNDO_LIMIT = 100;
 
+// Visual constants
+const WHITE_FILL = 255;  // White color value for clearing/erasing
+const CHUNK_COLOR_ALPHA_HIGH = '33';  // Hex alpha for chunk color highlights (20%)
+const CHUNK_COLOR_ALPHA_LOW = '11';   // Hex alpha for chunk color backgrounds (6.5%)
+
 // Frames + history (dynamic length)
 // NOTE: `frames` holds Uint8Array instances (W*H bytes each) representing grayscale pixels
 // (0 = black, 255 = white). `undoStacks` / `redoStacks` are per-frame arrays of stroke deltas.
@@ -418,6 +418,13 @@ let gray = 0;
 let onionDepth = 5;
 let drawing = false;
 let lastPt = null;
+let gridEnabled = false;
+
+// Selection tool state
+let selection = null; // {x1, y1, x2, y2}
+let selectionData = null; // Uint8Array of selected pixels
+let selectionFloating = false; // true when selection can be dragged (after paste)
+let selectionDragging = false; // true during drag operation
 
 // Active stroke diff recording
 let activeStrokeMap = null;
@@ -429,7 +436,6 @@ ctx.imageSmoothingEnabled = false;
 
 const frameLabel = document.getElementById('frameLabel');
 const frameTotalEl = document.getElementById('frameTotal');
-const selectedFramePill = document.getElementById('selectedFramePill');
 
 const playBtn = document.getElementById('playBtn');
 const saveProjectBtn = document.getElementById('saveProjectBtn');
@@ -446,6 +452,7 @@ const delFrameBtn = document.getElementById('delFrameBtn');
 const toolPencil = document.getElementById('toolPencil');
 const toolEraser = document.getElementById('toolEraser');
 const toolSoft = document.getElementById('toolSoft');
+const toolSelect = document.getElementById('toolSelect');
 
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
@@ -458,6 +465,8 @@ const grayLabel = document.getElementById('grayLabel');
 
 const onionSlider = document.getElementById('onion');
 const onionLabel = document.getElementById('onionLabel');
+
+const gridToggleBtn = document.getElementById('gridToggleBtn');
 
 const frameGrid = document.getElementById('frameGrid');
 const lengthPill = document.getElementById('lengthPill');
@@ -485,7 +494,7 @@ function makeBlankFrame(){
   // To switch to color or RGBA frames, replace this with a Uint8ClampedArray(W*H*4)
   // and update compose/draw functions accordingly.
   const a = new Uint8Array(W*H);
-  a.fill(255);
+  a.fill(WHITE_FILL);
   return a;
 }
 
@@ -501,7 +510,6 @@ function updateProjectMetaUI(){
   frameTotalEl.textContent = String(count);
   framesPill.textContent = String(count);
   lengthPill.textContent = `${roundTo(count / FPS, 2)} sec`;
-  selectedFramePill.textContent = String(current + 1);
 
   // scrubber sync (if present) — use `montageScrubber` as the single control
   if(montageScrubber){
@@ -523,7 +531,6 @@ function updateProjectMetaUI(){
 
 function updateUI(){
   frameLabel.textContent = String(current + 1);
-  selectedFramePill.textContent = String(current + 1);
   updateProjectMetaUI();
   updateUndoRedoButtons();
 }
@@ -533,11 +540,30 @@ function setTool(next){
   toolPencil.classList.toggle('primary', tool === 'pencil');
   toolEraser.classList.toggle('primary', tool === 'eraser');
   toolSoft.classList.toggle('primary', tool === 'soft');
+  toolSelect.classList.toggle('primary', tool === 'select');
+  
+  // Clear selection when switching away from select tool
+  if(tool !== 'select'){
+    selection = null;
+    selectionData = null;
+    renderMain();
+  }
+  
+  // Update cursor style
+  if(tool === 'select'){
+    main.style.cursor = 'crosshair';
+  } else if(currentMode === 'montage'){
+    main.style.cursor = 'default';
+  } else {
+    main.style.cursor = 'crosshair';
+  }
+  
   // Reflect state for assistive technologies
   try{
     toolPencil.setAttribute('aria-pressed', String(tool === 'pencil'));
     toolEraser.setAttribute('aria-pressed', String(tool === 'eraser'));
     toolSoft.setAttribute('aria-pressed', String(tool === 'soft'));
+    toolSelect.setAttribute('aria-pressed', String(tool === 'select'));
   }catch(_){ }
 }
 
@@ -649,7 +675,7 @@ function ghostGrayForDistance(d){ return clamp(110 + (d-1)*30, 110, 235); }
 function composeWithOnionSkin(frameIndex, depth){
   const out = new Uint8ClampedArray(W*H*4);
   const base = new Uint8Array(W*H);
-  base.fill(255);
+  base.fill(WHITE_FILL);
 
   for(let d=1; d<=depth; d++){
     const idx = frameIndex - d;
@@ -698,6 +724,89 @@ function renderMain(){
   ctx.clearRect(0, 0, main.width, main.height);
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(off, 0, 0, main.width, main.height);
+  
+  // Draw layout guide overlay if enabled (rule of thirds)
+  if(gridEnabled && currentMode === 'chunk'){
+    ctx.save();
+    ctx.strokeStyle = 'rgba(90, 162, 255, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 4]);
+    
+    // Draw vertical lines at 1/3 and 2/3
+    const x1 = main.width / 3;
+    const x2 = (main.width * 2) / 3;
+    ctx.beginPath();
+    ctx.moveTo(x1, 0);
+    ctx.lineTo(x1, main.height);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(x2, 0);
+    ctx.lineTo(x2, main.height);
+    ctx.stroke();
+    
+    // Draw horizontal lines at 1/3 and 2/3
+    const y1 = main.height / 3;
+    const y2 = (main.height * 2) / 3;
+    ctx.beginPath();
+    ctx.moveTo(0, y1);
+    ctx.lineTo(main.width, y1);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(0, y2);
+    ctx.lineTo(main.width, y2);
+    ctx.stroke();
+    
+    ctx.restore();
+  }
+  
+  // Draw floating selection content on top of canvas
+  if(selectionFloating && selection && selectionData && tool === 'select'){
+    const scale = main.width / W;
+    const x1 = Math.min(selection.x1, selection.x2);
+    const y1 = Math.min(selection.y1, selection.y2);
+    const x2 = Math.max(selection.x1, selection.x2);
+    const y2 = Math.max(selection.y1, selection.y2);
+    const w = x2 - x1 + 1;
+    const h = y2 - y1 + 1;
+    
+    // Create temporary canvas for floating selection
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = w;
+    tempCanvas.height = h;
+    const tempCtx = tempCanvas.getContext('2d');
+    const imgData = new Uint8ClampedArray(w * h * 4);
+    
+    for(let i = 0; i < selectionData.length; i++){
+      const v = selectionData[i];
+      imgData[i * 4] = v;
+      imgData[i * 4 + 1] = v;
+      imgData[i * 4 + 2] = v;
+      imgData[i * 4 + 3] = 255;
+    }
+    
+    tempCtx.putImageData(new ImageData(imgData, w, h), 0, 0);
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(tempCanvas, x1 * scale, y1 * scale, w * scale, h * scale);
+    ctx.restore();
+  }
+  
+  // Draw selection rectangle if active
+  if(selection && tool === 'select'){
+    const scale = main.width / W;
+    ctx.save();
+    ctx.strokeStyle = selectionFloating ? 'rgba(255, 162, 0, 0.9)' : 'rgba(90, 162, 255, 0.8)';
+    ctx.setLineDash([5, 5]);
+    ctx.lineWidth = 2;
+    const x1 = Math.min(selection.x1, selection.x2) * scale;
+    const y1 = Math.min(selection.y1, selection.y2) * scale;
+    const x2 = Math.max(selection.x1, selection.x2) * scale;
+    const y2 = Math.max(selection.y1, selection.y2) * scale;
+    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    ctx.restore();
+  }
 }
 
 function renderThumb(i){
@@ -1008,7 +1117,7 @@ async function loadProject(file){
       for(let j=0; j<binary.length; j++) arr[j] = binary.charCodeAt(j);
       frames[i].set(arr);
     }else{
-      frames[i].fill(255);
+      frames[i].fill(WHITE_FILL);
     }
   }
 
@@ -1320,7 +1429,7 @@ frameGrid.addEventListener('drop', ev => { ev.preventDefault(); const from = Num
 
 function applyStroke(from, to){
   const frameArr = frames[current];
-  const value = (tool === 'eraser') ? 255 : gray;
+  const value = (tool === 'eraser') ? WHITE_FILL : gray;
 
   if(tool === 'soft'){
     if(!from){
@@ -1343,11 +1452,43 @@ function applyStroke(from, to){
 main.addEventListener('pointerdown', ev=>{
   if(isPlaying) return;
   if(currentMode !== 'chunk') return; // disable drawing in montage mode
+  
+  const pt = getPointerXY(ev);
+  
+  if(tool === 'select'){
+    // Check if clicking inside existing floating selection to drag it
+    if(selectionFloating && selection && selectionData){
+      const x1 = Math.min(selection.x1, selection.x2);
+      const y1 = Math.min(selection.y1, selection.y2);
+      const x2 = Math.max(selection.x1, selection.x2);
+      const y2 = Math.max(selection.y1, selection.y2);
+      
+      if(pt.x >= x1 && pt.x <= x2 && pt.y >= y1 && pt.y <= y2){
+        // Start dragging the floating selection
+        selectionDragging = true;
+        drawing = true;
+        main.setPointerCapture(ev.pointerId);
+        lastPt = pt;
+        renderMain();
+        return;
+      }
+    }
+    
+    // Start new selection (clears floating selection visual but keeps clipboard)
+    drawing = true;
+    main.setPointerCapture(ev.pointerId);
+    selection = {x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y};
+    // Keep selectionData (clipboard) but clear floating state
+    selectionFloating = false;
+    selectionDragging = false;
+    renderMain();
+    return;
+  }
+  
   drawing = true;
   main.setPointerCapture(ev.pointerId);
 
   beginStroke();
-  const pt = getPointerXY(ev);
   lastPt = pt;
   applyStroke(null, pt);
 });
@@ -1355,7 +1496,30 @@ main.addEventListener('pointerdown', ev=>{
 main.addEventListener('pointermove', ev=>{
   if(!drawing || isPlaying) return;
   if(currentMode !== 'chunk') return; // disable drawing in montage mode
+  
   const pt = getPointerXY(ev);
+  
+  if(tool === 'select'){
+    if(selectionDragging && lastPt){
+      // Drag the floating selection
+      const dx = pt.x - lastPt.x;
+      const dy = pt.y - lastPt.y;
+      selection.x1 += dx;
+      selection.y1 += dy;
+      selection.x2 += dx;
+      selection.y2 += dy;
+      lastPt = pt;
+      renderMain();
+      return;
+    } else {
+      // Update selection rectangle
+      selection.x2 = pt.x;
+      selection.y2 = pt.y;
+      renderMain();
+      return;
+    }
+  }
+  
   applyStroke(lastPt, pt);
   lastPt = pt;
 });
@@ -1363,9 +1527,66 @@ main.addEventListener('pointermove', ev=>{
 function endDraw(ev){
   if(!drawing) return;
   drawing = false;
-  lastPt = null;
-
-  commitStroke();
+  
+  if(tool === 'select' && selection){
+    if(selectionDragging){
+      // Commit dragged selection to canvas
+      selectionDragging = false;
+      if(selectionData){
+        beginStroke();
+        const frameArr = frames[current];
+        const x1 = Math.min(selection.x1, selection.x2);
+        const y1 = Math.min(selection.y1, selection.y2);
+        const x2 = Math.max(selection.x1, selection.x2);
+        const y2 = Math.max(selection.y1, selection.y2);
+        const w = x2 - x1 + 1;
+        
+        // Paste selection at new location
+        for(let y = y1; y <= y2; y++){
+          for(let x = x1; x <= x2; x++){
+            if(x >= 0 && x < W && y >= 0 && y < H){
+              const srcIdx = (y - y1) * w + (x - x1);
+              if(srcIdx < selectionData.length){
+                const destIdx = xyToIndex(x, y);
+                if(activeStrokeMap && !activeStrokeMap.has(destIdx)){
+                  activeStrokeMap.set(destIdx, frameArr[destIdx]);
+                }
+                frameArr[destIdx] = selectionData[srcIdx];
+              }
+            }
+          }
+        }
+        commitStroke();
+        renderMain();
+        renderThumb(current);
+        // Keep selection floating for further moves
+      }
+    } else {
+      // Finalize selection - copy selected pixels
+      const x1 = Math.min(selection.x1, selection.x2);
+      const y1 = Math.min(selection.y1, selection.y2);
+      const x2 = Math.max(selection.x1, selection.x2);
+      const y2 = Math.max(selection.y1, selection.y2);
+      const w = x2 - x1 + 1;
+      const h = y2 - y1 + 1;
+      
+      if(w > 0 && h > 0){
+        selectionData = new Uint8Array(w * h);
+        const frameArr = frames[current];
+        for(let y = y1; y <= y2; y++){
+          for(let x = x1; x <= x2; x++){
+            const srcIdx = xyToIndex(x, y);
+            const destIdx = (y - y1) * w + (x - x1);
+            selectionData[destIdx] = frameArr[srcIdx];
+          }
+        }
+        notify('Selection created. Drag to move, Ctrl+X to cut, or Delete to clear.');
+      }
+    }
+  }else{
+    lastPt = null;
+    commitStroke();
+  }
 
   try{ main.releasePointerCapture(ev.pointerId); }catch(_){}
 }
@@ -1378,6 +1599,14 @@ main.addEventListener('pointercancel', endDraw);
 toolPencil.addEventListener('click', ()=>setTool('pencil'));
 toolEraser.addEventListener('click', ()=>setTool('eraser'));
 toolSoft.addEventListener('click', ()=>setTool('soft'));
+toolSelect.addEventListener('click', ()=>setTool('select'));
+
+gridToggleBtn.addEventListener('click', ()=>{
+  gridEnabled = !gridEnabled;
+  gridToggleBtn.textContent = gridEnabled ? 'Grid On' : 'Grid Off';
+  gridToggleBtn.classList.toggle('primary', gridEnabled);
+  renderMain();
+});
 
 undoBtn.addEventListener('click', ()=>undo());
 redoBtn.addEventListener('click', ()=>redo());
@@ -1442,6 +1671,7 @@ if(montageScrubber){
         // update selection highlight without forcing the chunk-start preview render
         selectMontageChunk(i, false);
         const playPosEl = document.getElementById('montagePlayPos'); if(playPosEl) playPosEl.textContent = `${pos} / ${totalMontage}f`;
+        updateMontageTimeDisplay(pos); // Update time display
         found = true;
         break;
       }
@@ -1593,14 +1823,133 @@ window.addEventListener('keydown', e=>{
     }
   }
 
-  // Delete current frame
+  // Delete current frame or clear selection
   if(!isPlaying && (e.code === 'Delete' || e.code === 'Backspace')){
     e.preventDefault();
-    deleteCurrentFrame();
+    // If selection tool is active and there's a selection, clear the selected area
+    if(tool === 'select' && selection){
+      beginStroke();
+      const frameArr = frames[current];
+      const x1 = Math.min(selection.x1, selection.x2);
+      const y1 = Math.min(selection.y1, selection.y2);
+      const x2 = Math.max(selection.x1, selection.x2);
+      const y2 = Math.max(selection.y1, selection.y2);
+      for(let y = y1; y <= y2; y++){
+        for(let x = x1; x <= x2; x++){
+          const idx = xyToIndex(x, y);
+          if(activeStrokeMap && !activeStrokeMap.has(idx)){
+            activeStrokeMap.set(idx, frameArr[idx]);
+          }
+          frameArr[idx] = WHITE_FILL; // Fill with white
+        }
+      }
+      commitStroke();
+      renderMain();
+      renderThumb(current);
+      notify('Selection cleared');
+    }else{
+      deleteCurrentFrame();
+    }
     return;
   }
 
   const k = e.key.toLowerCase();
+  // Handle Ctrl/Cmd keyboard shortcuts for selection tool
+  if((e.ctrlKey || e.metaKey) && tool === 'select' && selection && !isPlaying){
+    if(k === 'c'){
+      // Copy selection
+      e.preventDefault();
+      notify('Selection copied');
+      return;
+    }
+    if(k === 'x'){
+      // Cut selection - clear original area and keep selection data
+      e.preventDefault();
+      if(selectionData){
+        beginStroke();
+        const frameArr = frames[current];
+        const x1 = Math.min(selection.x1, selection.x2);
+        const y1 = Math.min(selection.y1, selection.y2);
+        const x2 = Math.max(selection.x1, selection.x2);
+        const y2 = Math.max(selection.y1, selection.y2);
+        for(let y = y1; y <= y2; y++){
+          for(let x = x1; x <= x2; x++){
+            const idx = xyToIndex(x, y);
+            if(activeStrokeMap && !activeStrokeMap.has(idx)){
+              activeStrokeMap.set(idx, frameArr[idx]);
+            }
+            frameArr[idx] = WHITE_FILL;
+          }
+        }
+        commitStroke();
+        renderMain();
+        renderThumb(current);
+        notify('Selection cut. Drag to move or paste to new location.');
+        // Keep selection for paste
+      }
+      return;
+    }
+    if(k === 'v'){
+      // Paste selection as floating layer that can be dragged
+      e.preventDefault();
+      if(selectionData){
+        // Shift selection slightly to show it's a new paste
+        const w = Math.abs(selection.x2 - selection.x1);
+        const h = Math.abs(selection.y2 - selection.y1);
+        const offsetX = Math.min(10, (W - w) / 2);
+        const offsetY = Math.min(10, (H - h) / 2);
+        
+        selection.x1 += offsetX;
+        selection.x2 += offsetX;
+        selection.y1 += offsetY;
+        selection.y2 += offsetY;
+        
+        // Clamp to canvas bounds
+        const x1 = Math.min(selection.x1, selection.x2);
+        const x2 = Math.max(selection.x1, selection.x2);
+        if(x2 >= W){
+          const shift = x2 - W + 1;
+          selection.x1 -= shift;
+          selection.x2 -= shift;
+        }
+        const y1 = Math.min(selection.y1, selection.y2);
+        const y2 = Math.max(selection.y1, selection.y2);
+        if(y2 >= H){
+          const shift = y2 - H + 1;
+          selection.y1 -= shift;
+          selection.y2 -= shift;
+        }
+        
+        selectionFloating = true;
+        renderMain();
+        notify('Selection pasted. Drag to reposition.');
+      }
+      return;
+    }
+  }
+  
+  // Handle Ctrl/Cmd keyboard shortcuts for selection tool (without selection)
+  if((e.ctrlKey || e.metaKey) && tool === 'select' && selectionData && !isPlaying){
+    const k = e.key.toLowerCase();
+    if(k === 'v'){
+      // Paste at center or cursor position
+      e.preventDefault();
+      const w = Math.abs(selection.x2 - selection.x1);
+      const h = Math.abs(selection.y2 - selection.y1);
+      // Paste at center
+      selection = {
+        x1: Math.floor((W - w) / 2),
+        y1: Math.floor((H - h) / 2),
+        x2: Math.floor((W - w) / 2) + w,
+        y2: Math.floor((H - h) / 2) + h
+      };
+      selectionFloating = true;
+      renderMain();
+      notify('Selection pasted at center. Drag to reposition.');
+      return;
+    }
+  }
+  
   // Do not run single-letter shortcuts when any modifier key is pressed — this avoids colliding
   // with browser or OS shortcuts like Ctrl/Cmd+S, Ctrl/Cmd+G, etc.
   const hasModifier = e.ctrlKey || e.metaKey || e.altKey || e.shiftKey;
@@ -1648,6 +1997,27 @@ let _pendingInsertPosition = null; // null or number - position to insert next i
 
 function generateId(prefix='chunk'){
   return `${prefix}-${Date.now().toString(36)}-${Math.floor(Math.random()*0x10000).toString(16)}`;
+}
+
+// Predefined color palette for chunks
+const CHUNK_COLORS = [
+  '#5aa2ff', // blue
+  '#ff5a7a', // red/pink
+  '#50c878', // emerald
+  '#ffa500', // orange
+  '#9370db', // purple
+  '#20b2aa', // turquoise
+  '#ff6b9d', // hot pink
+  '#32cd32', // lime green
+  '#ff8c00', // dark orange
+  '#4169e1', // royal blue
+  '#dc143c', // crimson
+  '#00ced1', // dark turquoise
+];
+
+// Get next color from palette based on chunk index
+function getNextChunkColor(index){
+  return CHUNK_COLORS[index % CHUNK_COLORS.length];
 }
 
 // Helper function to ensure chunk has a valid alias
@@ -1786,12 +2156,30 @@ function updateChunkDelimiters(totalFrames){
     delimiters.style.display = 'block';
     delimiters.innerHTML = '';
     
-    // Add delimiter markers at chunk boundaries
+    // Add colored background regions for each chunk and delimiter markers at boundaries
     let cumulativeFrames = 0;
     for(let i = 0; i < montageChunks.length; i++){
       const chunk = montageChunks[i];
       const chunkLength = (chunk.frameRange && (chunk.frameRange.end - chunk.frameRange.start)) || 0;
+      const startPercent = (cumulativeFrames / totalFrames) * 100;
       cumulativeFrames += chunkLength;
+      const endPercent = (cumulativeFrames / totalFrames) * 100;
+      
+      // Add colored region for this chunk
+      if(chunkLength > 0){
+        const region = document.createElement('div');
+        region.style.position = 'absolute';
+        region.style.left = `${startPercent}%`;
+        region.style.width = `${endPercent - startPercent}%`;
+        region.style.top = '0';
+        region.style.bottom = '0';
+        const chunkColor = chunk.color || '#5aa2ff';
+        region.style.background = `linear-gradient(180deg, ${chunkColor}${CHUNK_COLOR_ALPHA_HIGH}, ${chunkColor}${CHUNK_COLOR_ALPHA_LOW})`;
+        region.style.borderLeft = `1px solid ${chunkColor}66`;
+        region.style.borderRight = `1px solid ${chunkColor}66`;
+        region.title = chunk.alias || chunk.name;
+        delimiters.appendChild(region);
+      }
       
       // Add marker at end of chunk (unless it's the last chunk)
       if(i < montageChunks.length - 1 && cumulativeFrames > 0){
@@ -1801,8 +2189,10 @@ function updateChunkDelimiters(totalFrames){
         marker.style.top = '0';
         marker.style.bottom = '0';
         marker.style.width = '2px';
-        marker.style.background = 'rgba(90,162,255,0.6)';
+        const nextChunkColor = montageChunks[i+1].color || '#5aa2ff';
+        marker.style.background = `${nextChunkColor}aa`;
         marker.style.transform = 'translateX(-1px)';
+        marker.style.zIndex = '1';
         delimiters.appendChild(marker);
       }
     }
@@ -1858,7 +2248,18 @@ function selectMontageChunk(idx, renderPreview = true){
 
   updateTrimBar();
   // update canvas preview when in montage mode unless caller asked to skip render
-  if(currentMode === 'montage' && renderPreview){ renderMontagePreviewChunk(selectedChunkIdx); }
+  if(currentMode === 'montage' && renderPreview){ 
+    renderMontagePreviewChunk(selectedChunkIdx); 
+    
+    // Position playhead to start of selected chunk
+    let framesBefore = 0;
+    for(let i = 0; i < selectedChunkIdx; i++){
+      const c = montageChunks[i];
+      framesBefore += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
+    }
+    _montagePos = { chunkIdx: selectedChunkIdx, frameIdx: 0 };
+    updateMontageMetaUI();
+  }
 }
 
 function updateTrimBar(){
@@ -2257,6 +2658,65 @@ function renderMontageChunks(){
     const div = document.createElement('div');
     div.className = 'chunk-item';
     div.title = ch.name; // Show full filename on hover
+    div.draggable = true; // Make chunk draggable
+
+    // Drag and drop event handlers
+    div.addEventListener('dragstart', (e)=>{
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(idx));
+      div.classList.add('dragging');
+    });
+    
+    div.addEventListener('dragend', (e)=>{
+      div.classList.remove('dragging');
+      // Remove drag-over class from all items
+      document.querySelectorAll('.chunk-item').forEach(el => el.classList.remove('drag-over'));
+    });
+    
+    div.addEventListener('dragover', (e)=>{
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const dragging = document.querySelector('.chunk-item.dragging');
+      if(dragging && dragging !== div){
+        div.classList.add('drag-over');
+      }
+    });
+    
+    div.addEventListener('dragleave', (e)=>{
+      if(!div.contains(e.relatedTarget)){
+        div.classList.remove('drag-over');
+      }
+    });
+    
+    div.addEventListener('drop', (e)=>{
+      e.preventDefault();
+      div.classList.remove('drag-over');
+      const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+      const toIdx = idx;
+      
+      if(fromIdx !== toIdx && !isNaN(fromIdx)){
+        // Reorder chunks: move fromIdx to toIdx position
+        const [movedChunk] = montageChunks.splice(fromIdx, 1);
+        // When moving backward (to lower index), insert at toIdx
+        // When moving forward (to higher index), the splice removed an item before toIdx, so insert at toIdx-1
+        const insertIdx = fromIdx < toIdx ? (toIdx - 1) : toIdx;
+        montageChunks.splice(insertIdx, 0, movedChunk);
+        
+        // Update selection to follow moved chunk
+        if(selectedChunkIdx === fromIdx){
+          selectedChunkIdx = insertIdx;
+        } else if(fromIdx < selectedChunkIdx && insertIdx >= selectedChunkIdx){
+          selectedChunkIdx--;
+        } else if(fromIdx > selectedChunkIdx && insertIdx <= selectedChunkIdx){
+          selectedChunkIdx++;
+        }
+        
+        renderMontageChunks();
+        updateMontageMetaUI();
+        updateMontageScrubberUI();
+        notify('Chunk reordered');
+      }
+    });
 
     // Thumbnail
     const thumb = document.createElement('div');
@@ -2288,7 +2748,7 @@ function renderMontageChunks(){
         tempCtx.putImageData(new ImageData(imgData, w, h), 0, 0);
         
         // Scale to thumbnail size
-        thumbCtx.drawImage(tempCanvas, 0, 0, 48, 48);
+        thumbCtx.drawImage(tempCanvas, 0, 0, 56, 56);
         thumb.appendChild(thumbCanvas);
       }catch(e){
         console.error('Failed to render chunk thumbnail', ch.name, e);
@@ -2299,39 +2759,54 @@ function renderMontageChunks(){
     }
     div.appendChild(thumb);
 
-    // Info section
-    const info = document.createElement('div');
-    info.className = 'chunk-info';
-
-    // Badges
-    const badges = document.createElement('div');
-    badges.className = 'chunk-badges';
+    // Info section - Row 1: Duration, Color Picker, Alias
+    const row1 = document.createElement('div');
+    row1.className = 'chunk-row1';
+    
+    // Duration badge with "XXf" format
     const durationBadge = document.createElement('span'); 
-    durationBadge.className = 'pill'; 
+    durationBadge.className = 'chunk-duration'; 
     durationBadge.textContent = `${(ch.frameRange.end - ch.frameRange.start)}f`;
-    badges.appendChild(durationBadge);
-    info.appendChild(badges);
-
-    // Alias input (now labeled as "Cut Name")
+    row1.appendChild(durationBadge);
+    
+    // Color picker for chunk color coding
+    const colorPicker = document.createElement('input');
+    colorPicker.type = 'color';
+    colorPicker.className = 'chunk-color-picker';
+    colorPicker.value = ch.color || getNextChunkColor(idx);
+    if(!ch.color) ch.color = colorPicker.value; // Assign default color if not set
+    colorPicker.title = 'Chunk color';
+    colorPicker.addEventListener('input', (e)=>{
+      e.stopPropagation();
+      ch.color = colorPicker.value;
+      updateChunkDelimiters(computeMontageTotalFrames());
+      notify('Chunk color updated');
+    });
+    colorPicker.addEventListener('click', (e)=>e.stopPropagation());
+    row1.appendChild(colorPicker);
+    
+    // Alias input
     const aliasInput = document.createElement('input');
     aliasInput.type = 'text';
     aliasInput.className = 'chunk-alias';
     aliasInput.placeholder = 'Cut name';
     aliasInput.value = ensureChunkAlias(ch);
+    aliasInput.title = ensureChunkAlias(ch); // Hover tooltip for long names
     aliasInput.addEventListener('input', (e)=>{
       e.stopPropagation();
       const newValue = aliasInput.value.trim();
       ch.alias = newValue || ch.name || generateId('cut');
+      aliasInput.title = ch.alias; // Update tooltip
       updateMontageScrubberUI();
     });
     aliasInput.addEventListener('click', (e)=>e.stopPropagation());
-    info.appendChild(aliasInput);
-
-    div.appendChild(info);
-
-    // Controls section
-    const controls = document.createElement('div');
-    controls.className = 'chunk-controls';
+    row1.appendChild(aliasInput);
+    
+    div.appendChild(row1);
+    
+    // Row 2: Control buttons
+    const row2 = document.createElement('div');
+    row2.className = 'chunk-row2';
 
     // events: select on click
     div.addEventListener('click', ()=>{ selectMontageChunk(idx); });
@@ -2348,12 +2823,12 @@ function renderMontageChunks(){
     const delBtn = document.createElement('button'); delBtn.className = 'iconBtn danger'; delBtn.title = 'Delete'; delBtn.textContent = '✖';
     delBtn.addEventListener('click', (e)=>{ e.stopPropagation(); montageChunks.splice(idx,1); renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); });
 
-    controls.appendChild(editBtn);
-    controls.appendChild(upBtn);
-    controls.appendChild(downBtn);
-    controls.appendChild(delBtn);
+    row2.appendChild(editBtn);
+    row2.appendChild(upBtn);
+    row2.appendChild(downBtn);
+    row2.appendChild(delBtn);
 
-    div.appendChild(controls);
+    div.appendChild(row2);
 
     div.addEventListener('dblclick', (e)=>{ // on dblclick select and focus alias input
       e.stopPropagation();
@@ -2935,13 +3410,8 @@ function startMontagePlayback(){
     }
     const pos = before + _montagePos.frameIdx + 1;
     if(playPosEl) playPosEl.textContent = `${pos} / ${totalMontage}f`;
+    updateMontageTimeDisplay(pos); // Update time display during playback
     // sync montageScrubber if present
-    if(montageScrubber && currentMode === 'montage'){
-      montageScrubber.max = String(totalMontage);
-      montageScrubber.value = String(pos);
-    }
-
-    // update montage scrubber so progress moves during montage playback
     if(montageScrubber && currentMode === 'montage'){
       montageScrubber.max = String(totalMontage);
       montageScrubber.value = String(pos);

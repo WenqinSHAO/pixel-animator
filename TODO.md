@@ -7,9 +7,10 @@
 
 ### Montage Editor
 - [ ] **Unsaved changes indicator** - Warn before closing/navigating with unsaved work (High importance for data loss prevention)
-- [ ] **Chunk preview thumbnails** - Already implemented! Could be enhanced with larger previews on hover
-- [ ] **Drag and drop for chunk reordering** -  allow for drag a chunk and place it between two chunks to reorder, or a reasonable interaction logic and possible to implement
+- [x] **Chunk preview thumbnails** - ✅ Implemented with 56px thumbnails spanning two rows
+- [x] **Drag and drop for chunk reordering** - ✅ Implemented with visual feedback
 - [ ] **Keyboard shortcuts for chunks** - Arrow keys to navigate, Delete to remove, Enter to edit
+- [ ] **Timeline zoom and preview on hover** - Allow zooming in/out of scrubber for detailed frame-by-frame work, show preview when hovering over timeline
 
 ### Chunk Editor
 - [ ] **Unsaved changes indicator** - Warn before switching modes or loading new project
@@ -22,11 +23,15 @@
 ## Medium Priority
 
 ### Montage Editor
-- [ ] **Chunk color coding** - Assign colors to chunks for easier visual tracking on scrubber and timeline
-- [ ] **Timeline zoom** - Allow zooming in/out of scrubber for detailed frame-by-frame work
+- [x] **Chunk color coding** - ✅ Implemented with 12-color pre-allocated palette
+- [x] **Playhead positioning on chunk selection** - ✅ Implemented, positions to chunk start
+- [x] **Optimized chunk layout** - ✅ Two-row design with duration (Xf format), color, alias, and controls
+- [x] **Alias overflow handling** - ✅ Ellipsis with hover tooltip for long names
+- [x] **Time display** - ✅ Fixed to update correctly during scrubbing and playback
 
 ### Chunk Editor
-- [ ] **Grid overlay option** - Toggle pixel grid for pixel-perfect alignment
+- [x] **Grid overlay option** - ✅ Implemented as layout guides (rule of thirds)
+- [x] **Optimized layout** - ✅ 4-column thumbnails, compact tools, project info in actions
 - [ ] **Color palette** - Quick-access grayscale palette (0, 64, 128, 192, 255 values)
 
 ### General UX
@@ -40,13 +45,41 @@
 - [ ] **Chunk groups/folders** - Organize chunks into logical groups for large projects
 
 ### Chunk Editor
-- [ ] **Selection tool** - Allow for select an area and then cut, copy, drag, paste 
+- [x] **Selection tool** - ✅ Fully implemented with copy/cut/paste, drag-and-drop, and floating selection
 - [ ] **Drawing tools expansion** - Add line, rectangle, circle, fill tools
 
 ### General UX
 - [ ] **Mobile/tablet support** - Touch-friendly controls and responsive layout
 - [ ] **Accessibility improvements** - Better ARIA labels, keyboard navigation, screen reader support
 - [ ] **Internationalization** - Support for multiple languages
+
+## Future Major Features (Requires Separate PR)
+
+### Color and Transparency Support
+- [ ] **Add RGBA color support to chunk editor** - Major feature that will disruptively change file format
+  - **Breaking change**: Will require migration of existing projects from grayscale (1 byte per pixel) to RGBA (4 bytes per pixel)
+  - **UI changes needed**:
+    - Add color picker to drawing tools (replace Gray slider with RGB/HSV controls)
+    - Add alpha/transparency slider (0-255 or 0-100%)
+    - Update brush preview to show current color/alpha
+    - Add color palette for quick color selection
+  - **File format impact**:
+    - Chunk project files: Change frame data from Uint8Array to Uint8ClampedArray (RGBA)
+    - Montage project files: Must handle both legacy grayscale and new RGBA chunks
+    - Version bump required (e.g., v1.x → v2.0)
+    - Implement backward compatibility reader for legacy grayscale projects
+  - **Rendering changes**:
+    - Update all canvas operations to handle RGBA
+    - Implement alpha blending for paste operations (additive/multiplicative/replace modes)
+    - Update onion skinning to respect alpha channels
+    - Update GIF export to handle alpha (flatten or use transparency index)
+  - **Implementation plan**:
+    1. Design file format v2.0 with RGBA support
+    2. Implement backward-compatible loader for v1.x projects
+    3. Update UI with color/alpha controls
+    4. Refactor all drawing operations for RGBA
+    5. Test extensively with both new and legacy projects
+    6. Update documentation and migration guide
 
 ## Performance Optimizations
 
@@ -94,6 +127,16 @@
 - [x] Frame info moved to scrubber area with time display
 - [x] Chunk/montage editor integration (edit, insert, return)
 - [x] Chunk preview thumbnails
+- [x] UI layout improvements (December 2025)
+  - [x] Chunk editor: Larger frame thumbnails (4 columns instead of 6)
+  - [x] Chunk editor: Compressed project info panel
+  - [x] Montage editor: Fixed "Frames" text appearing in wrong context
+  - [x] Montage editor: Fixed play button width to prevent scrubber movement
+- [x] Montage editor: Drag and drop chunk reordering (December 2025)
+- [x] Montage editor: Chunk color coding system (December 2025)
+- [x] Montage editor: Playhead positioning on chunk selection (December 2025)
+- [x] Chunk editor: Grid overlay toggle (December 2025)
+- [x] Chunk editor: Selection tool (basic implementation) (December 2025)
 
 ## Notes
 
