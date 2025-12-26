@@ -108,9 +108,17 @@ Schema (concise):
 ### Chunk Editor Mode
 
 - **Drawing tools**: Pencil, Eraser, Soft brush, and Selection tool
+- **Color palette**: Quick-access grayscale buttons (0, 64, 128, 192, 255) for fast color selection
+- **Mouse controls**: 
+  - Scroll wheel to adjust brush size
+  - C + wheel or Ctrl/Cmd + wheel to zoom canvas (50%-300%)
+  - Canvas zoom reset button (Zoom 100%)
 - **Grid overlay**: Toggle pixel grid for precise alignment (Grid On/Off button)
-- **Selection tool**: Click and drag to select an area, press Delete to clear selected pixels
-- **Frame management**: Add, duplicate, delete frames; drag thumbnails to reorder
+- **Selection tool**: Click and drag to select an area, Ctrl+C to copy, Ctrl+V to paste, Ctrl+X to cut, Delete to clear
+- **Frame management**: 
+  - Add, duplicate, delete frames
+  - Drag thumbnails to swap positions
+  - Arrow buttons (◀ ▶) on each thumbnail for one-step repositioning
 - **Onion skinning**: Adjust transparency to see previous frames while drawing
 
 ### Montage Editor Mode
@@ -119,7 +127,8 @@ Schema (concise):
 - **Chunk reordering**: Drag and drop chunks to change their order in the timeline
 - **Color coding**: Assign colors to chunks for visual tracking on the timeline
 - **Trim chunks**: Adjust start/end frames for each chunk non-destructively
-- **Timeline scrubber**: Visual representation with color-coded chunk regions
+- **Timeline scrubber**: Visual representation with color-coded chunk regions and frame/time rulers
+- **Preview on hover**: Hover over timeline to see frame preview tooltip
 - **Playback**: Preview the entire montage sequence
 
 ## Implementation details — `animator.html`

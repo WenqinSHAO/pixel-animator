@@ -84,6 +84,12 @@ input[type="range"]{width:160px}
 .toast{pointer-events:auto;min-width:180px;max-width:360px;padding:10px 12px;border-radius:10px;background:linear-gradient(180deg,#0f1720,#0b131e);border:1px solid rgba(255,255,255,.06);color:var(--text);box-shadow:0 10px 30px rgba(0,0,0,.35);opacity:0;transform:translateY(6px);transition:opacity .18s ease,transform .18s ease}
 .toast.visible{opacity:1;transform:translateY(0)}
 
+/* Timeline preview tooltip */
+.timeline-preview{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);background:linear-gradient(180deg,#0f1720,#0b131e);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px;box-shadow:0 8px 20px rgba(0,0,0,.4);pointer-events:none;opacity:0;transition:opacity .15s ease;z-index:100;display:none}
+.timeline-preview.visible{opacity:1}
+.timeline-preview canvas{width:80px;height:80px;border-radius:6px;background:#fff;image-rendering:pixelated;border:1px solid rgba(255,255,255,.06);display:block}
+.timeline-preview .info{font-size:10px;color:var(--muted);margin-top:4px;text-align:center}
+
 @media (max-width:980px){
   .wrap{grid-template-columns:1fr}
   canvas#main{width:min(92vw,512px);height:min(92vw,512px)}
@@ -150,16 +156,26 @@ input[type="range"]{width:160px}
           <div class="panelTitle">Drawing Tools</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px">
-          <!-- Tools row -->
+          <!-- Tools row with palette -->
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
             <button id="toolPencil" class="primary" style="padding:6px 10px">Pencil</button>
             <button id="toolEraser" style="padding:6px 10px">Eraser</button>
             <button id="toolSoft" style="padding:6px 10px">Soft</button>
             <button id="toolSelect" style="padding:6px 10px">Select</button>
             <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
+            <!-- Color palette inline -->
+            <div id="colorPalette" style="display:flex;gap:3px">
+              <button data-gray="0" style="width:24px;height:24px;padding:0;background:#000;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Black (0)"></button>
+              <button data-gray="64" style="width:24px;height:24px;padding:0;background:#404040;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Dark Gray (64)"></button>
+              <button data-gray="128" style="width:24px;height:24px;padding:0;background:#808080;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Mid Gray (128)"></button>
+              <button data-gray="192" style="width:24px;height:24px;padding:0;background:#c0c0c0;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Light Gray (192)"></button>
+              <button data-gray="255" style="width:24px;height:24px;padding:0;background:#fff;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="White (255)"></button>
+            </div>
+            <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
             <button id="undoBtn" style="padding:6px 10px">Undo</button>
             <button id="redoBtn" style="padding:6px 10px">Redo</button>
-            <button id="gridToggleBtn" style="padding:6px 10px;margin-left:auto">Grid Off</button>
+            <button id="gridToggleBtn" style="padding:6px 10px">Grid Off</button>
+            <button id="canvasZoomResetBtn" style="padding:6px 10px;margin-left:auto" title="Reset canvas zoom (100%)">Zoom 100%</button>
           </div>
           <!-- Settings row -->
           <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11px">
@@ -223,6 +239,11 @@ input[type="range"]{width:160px}
             <input id="montageScrubber" class="scrubber" type="range" min="1" max="1" value="1" />
             <!-- Chunk delimiter markers - only shown in montage mode -->
             <div id="chunkDelimiters" style="display:none;position:absolute;top:0;left:0;right:0;height:100%;pointer-events:none"></div>
+            <!-- Timeline preview tooltip -->
+            <div id="timelinePreview" class="timeline-preview">
+              <canvas width="64" height="64"></canvas>
+              <div class="info"><span id="previewInfo">Frame 1</span></div>
+            </div>
           </div>
           
           <!-- Bottom ruler (time) - only shown in montage mode -->
@@ -401,6 +422,8 @@ const UNDO_LIMIT = 100;
 const WHITE_FILL = 255;  // White color value for clearing/erasing
 const CHUNK_COLOR_ALPHA_HIGH = '33';  // Hex alpha for chunk color highlights (20%)
 const CHUNK_COLOR_ALPHA_LOW = '11';   // Hex alpha for chunk color backgrounds (6.5%)
+const BASE_MARKER_COUNT = 8;  // Base number of timeline markers
+const PREVIEW_HIDE_DELAY_MS = 150;  // Delay before hiding preview tooltip (matches CSS transition)
 
 // Frames + history (dynamic length)
 // NOTE: `frames` holds Uint8Array instances (W*H bytes each) representing grayscale pixels
@@ -419,6 +442,8 @@ let onionDepth = 5;
 let drawing = false;
 let lastPt = null;
 let gridEnabled = false;
+let canvasZoom = 1.0; // Canvas zoom level (1.0 = 100%)
+let cKeyPressed = false; // Track 'c' key state for canvas zoom
 
 // Selection tool state
 let selection = null; // {x1, y1, x2, y2}
@@ -820,7 +845,15 @@ function renderThumb(i){
 }
 
 function renderAllThumbs(){
-  for(let i=0; i<frames.length; i++) renderThumb(i);
+  // Incremental thumbnail rendering to avoid blocking UI
+  let i = 0;
+  const renderBatch = () => {
+    const batchSize = 4; // Render 4 thumbnails per frame
+    const end = Math.min(i + batchSize, frames.length);
+    for(; i < end; i++) renderThumb(i);
+    if(i < frames.length) requestAnimationFrame(renderBatch);
+  };
+  requestAnimationFrame(renderBatch);
 }
 
 // Simple non-blocking toast notifications (falls back to alert)
@@ -1007,6 +1040,26 @@ function insertFrameBefore(from, to){
     if(current >= insertAt && current < from) current += 1;
   }
 
+  initThumbs(true);
+  renderAllThumbs();
+  renderMain();
+  updateUI();
+}
+
+// Swap two frames at indices `a` and `b`
+function swapFrames(a, b){
+  if(isPlaying) return;
+  if(a === b || a < 0 || b < 0 || a >= frames.length || b >= frames.length) return;
+  
+  // Swap frames
+  [frames[a], frames[b]] = [frames[b], frames[a]];
+  [undoStacks[a], undoStacks[b]] = [undoStacks[b], undoStacks[a]];
+  [redoStacks[a], redoStacks[b]] = [redoStacks[b], redoStacks[a]];
+  
+  // Update current selection
+  if(current === a) current = b;
+  else if(current === b) current = a;
+  
   initThumbs(true);
   renderAllThumbs();
   renderMain();
@@ -1364,13 +1417,50 @@ function initThumbs(preserveIndex = true){
     c.width = 64;
     c.height = 64;
     c.getContext('2d', { alpha:false }).imageSmoothingEnabled = false;
+    
+    // Add arrow buttons for frame reordering
+    const arrows = document.createElement('div');
+    arrows.style.cssText = 'position:absolute;top:6px;right:6px;display:flex;gap:2px;opacity:0;transition:opacity 0.15s';
+    arrows.className = 'frame-arrows';
+    
+    const leftArrow = document.createElement('button');
+    leftArrow.innerHTML = '◀';
+    leftArrow.title = 'Move left';
+    leftArrow.style.cssText = 'width:20px;height:20px;padding:0;font-size:10px;background:rgba(0,0,0,0.7);border:1px solid rgba(255,255,255,0.3);border-radius:4px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center';
+    leftArrow.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(i > 0) swapFrames(i, i - 1);
+    });
+    
+    const rightArrow = document.createElement('button');
+    rightArrow.innerHTML = '▶';
+    rightArrow.title = 'Move right';
+    rightArrow.style.cssText = 'width:20px;height:20px;padding:0;font-size:10px;background:rgba(0,0,0,0.7);border:1px solid rgba(255,255,255,0.3);border-radius:4px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center';
+    rightArrow.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(i < frames.length - 1) swapFrames(i, i + 1);
+    });
+    
+    arrows.appendChild(leftArrow);
+    arrows.appendChild(rightArrow);
 
     el.appendChild(idx);
     el.appendChild(c);
+    el.appendChild(arrows);
+    
+    // Show arrows on hover
+    el.addEventListener('mouseenter', ()=>{
+      arrows.style.opacity = '1';
+    });
+    el.addEventListener('mouseleave', ()=>{
+      arrows.style.opacity = '0';
+    });
 
-    // Click selects frame
-    el.addEventListener('click', ()=>{
+    // Click selects frame (updated to handle arrow button clicks)
+    el.addEventListener('click', (e)=>{
       if(isPlaying) return;
+      // Don't select if clicking on arrow buttons
+      if(e.target.closest('.frame-arrows')) return;
       setCurrent(i);
     });
 
@@ -1400,7 +1490,8 @@ function initThumbs(preserveIndex = true){
       const from = Number(ev.dataTransfer.getData('text/plain'));
       const to = thumbs.indexOf(el);
       if(Number.isNaN(from) || from === to) return;
-      insertFrameBefore(from, to);
+      // Swap frames instead of inserting before
+      swapFrames(from, to);
     });
 
     el.addEventListener('dragend', ev => {
@@ -1417,10 +1508,6 @@ function initThumbs(preserveIndex = true){
   renderAllThumbs();
   updateProjectMetaUI();
 }
-
-// Allow dropping on the grid background to move a frame to the end
-frameGrid.addEventListener('dragover', ev => { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; });
-frameGrid.addEventListener('drop', ev => { ev.preventDefault(); const from = Number(ev.dataTransfer.getData('text/plain')); if(Number.isNaN(from)) return; insertFrameBefore(from, frames.length); });
 
 // -------------------- Drawing --------------------
 // Pointer events (pointerdown/pointermove/pointerup) call `applyStroke()` which
@@ -1580,7 +1667,7 @@ function endDraw(ev){
             selectionData[destIdx] = frameArr[srcIdx];
           }
         }
-        notify('Selection created. Drag to move, Ctrl+X to cut, or Delete to clear.');
+        notify('Selection created. Drag to move, Ctrl+C to copy, Ctrl+X to cut, Ctrl+V to paste, or Delete to clear.');
       }
     }
   }else{
@@ -1593,6 +1680,64 @@ function endDraw(ev){
 
 main.addEventListener('pointerup', endDraw);
 main.addEventListener('pointercancel', endDraw);
+
+// Track 'c' key for canvas zoom
+window.addEventListener('keydown', (ev)=>{
+  if(ev.key === 'c' || ev.code === 'KeyC') cKeyPressed = true;
+});
+window.addEventListener('keyup', (ev)=>{
+  if(ev.key === 'c' || ev.code === 'KeyC') cKeyPressed = false;
+});
+// Reset key state on window blur to prevent stuck zoom mode
+window.addEventListener('blur', ()=>{
+  cKeyPressed = false;
+});
+
+// Mouse wheel events for brush size and canvas zoom
+main.addEventListener('wheel', (ev)=>{
+  if(isPlaying) return;
+  
+  // Canvas zoom with C + wheel (or Ctrl/Cmd + wheel)
+  if(cKeyPressed || ev.ctrlKey || ev.metaKey){
+    const oldZoom = canvasZoom;
+    const delta = ev.deltaY > 0 ? -0.1 : 0.1;
+    canvasZoom = Math.max(0.5, Math.min(canvasZoom + delta, 3.0));
+    if(canvasZoom !== oldZoom){
+      ev.preventDefault();
+      updateCanvasZoom();
+    }
+  } else {
+    // Brush size with wheel (without modifier)
+    const oldBrush = brush;
+    const delta = ev.deltaY > 0 ? -1 : 1;
+    brush = Math.max(1, Math.min(brush + delta, 8));
+    if(brush !== oldBrush){
+      ev.preventDefault();
+      brushSize.value = String(brush);
+      brushSizeLabel.textContent = String(brush);
+    }
+  }
+}, { passive: false });
+
+// Canvas zoom functionality
+function updateCanvasZoom(){
+  const scale = canvasZoom;
+  main.style.transform = `scale(${scale})`;
+  const btn = document.getElementById('canvasZoomResetBtn');
+  if(btn) btn.textContent = `Zoom ${Math.round(scale * 100)}%`;
+}
+
+// Set transform origin once during initialization
+main.style.transformOrigin = 'center center';
+
+// Canvas zoom reset button
+const canvasZoomResetBtn = document.getElementById('canvasZoomResetBtn');
+if(canvasZoomResetBtn){
+  canvasZoomResetBtn.addEventListener('click', ()=>{
+    canvasZoom = 1.0;
+    updateCanvasZoom();
+  });
+}
 
 // -------------------- UI events --------------------
 
@@ -1682,6 +1827,80 @@ if(montageScrubber){
       const blank = new Uint8Array(W*H); blank.fill(240); renderPreviewFrameBytes(blank);
       const playPosEl = document.getElementById('montagePlayPos'); if(playPosEl) playPosEl.textContent = `0 / ${totalMontage}f`;
     }
+  });
+}
+
+// Timeline preview on hover (montage mode only)
+const timelinePreview = document.getElementById('timelinePreview');
+const previewCanvas = timelinePreview ? timelinePreview.querySelector('canvas') : null;
+const previewInfo = document.getElementById('previewInfo');
+
+if(montageScrubber && timelinePreview && previewCanvas){
+  const previewCtx = previewCanvas.getContext('2d', { alpha: false });
+  previewCtx.imageSmoothingEnabled = false;
+  
+  montageScrubber.addEventListener('mousemove', (e)=>{
+    // Only show preview in montage mode
+    if(currentMode !== 'montage' || montageChunks.length === 0) return;
+    
+    const rect = montageScrubber.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percent = x / rect.width;
+    const totalMontage = computeMontageTotalFrames();
+    const framePos = Math.max(1, Math.min(Math.ceil(percent * totalMontage), totalMontage));
+    
+    // Find chunk and frame for this position
+    let acc = 0;
+    let found = false;
+    for(let i=0; i<montageChunks.length; i++){
+      const ch = montageChunks[i];
+      const len = (ch.frameRange && (ch.frameRange.end - ch.frameRange.start)) || 0;
+      if(framePos <= acc + len){
+        const frameIdx = framePos - acc - 1;
+        if(ch._project){
+          const frameInSource = ch.frameRange.start + frameIdx;
+          if(frameInSource < (ch._project.frameCount || (ch._project.frames && ch._project.frames.length))){
+            const bytes = _decodeFrameFromProject(ch._project, frameInSource);
+            // Render to preview canvas using ImageData for better performance
+            const imgData = new ImageData(W, H);
+            for(let j=0; j<bytes.length; j++){
+              const v = bytes[j];
+              const idx = j * 4;
+              imgData.data[idx] = v;     // R
+              imgData.data[idx+1] = v;   // G
+              imgData.data[idx+2] = v;   // B
+              imgData.data[idx+3] = 255; // A
+            }
+            offCtx.putImageData(imgData, 0, 0);
+            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            previewCtx.drawImage(off, 0, 0, previewCanvas.width, previewCanvas.height);
+            
+            // Update info text
+            if(previewInfo) previewInfo.textContent = `${ch.alias || ch.name} - Frame ${frameInSource + 1}`;
+            
+            // Position and show tooltip
+            timelinePreview.style.left = `${Math.max(50, Math.min(x, rect.width - 50))}px`;
+            timelinePreview.style.display = 'block';
+            requestAnimationFrame(()=> timelinePreview.classList.add('visible'));
+            found = true;
+          }
+        }
+        break;
+      }
+      acc += len;
+    }
+    
+    if(!found){
+      timelinePreview.style.display = 'none';
+      timelinePreview.classList.remove('visible');
+    }
+  });
+  
+  montageScrubber.addEventListener('mouseleave', ()=>{
+    timelinePreview.classList.remove('visible');
+    setTimeout(()=> {
+      if(!timelinePreview.classList.contains('visible')) timelinePreview.style.display = 'none';
+    }, PREVIEW_HIDE_DELAY_MS);
   });
 }
 
@@ -1776,6 +1995,20 @@ onionSlider.addEventListener('input', ()=>{
   onionLabel.textContent = String(onionDepth);
   if(!isPlaying) renderMain();
 });
+
+// Color palette quick access
+const colorPalette = document.getElementById('colorPalette');
+if(colorPalette){
+  colorPalette.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-gray]');
+    if(btn){
+      const grayValue = Number(btn.dataset.gray);
+      graySlider.value = String(grayValue);
+      gray = grayValue;
+      grayLabel.textContent = String(grayValue);
+    }
+  });
+}
 
 // Keyboard shortcuts
 window.addEventListener('keydown', e=>{
@@ -1993,6 +2226,7 @@ let _editingChunkContext = null; // { chunkIdx: number }
 let _trimDragging = null;
 let currentMode = 'chunk'; // 'chunk' | 'montage' - used to gate drawing and UI state
 let _pendingInsertPosition = null; // null or number - position to insert next imported chunk
+
  // 'left'|'right' or null
 
 function generateId(prefix='chunk'){
@@ -2117,9 +2351,9 @@ function updateMontageRulers(totalFrames){
     topRuler.style.display = 'block';
     bottomRuler.style.display = 'block';
     
-    // Top ruler: frame indices (show every ~10% of total or key positions)
+    // Top ruler: frame indices
     topRuler.innerHTML = '';
-    const step = Math.max(1, Math.ceil(totalFrames / 8)); // Show ~8 markers
+    const step = Math.max(1, Math.ceil(totalFrames / BASE_MARKER_COUNT));
     for(let i = 0; i <= totalFrames; i += step){
       if(i === 0) continue; // Skip 0, start from 1
       const marker = document.createElement('span');
@@ -2133,7 +2367,7 @@ function updateMontageRulers(totalFrames){
     // Bottom ruler: time in seconds (12 fps)
     bottomRuler.innerHTML = '';
     const totalSeconds = totalFrames / FPS;
-    const timeStep = Math.max(0.5, Math.ceil(totalSeconds / 8) / 2) * 2; // Round to 0.5s increments
+    const timeStep = Math.max(0.5, Math.ceil(totalSeconds / BASE_MARKER_COUNT) / 2) * 2; // Round to 0.5s increments
     for(let t = 0; t <= totalSeconds; t += timeStep){
       const marker = document.createElement('span');
       marker.textContent = `${t.toFixed(1)}s`;
@@ -3484,6 +3718,9 @@ function init(){
   // set initial button visibility (chunk mode by default)
   if(playBtn) playBtn.style.display = '';
   if(montagePlayBtn) montagePlayBtn.style.display = 'none';
+  
+  // Initialize montage integration button visibility
+  updateMontageIntegrationButtons();
 
   window.addEventListener('resize', ()=>renderMain());
 }
