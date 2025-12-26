@@ -84,6 +84,12 @@ input[type="range"]{width:160px}
 .toast{pointer-events:auto;min-width:180px;max-width:360px;padding:10px 12px;border-radius:10px;background:linear-gradient(180deg,#0f1720,#0b131e);border:1px solid rgba(255,255,255,.06);color:var(--text);box-shadow:0 10px 30px rgba(0,0,0,.35);opacity:0;transform:translateY(6px);transition:opacity .18s ease,transform .18s ease}
 .toast.visible{opacity:1;transform:translateY(0)}
 
+/* Timeline preview tooltip */
+.timeline-preview{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);background:linear-gradient(180deg,#0f1720,#0b131e);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px;box-shadow:0 8px 20px rgba(0,0,0,.4);pointer-events:none;opacity:0;transition:opacity .15s ease;z-index:100;display:none}
+.timeline-preview.visible{opacity:1}
+.timeline-preview canvas{width:80px;height:80px;border-radius:6px;background:#fff;image-rendering:pixelated;border:1px solid rgba(255,255,255,.06);display:block}
+.timeline-preview .info{font-size:10px;color:var(--muted);margin-top:4px;text-align:center}
+
 @media (max-width:980px){
   .wrap{grid-template-columns:1fr}
   canvas#main{width:min(92vw,512px);height:min(92vw,512px)}
@@ -223,6 +229,12 @@ input[type="range"]{width:160px}
               <span>Frames: <strong id="montageTotalFrames" style="color:var(--text)">0</strong></span>
               <span>Position: <strong id="montagePlayPos" style="color:var(--text)">0 / 0f</strong></span>
               <span>Time: <strong id="montageTimePos" style="color:var(--text)">0.0s</strong></span>
+              <div id="timelineZoomControls" style="display:flex;gap:4px;align-items:center">
+                <span style="font-size:10px">Zoom:</span>
+                <button id="zoomOutBtn" style="padding:2px 6px;font-size:10px;min-width:auto" title="Zoom out">−</button>
+                <span id="zoomLevel" style="font-size:10px;color:var(--text);min-width:35px;text-align:center">100%</span>
+                <button id="zoomInBtn" style="padding:2px 6px;font-size:10px;min-width:auto" title="Zoom in">+</button>
+              </div>
             </div>
           </div>
           
@@ -234,6 +246,11 @@ input[type="range"]{width:160px}
             <input id="montageScrubber" class="scrubber" type="range" min="1" max="1" value="1" />
             <!-- Chunk delimiter markers - only shown in montage mode -->
             <div id="chunkDelimiters" style="display:none;position:absolute;top:0;left:0;right:0;height:100%;pointer-events:none"></div>
+            <!-- Timeline preview tooltip -->
+            <div id="timelinePreview" class="timeline-preview">
+              <canvas width="64" height="64"></canvas>
+              <div class="info"><span id="previewInfo">Frame 1</span></div>
+            </div>
           </div>
           
           <!-- Bottom ruler (time) - only shown in montage mode -->
@@ -1758,6 +1775,77 @@ if(montageScrubber){
   });
 }
 
+// Timeline preview on hover (montage mode only)
+const timelinePreview = document.getElementById('timelinePreview');
+const previewCanvas = timelinePreview ? timelinePreview.querySelector('canvas') : null;
+const previewInfo = document.getElementById('previewInfo');
+
+if(montageScrubber && timelinePreview && previewCanvas){
+  const previewCtx = previewCanvas.getContext('2d', { alpha: false });
+  previewCtx.imageSmoothingEnabled = false;
+  
+  montageScrubber.addEventListener('mousemove', (e)=>{
+    // Only show preview in montage mode
+    if(currentMode !== 'montage' || montageChunks.length === 0) return;
+    
+    const rect = montageScrubber.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percent = x / rect.width;
+    const totalMontage = computeMontageTotalFrames();
+    const framePos = Math.max(1, Math.min(Math.ceil(percent * totalMontage), totalMontage));
+    
+    // Find chunk and frame for this position
+    let acc = 0;
+    let found = false;
+    for(let i=0; i<montageChunks.length; i++){
+      const ch = montageChunks[i];
+      const len = (ch.frameRange && (ch.frameRange.end - ch.frameRange.start)) || 0;
+      if(framePos <= acc + len){
+        const frameIdx = framePos - acc - 1;
+        if(ch._project){
+          const frameInSource = ch.frameRange.start + frameIdx;
+          if(frameInSource < (ch._project.frameCount || (ch._project.frames && ch._project.frames.length))){
+            const bytes = _decodeFrameFromProject(ch._project, frameInSource);
+            // Render to preview canvas
+            offCtx.putImageData(new ImageData(new Uint8ClampedArray(bytes.length * 4), W, H), 0, 0);
+            for(let j=0; j<bytes.length; j++){
+              const v = bytes[j];
+              const idx = j * 4;
+              offCtx.fillStyle = `rgb(${v},${v},${v})`;
+              offCtx.fillRect(j % W, Math.floor(j / W), 1, 1);
+            }
+            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            previewCtx.drawImage(off, 0, 0, previewCanvas.width, previewCanvas.height);
+            
+            // Update info text
+            if(previewInfo) previewInfo.textContent = `${ch.alias || ch.name} - Frame ${frameInSource + 1}`;
+            
+            // Position and show tooltip
+            timelinePreview.style.left = `${Math.max(50, Math.min(x, rect.width - 50))}px`;
+            timelinePreview.style.display = 'block';
+            requestAnimationFrame(()=> timelinePreview.classList.add('visible'));
+            found = true;
+          }
+        }
+        break;
+      }
+      acc += len;
+    }
+    
+    if(!found){
+      timelinePreview.style.display = 'none';
+      timelinePreview.classList.remove('visible');
+    }
+  });
+  
+  montageScrubber.addEventListener('mouseleave', ()=>{
+    timelinePreview.classList.remove('visible');
+    setTimeout(()=> {
+      if(!timelinePreview.classList.contains('visible')) timelinePreview.style.display = 'none';
+    }, 150);
+  });
+}
+
 // Dedicated montage scrubber (per-frame across all chunks)
 // Note: The 'input' event listener for montageScrubber is defined earlier (line ~1337)
 // and handles both chunk editor mode and montage mode. The 'pointerdown' listener
@@ -2080,6 +2168,8 @@ let _editingChunkContext = null; // { chunkIdx: number }
 let _trimDragging = null;
 let currentMode = 'chunk'; // 'chunk' | 'montage' - used to gate drawing and UI state
 let _pendingInsertPosition = null; // null or number - position to insert next imported chunk
+let timelineZoom = 1.0; // Timeline zoom level (1.0 = 100%, 2.0 = 200%, etc.)
+
  // 'left'|'right' or null
 
 function generateId(prefix='chunk'){
@@ -2204,9 +2294,10 @@ function updateMontageRulers(totalFrames){
     topRuler.style.display = 'block';
     bottomRuler.style.display = 'block';
     
-    // Top ruler: frame indices (show every ~10% of total or key positions)
+    // Top ruler: frame indices (show more markers when zoomed in)
     topRuler.innerHTML = '';
-    const step = Math.max(1, Math.ceil(totalFrames / 8)); // Show ~8 markers
+    const markersToShow = Math.ceil(8 * timelineZoom); // More markers when zoomed
+    const step = Math.max(1, Math.ceil(totalFrames / markersToShow));
     for(let i = 0; i <= totalFrames; i += step){
       if(i === 0) continue; // Skip 0, start from 1
       const marker = document.createElement('span');
@@ -2217,10 +2308,11 @@ function updateMontageRulers(totalFrames){
       topRuler.appendChild(marker);
     }
     
-    // Bottom ruler: time in seconds (12 fps)
+    // Bottom ruler: time in seconds (12 fps, more markers when zoomed)
     bottomRuler.innerHTML = '';
     const totalSeconds = totalFrames / FPS;
-    const timeStep = Math.max(0.5, Math.ceil(totalSeconds / 8) / 2) * 2; // Round to 0.5s increments
+    const timeMarkersToShow = Math.ceil(8 * timelineZoom);
+    const timeStep = Math.max(0.1, Math.ceil((totalSeconds / timeMarkersToShow) * 10) / 10); // Round to 0.1s increments
     for(let t = 0; t <= totalSeconds; t += timeStep){
       const marker = document.createElement('span');
       marker.textContent = `${t.toFixed(1)}s`;
@@ -2940,6 +3032,35 @@ const montageLoadBtn = document.getElementById('montageLoadBtn');
 const montageLoadInputEl = document.getElementById('montageLoadInput');
 const saveMontageBtn = document.getElementById('saveMontageBtn');
 const montagePlayBtn = document.getElementById('montagePlayBtn');
+
+// Timeline zoom controls
+const zoomInBtn = document.getElementById('zoomInBtn');
+const zoomOutBtn = document.getElementById('zoomOutBtn');
+const zoomLevelEl = document.getElementById('zoomLevel');
+
+if(zoomInBtn){
+  zoomInBtn.addEventListener('click', ()=>{
+    timelineZoom = Math.min(timelineZoom + 0.25, 3.0); // Max 300%
+    updateTimelineZoom();
+  });
+}
+
+if(zoomOutBtn){
+  zoomOutBtn.addEventListener('click', ()=>{
+    timelineZoom = Math.max(timelineZoom - 0.25, 0.5); // Min 50%
+    updateTimelineZoom();
+  });
+}
+
+function updateTimelineZoom(){
+  if(zoomLevelEl) zoomLevelEl.textContent = `${Math.round(timelineZoom * 100)}%`;
+  // Update ruler scale and chunk delimiter rendering
+  if(currentMode === 'montage'){
+    const totalFrames = computeMontageTotalFrames();
+    updateMontageRulers(totalFrames);
+    updateChunkDelimiters(totalFrames);
+  }
+}
 
 // Default mode is chunk editor
 setMode('chunk');
