@@ -1,11 +1,9 @@
 # Frame-by-Frame Animator - TODO
 
-
-
-
 ## High Priority
 
 ### Montage Editor
+
 - [ ] **Unsaved changes indicator** - Warn before closing/navigating with unsaved work (High importance for data loss prevention)
 - [x] **Chunk preview thumbnails** - ✅ Implemented with 56px thumbnails spanning two rows
 - [x] **Drag and drop for chunk reordering** - ✅ Implemented with visual feedback
@@ -13,16 +11,19 @@
 - [ ] **Timeline zoom and preview on hover** - Allow zooming in/out of scrubber for detailed frame-by-frame work, show preview when hovering over timeline
 
 ### Chunk Editor
+
 - [ ] **Unsaved changes indicator** - Warn before switching modes or loading new project
 
 
 ### General UX
+
 - [ ] **Tooltips enhancement** - Add helpful tooltips on all buttons and controls for better discoverability
 - [ ] **Keyboard shortcuts reference** - Show cheat sheet accessible via "?" key
 
 ## Medium Priority
 
 ### Montage Editor
+
 - [x] **Chunk color coding** - ✅ Implemented with 12-color pre-allocated palette
 - [x] **Playhead positioning on chunk selection** - ✅ Implemented, positions to chunk start
 - [x] **Optimized chunk layout** - ✅ Two-row design with duration (Xf format), color, alias, and controls
@@ -30,11 +31,13 @@
 - [x] **Time display** - ✅ Fixed to update correctly during scrubbing and playback
 
 ### Chunk Editor
+
 - [x] **Grid overlay option** - ✅ Implemented as layout guides (rule of thirds)
 - [x] **Optimized layout** - ✅ 4-column thumbnails, compact tools, project info in actions
 - [ ] **Color palette** - Quick-access grayscale palette (0, 64, 128, 192, 255 values)
 
 ### General UX
+
 - [ ] **Recent files list** - Quick access to recently loaded projects/montages (localStorage)
 - [ ] **Project metadata fields** - Optional title, author, description for better organization
 - [ ] **Export presets** - Save common GIF/MP4 export settings (size, quality, loop count)
@@ -42,13 +45,16 @@
 ## Low Priority
 
 ### Montage Editor
+
 - [ ] **Chunk groups/folders** - Organize chunks into logical groups for large projects
 
 ### Chunk Editor
+
 - [x] **Selection tool** - ✅ Fully implemented with copy/cut/paste, drag-and-drop, and floating selection
 - [ ] **Drawing tools expansion** - Add line, rectangle, circle, fill tools
 
 ### General UX
+
 - [ ] **Mobile/tablet support** - Touch-friendly controls and responsive layout
 - [ ] **Accessibility improvements** - Better ARIA labels, keyboard navigation, screen reader support
 - [ ] **Internationalization** - Support for multiple languages
@@ -56,6 +62,7 @@
 ## Future Major Features (Requires Separate PR)
 
 ### Color and Transparency Support
+
 - [ ] **Add RGBA color support to chunk editor** - Major feature that will disruptively change file format
   - **Breaking change**: Will require migration of existing projects from grayscale (1 byte per pixel) to RGBA (4 bytes per pixel)
   - **UI changes needed**:
@@ -100,16 +107,19 @@
 ## Advanced Features (May break monolithic design)
 
 ### Collaboration
+
 - [ ] **Share via URL** - Export project as data URL for easy sharing
 - [ ] **Portable HTML viewer** - Self-contained HTML file that can play animation without editor
 - [ ] **Cloud sync** - Optional cloud storage integration (requires backend)
 
-### Extensibility  
+### Extensibility
+
 - [ ] **Plugin system** - Allow custom tools/exporters via JavaScript plugins
 - [ ] **Custom export formats** - WebP, APNG, sprite sheets, etc.
 - [ ] **Import from video** - Convert video files to frame sequences (requires ffmpeg.wasm)
 
 ### Effects & Filters
+
 - [ ] **Basic image processing** - Invert, brightness, contrast adjustments
 - [ ] **Blur/sharpen filters** - Applied to frames or ranges
 - [ ] **Color adjustments** - Grayscale curve editor

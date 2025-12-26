@@ -1,10 +1,10 @@
-# Animator
+# Frame-by-frame Pixel Animator
 
 A minimal browser-based frame-by-frame animator and GIF exporter.
 
-## What it is for 
+## What it is for
 
-- Create simple animations in the browser and export them as a project JSON or a GIF.
+- Create simple animations in the browser and export them as a project JSON or a GIF/webm.
 - Small, dependency-light implementation using `animator.html` and `vendor/gif.js`.
 
 GUI Screenshot
@@ -14,16 +14,16 @@ GUI Screenshot
 > **Tip:** Open `animator.html` in a browser to view the UI shown above.
 
 Example GIF
-![ex 2](./example/animation-2025-12-24T21-11-00-028Z.gif)
+![ex 2](./example/montage-2025-12-26T15-49-22-009Z.gif)
 
-## Project layout 
+## Project layout
 
 - `animator.html` — main UI and app logic (canvas, frame editing, import/export).
 - `vendor/gif.js`, `vendor/gif.worker.js` — GIF encoding (used for `Export GIF`). This project includes a bundled copy of gif.js [https://github.com/jnordberg/gif.js](https://github.com/jnordberg/gif.js) for offline builds — gif.js is MIT-licensed; include or reference its LICENSE when redistributing.
 - The `example/` folder contains saved project JSONs you can load from the UI using **Project Actions → Load Project**. To validate those files locally, run `node scripts/validate_examples.js` (checks `frameCount` and per-frame byte lengths).
 - `example/` — saved project JSONs (examples and tests).
 
-## Data format (project JSON) 
+## Data format (project JSON)
 
 Schema (concise):
 
@@ -48,7 +48,7 @@ Schema (concise):
 
 > Note: frames are stored as base64 image data (payload strings). The app expects the array order to be the playback order.
 
-## Montage (Film) Editor — Draft spec 
+## Montage (Film) Editor — Draft spec
 
 **Goal:** arrange animation "chunks" (segments from existing project JSONs) in a timeline, supporting batch import, insert-before, drag-to-reorder, non-destructive **trimming** (time-axis, by frames), and save/load of a montage project. The UI will remain **vanilla** and simple; imports must match the montage `width`/`height`/`fps` (validated, see `scripts/validate_examples.js`).
 
@@ -100,36 +100,29 @@ Schema (concise):
 
 **Wireframes & interaction details:** See `docs/montage-wireframes.md` for ASCII wireframes, interaction notes, and a short implementation-ready API list.
 
-## How to use 
+## How to use
 
 - Open `animator.html` in a browser (no build step required).
 - Use UI buttons to add frames, play, import/export JSON, and export GIF.
 
 ### Chunk Editor Mode
+
 - **Drawing tools**: Pencil, Eraser, Soft brush, and Selection tool
-- **Layout guides**: Toggle rule-of-thirds overlay for composition (Grid On/Off button)
-- **Selection tool**: Advanced copy/cut/paste with drag-and-drop
-  - Click and drag to select an area
-  - **Ctrl+C**: Copy selection (clipboard persists)
-  - **Ctrl+X**: Cut selection (clears original area)
-  - **Ctrl+V**: Paste as floating selection (orange border, drag to reposition)
-  - **Delete**: Clear selected area
-  - **Drag selection**: Move selected area to new location
-- **Frame management**: Add, duplicate, delete frames; drag thumbnails to reorder (4-column grid)
+- **Grid overlay**: Toggle pixel grid for precise alignment (Grid On/Off button)
+- **Selection tool**: Click and drag to select an area, press Delete to clear selected pixels
+- **Frame management**: Add, duplicate, delete frames; drag thumbnails to reorder
 - **Onion skinning**: Adjust transparency to see previous frames while drawing
-- **Compact UI**: Drawing tools grouped by function, project info integrated in actions
 
 ### Montage Editor Mode
+
 - **Import chunks**: Load multiple project JSON files to assemble a montage
 - **Chunk reordering**: Drag and drop chunks to change their order in the timeline
-- **Color coding**: Pre-allocated 12-color palette, assign colors to chunks for visual tracking
-- **Chunk layout**: Two-row design with duration (12f format), color picker, alias, and controls
-- **Alias handling**: Long names truncated with ellipsis, full name shown on hover
+- **Color coding**: Assign colors to chunks for visual tracking on the timeline
 - **Trim chunks**: Adjust start/end frames for each chunk non-destructively
-- **Timeline scrubber**: Visual representation with color-coded chunk regions and time display
-- **Playback**: Preview the entire montage sequence with accurate time tracking
+- **Timeline scrubber**: Visual representation with color-coded chunk regions
+- **Playback**: Preview the entire montage sequence
 
-## Implementation details — `animator.html` 
+## Implementation details — `animator.html`
 
 - **Data model**: `frames` is an Array of `Uint8Array` (length `W*H`), one byte per pixel (0 = black, 255 = white). New frames are created with `makeBlankFrame()`.
 - **Save / Load**: `saveProject()` serializes raw bytes as base64 (`btoa(String.fromCharCode(...))`); `loadProject()` decodes with `atob()` and validates `width`, `height`, and frame lengths.
@@ -140,7 +133,7 @@ Schema (concise):
 - **Playback**: `setPlaying()` uses `setInterval` with `FPS` to step frames and disables editing while playing.
 - **GIF Export**: `saveGif()` composes frames at `DISPLAY` (512) onto a white background and uses `gif.js`; `getGifWorkerBlobUrl()` loads `./vendor/gif.worker.js` or falls back to CDN.
 
-**Configuration & maintenance tips** 
+## Configuration & maintenance tips
 
 - Change `W`, `H` for the internal raster size, `DISPLAY` for on-screen/export resolution, and `FPS` for playback frame rate.
 - Notifications now use non-blocking in-page toasts (instead of blocking `alert()`), shown in the bottom-right.
