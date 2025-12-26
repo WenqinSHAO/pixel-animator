@@ -1688,6 +1688,10 @@ window.addEventListener('keydown', (ev)=>{
 window.addEventListener('keyup', (ev)=>{
   if(ev.key === 'c' || ev.code === 'KeyC') cKeyPressed = false;
 });
+// Reset key state on window blur to prevent stuck zoom mode
+window.addEventListener('blur', ()=>{
+  cKeyPressed = false;
+});
 
 // Mouse wheel events for brush size and canvas zoom
 main.addEventListener('wheel', (ev)=>{
@@ -1695,17 +1699,23 @@ main.addEventListener('wheel', (ev)=>{
   
   // Canvas zoom with C + wheel (or Ctrl/Cmd + wheel)
   if(cKeyPressed || ev.ctrlKey || ev.metaKey){
-    ev.preventDefault();
+    const oldZoom = canvasZoom;
     const delta = ev.deltaY > 0 ? -0.1 : 0.1;
     canvasZoom = Math.max(0.5, Math.min(canvasZoom + delta, 3.0));
-    updateCanvasZoom();
+    if(canvasZoom !== oldZoom){
+      ev.preventDefault();
+      updateCanvasZoom();
+    }
   } else {
     // Brush size with wheel (without modifier)
-    ev.preventDefault();
+    const oldBrush = brush;
     const delta = ev.deltaY > 0 ? -1 : 1;
     brush = Math.max(1, Math.min(brush + delta, 8));
-    brushSize.value = String(brush);
-    brushSizeLabel.textContent = String(brush);
+    if(brush !== oldBrush){
+      ev.preventDefault();
+      brushSize.value = String(brush);
+      brushSizeLabel.textContent = String(brush);
+    }
   }
 }, { passive: false });
 
@@ -1713,10 +1723,12 @@ main.addEventListener('wheel', (ev)=>{
 function updateCanvasZoom(){
   const scale = canvasZoom;
   main.style.transform = `scale(${scale})`;
-  main.style.transformOrigin = 'center center';
   const btn = document.getElementById('canvasZoomResetBtn');
   if(btn) btn.textContent = `Zoom ${Math.round(scale * 100)}%`;
 }
+
+// Set transform origin once during initialization
+main.style.transformOrigin = 'center center';
 
 // Canvas zoom reset button
 const canvasZoomResetBtn = document.getElementById('canvasZoomResetBtn');
