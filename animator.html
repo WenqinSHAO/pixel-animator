@@ -176,6 +176,17 @@ input[type="range"]{width:160px}
               <span id="onionLabel" class="pill" style="padding:3px 6px;font-size:10px">5</span>
             </label>
           </div>
+          <!-- Color palette row -->
+          <div style="display:flex;gap:6px;align-items:center;font-size:11px">
+            <span style="color:var(--muted);font-size:10px;letter-spacing:.3px;text-transform:uppercase">Palette:</span>
+            <div id="colorPalette" style="display:flex;gap:4px">
+              <button data-gray="0" style="width:28px;height:28px;padding:0;background:#000;border:1px solid var(--border);border-radius:6px;cursor:pointer" title="Black (0)"></button>
+              <button data-gray="64" style="width:28px;height:28px;padding:0;background:#404040;border:1px solid var(--border);border-radius:6px;cursor:pointer" title="Dark Gray (64)"></button>
+              <button data-gray="128" style="width:28px;height:28px;padding:0;background:#808080;border:1px solid var(--border);border-radius:6px;cursor:pointer" title="Mid Gray (128)"></button>
+              <button data-gray="192" style="width:28px;height:28px;padding:0;background:#c0c0c0;border:1px solid var(--border);border-radius:6px;cursor:pointer" title="Light Gray (192)"></button>
+              <button data-gray="255" style="width:28px;height:28px;padding:0;background:#fff;border:1px solid var(--border);border-radius:6px;cursor:pointer" title="White (255)"></button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1013,6 +1024,26 @@ function insertFrameBefore(from, to){
   updateUI();
 }
 
+// Swap two frames at indices `a` and `b`
+function swapFrames(a, b){
+  if(isPlaying) return;
+  if(a === b || a < 0 || b < 0 || a >= frames.length || b >= frames.length) return;
+  
+  // Swap frames
+  [frames[a], frames[b]] = [frames[b], frames[a]];
+  [undoStacks[a], undoStacks[b]] = [undoStacks[b], undoStacks[a]];
+  [redoStacks[a], redoStacks[b]] = [redoStacks[b], redoStacks[a]];
+  
+  // Update current selection
+  if(current === a) current = b;
+  else if(current === b) current = a;
+  
+  initThumbs(true);
+  renderAllThumbs();
+  renderMain();
+  updateUI();
+}
+
 // -------------------- Project Save/Load (FPS fixed at 12) --------------------
 // Projects store raw frame bytes base64-encoded. This keeps export/import tiny and
 // fully lossless for the internal byte representation. To switch to PNG data URIs,
@@ -1364,13 +1395,50 @@ function initThumbs(preserveIndex = true){
     c.width = 64;
     c.height = 64;
     c.getContext('2d', { alpha:false }).imageSmoothingEnabled = false;
+    
+    // Add arrow buttons for frame reordering
+    const arrows = document.createElement('div');
+    arrows.style.cssText = 'position:absolute;top:6px;right:6px;display:flex;gap:2px;opacity:0;transition:opacity 0.15s';
+    arrows.className = 'frame-arrows';
+    
+    const leftArrow = document.createElement('button');
+    leftArrow.innerHTML = '◀';
+    leftArrow.title = 'Move left';
+    leftArrow.style.cssText = 'width:20px;height:20px;padding:0;font-size:10px;background:rgba(0,0,0,0.7);border:1px solid rgba(255,255,255,0.3);border-radius:4px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center';
+    leftArrow.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(i > 0) swapFrames(i, i - 1);
+    });
+    
+    const rightArrow = document.createElement('button');
+    rightArrow.innerHTML = '▶';
+    rightArrow.title = 'Move right';
+    rightArrow.style.cssText = 'width:20px;height:20px;padding:0;font-size:10px;background:rgba(0,0,0,0.7);border:1px solid rgba(255,255,255,0.3);border-radius:4px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center';
+    rightArrow.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(i < frames.length - 1) swapFrames(i, i + 1);
+    });
+    
+    arrows.appendChild(leftArrow);
+    arrows.appendChild(rightArrow);
 
     el.appendChild(idx);
     el.appendChild(c);
+    el.appendChild(arrows);
+    
+    // Show arrows on hover
+    el.addEventListener('mouseenter', ()=>{
+      arrows.style.opacity = '1';
+    });
+    el.addEventListener('mouseleave', ()=>{
+      arrows.style.opacity = '0';
+    });
 
-    // Click selects frame
-    el.addEventListener('click', ()=>{
+    // Click selects frame (updated to handle arrow button clicks)
+    el.addEventListener('click', (e)=>{
       if(isPlaying) return;
+      // Don't select if clicking on arrow buttons
+      if(e.target.closest('.frame-arrows')) return;
       setCurrent(i);
     });
 
@@ -1400,7 +1468,8 @@ function initThumbs(preserveIndex = true){
       const from = Number(ev.dataTransfer.getData('text/plain'));
       const to = thumbs.indexOf(el);
       if(Number.isNaN(from) || from === to) return;
-      insertFrameBefore(from, to);
+      // Swap frames instead of inserting before
+      swapFrames(from, to);
     });
 
     el.addEventListener('dragend', ev => {
@@ -1417,10 +1486,6 @@ function initThumbs(preserveIndex = true){
   renderAllThumbs();
   updateProjectMetaUI();
 }
-
-// Allow dropping on the grid background to move a frame to the end
-frameGrid.addEventListener('dragover', ev => { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; });
-frameGrid.addEventListener('drop', ev => { ev.preventDefault(); const from = Number(ev.dataTransfer.getData('text/plain')); if(Number.isNaN(from)) return; insertFrameBefore(from, frames.length); });
 
 // -------------------- Drawing --------------------
 // Pointer events (pointerdown/pointermove/pointerup) call `applyStroke()` which
@@ -1580,7 +1645,7 @@ function endDraw(ev){
             selectionData[destIdx] = frameArr[srcIdx];
           }
         }
-        notify('Selection created. Drag to move, Ctrl+X to cut, or Delete to clear.');
+        notify('Selection created. Drag to move, Ctrl+C to copy, Ctrl+X to cut, Ctrl+V to paste, or Delete to clear.');
       }
     }
   }else{
@@ -1776,6 +1841,20 @@ onionSlider.addEventListener('input', ()=>{
   onionLabel.textContent = String(onionDepth);
   if(!isPlaying) renderMain();
 });
+
+// Color palette quick access
+const colorPalette = document.getElementById('colorPalette');
+if(colorPalette){
+  colorPalette.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-gray]');
+    if(btn){
+      const grayValue = Number(btn.dataset.gray);
+      graySlider.value = String(grayValue);
+      gray = grayValue;
+      grayLabel.textContent = String(grayValue);
+    }
+  });
+}
 
 // Keyboard shortcuts
 window.addEventListener('keydown', e=>{
@@ -3484,6 +3563,9 @@ function init(){
   // set initial button visibility (chunk mode by default)
   if(playBtn) playBtn.style.display = '';
   if(montagePlayBtn) montagePlayBtn.style.display = 'none';
+  
+  // Initialize montage integration button visibility
+  updateMontageIntegrationButtons();
 
   window.addEventListener('resize', ()=>renderMain());
 }
