@@ -1639,7 +1639,7 @@ let montageChunks = []; // {id,name,source:{type,ref|project}, frameRange:{start
 let montagePlaying = false;
 let selectedChunkIdx = -1;
 // Track editing context: which montage chunk is being edited in chunk editor
-let _editingChunkContext = null; // { chunkIdx: number, montageChunks: array }
+let _editingChunkContext = null; // { chunkIdx: number }
 
 let _trimDragging = null;
 let currentMode = 'chunk'; // 'chunk' | 'montage' - used to gate drawing and UI state
@@ -1677,17 +1677,23 @@ function computeMontageTotalFrames(){
   return montageChunks.reduce((s,ch)=> s + Math.max(0, (ch.frameRange && (ch.frameRange.end - ch.frameRange.start)) || 0), 0);
 }
 
+function updateMontageTimeDisplay(pos){
+  const timeEl = document.getElementById('montageTimePos');
+  if(timeEl && currentMode === 'montage'){
+    const timeInSeconds = ((pos - 1) / FPS).toFixed(1);
+    timeEl.textContent = `${timeInSeconds}s`;
+  }
+}
+
 function updateMontageMetaUI(){
   const totalFrames = computeMontageTotalFrames();
   const el = document.getElementById('montageTotalFrames');
   if(el) el.textContent = String(totalFrames);
   
   // Update time position
-  const timeEl = document.getElementById('montageTimePos');
-  if(timeEl && currentMode === 'montage'){
+  if(currentMode === 'montage'){
     const pos = Number(montageScrubber.value) || 1;
-    const timeInSeconds = ((pos - 1) / FPS).toFixed(1);
-    timeEl.textContent = `${timeInSeconds}s`;
+    updateMontageTimeDisplay(pos);
   }
 }
 
@@ -1722,11 +1728,7 @@ function updateMontageScrubberUI(){
   const playPosEl = document.getElementById('montagePlayPos'); if(playPosEl) playPosEl.textContent = `${pos} / ${total}f`;
   
   // Update time display
-  const timeEl = document.getElementById('montageTimePos');
-  if(timeEl && currentMode === 'montage'){
-    const timeInSeconds = ((pos - 1) / FPS).toFixed(1);
-    timeEl.textContent = `${timeInSeconds}s`;
-  }
+  updateMontageTimeDisplay(pos);
   
   // Update rulers and chunk delimiters for montage mode
   if(currentMode === 'montage'){
@@ -2073,7 +2075,7 @@ function editChunkInChunkEditor(chunkIdx){
   }
   
   // Store editing context
-  _editingChunkContext = { chunkIdx, montageChunks: [...montageChunks] };
+  _editingChunkContext = { chunkIdx };
   
   // Load chunk frames into chunk editor
   const project = chunk._project;
@@ -2334,7 +2336,7 @@ function renderMontageChunks(){
     // events: select on click
     div.addEventListener('click', ()=>{ selectMontageChunk(idx); });
 
-    const editBtn = document.createElement('button'); editBtn.className = 'iconBtn'; editBtn.title = 'Edit in Chunk Editor'; editBtn.textContent = '✏';
+    const editBtn = document.createElement('button'); editBtn.className = 'iconBtn'; editBtn.title = 'Edit in Chunk Editor'; editBtn.textContent = '✎';
     editBtn.addEventListener('click', (e)=>{ e.stopPropagation(); editChunkInChunkEditor(idx); });
 
     const upBtn = document.createElement('button'); upBtn.className = 'iconBtn'; upBtn.title = 'Move Up'; upBtn.textContent = '▴';
