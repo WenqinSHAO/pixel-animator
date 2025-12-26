@@ -2599,7 +2599,7 @@ function stopMontagePlayback(){
   const playPosEl = document.getElementById('montagePlayPos'); 
   const totalMontage = computeMontageTotalFrames();
   let before = 0;
-  for(let i=0;i<Math.min(_montagePos.chunkIdx, montageChunks.length);i++){
+  for(let i = 0; i < Math.min(_montagePos.chunkIdx, montageChunks.length); i++){
     const c = montageChunks[i];
     before += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
   }
@@ -2611,7 +2611,11 @@ function stopMontagePlayback(){
     if(montageScrubber){
       montageScrubber.step = '1';
       montageScrubber.max = String(totalMontage);
-      let before = 0; for(let i=0;i<Math.min(_montagePos.chunkIdx, montageChunks.length);i++){ const c = montageChunks[i]; before += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0; }
+      let before = 0;
+      for(let i = 0; i < Math.min(_montagePos.chunkIdx, montageChunks.length); i++){
+        const c = montageChunks[i];
+        before += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
+      }
       montageScrubber.value = String(Math.min(before + (_montagePos.frameIdx || 0) + 1, totalMontage));
       montageScrubber.style.display = '';
     }
