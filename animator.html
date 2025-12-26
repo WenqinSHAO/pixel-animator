@@ -156,16 +156,26 @@ input[type="range"]{width:160px}
           <div class="panelTitle">Drawing Tools</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px">
-          <!-- Tools row -->
+          <!-- Tools row with palette -->
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
             <button id="toolPencil" class="primary" style="padding:6px 10px">Pencil</button>
             <button id="toolEraser" style="padding:6px 10px">Eraser</button>
             <button id="toolSoft" style="padding:6px 10px">Soft</button>
             <button id="toolSelect" style="padding:6px 10px">Select</button>
             <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
+            <!-- Color palette inline -->
+            <div id="colorPalette" style="display:flex;gap:3px">
+              <button data-gray="0" style="width:24px;height:24px;padding:0;background:#000;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Black (0)"></button>
+              <button data-gray="64" style="width:24px;height:24px;padding:0;background:#404040;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Dark Gray (64)"></button>
+              <button data-gray="128" style="width:24px;height:24px;padding:0;background:#808080;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Mid Gray (128)"></button>
+              <button data-gray="192" style="width:24px;height:24px;padding:0;background:#c0c0c0;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Light Gray (192)"></button>
+              <button data-gray="255" style="width:24px;height:24px;padding:0;background:#fff;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="White (255)"></button>
+            </div>
+            <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
             <button id="undoBtn" style="padding:6px 10px">Undo</button>
             <button id="redoBtn" style="padding:6px 10px">Redo</button>
-            <button id="gridToggleBtn" style="padding:6px 10px;margin-left:auto">Grid Off</button>
+            <button id="gridToggleBtn" style="padding:6px 10px">Grid Off</button>
+            <button id="canvasZoomResetBtn" style="padding:6px 10px;margin-left:auto" title="Reset canvas zoom (100%)">Zoom 100%</button>
           </div>
           <!-- Settings row -->
           <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11px">
@@ -181,17 +191,6 @@ input[type="range"]{width:160px}
               <input id="onion" type="range" min="0" max="8" value="5" style="width:100px"/>
               <span id="onionLabel" class="pill" style="padding:3px 6px;font-size:10px">5</span>
             </label>
-          </div>
-          <!-- Color palette row -->
-          <div style="display:flex;gap:6px;align-items:center;font-size:11px">
-            <span style="color:var(--muted);font-size:10px;letter-spacing:.3px;text-transform:uppercase">Palette:</span>
-            <div id="colorPalette" style="display:flex;gap:4px">
-              <button data-gray="0" style="width:28px;height:28px;padding:0;background:#000;border:1px solid var(--border);border-radius:6px;cursor:pointer" title="Black (0)"></button>
-              <button data-gray="64" style="width:28px;height:28px;padding:0;background:#404040;border:1px solid var(--border);border-radius:6px;cursor:pointer" title="Dark Gray (64)"></button>
-              <button data-gray="128" style="width:28px;height:28px;padding:0;background:#808080;border:1px solid var(--border);border-radius:6px;cursor:pointer" title="Mid Gray (128)"></button>
-              <button data-gray="192" style="width:28px;height:28px;padding:0;background:#c0c0c0;border:1px solid var(--border);border-radius:6px;cursor:pointer" title="Light Gray (192)"></button>
-              <button data-gray="255" style="width:28px;height:28px;padding:0;background:#fff;border:1px solid var(--border);border-radius:6px;cursor:pointer" title="White (255)"></button>
-            </div>
           </div>
         </div>
       </div>
@@ -229,12 +228,6 @@ input[type="range"]{width:160px}
               <span>Frames: <strong id="montageTotalFrames" style="color:var(--text)">0</strong></span>
               <span>Position: <strong id="montagePlayPos" style="color:var(--text)">0 / 0f</strong></span>
               <span>Time: <strong id="montageTimePos" style="color:var(--text)">0.0s</strong></span>
-              <div id="timelineZoomControls" style="display:flex;gap:4px;align-items:center">
-                <span style="font-size:10px">Zoom:</span>
-                <button id="zoomOutBtn" style="padding:2px 6px;font-size:10px;min-width:auto" title="Zoom out">−</button>
-                <span id="zoomLevel" style="font-size:10px;color:var(--text);min-width:35px;text-align:center">100%</span>
-                <button id="zoomInBtn" style="padding:2px 6px;font-size:10px;min-width:auto" title="Zoom in">+</button>
-              </div>
             </div>
           </div>
           
@@ -429,10 +422,7 @@ const UNDO_LIMIT = 100;
 const WHITE_FILL = 255;  // White color value for clearing/erasing
 const CHUNK_COLOR_ALPHA_HIGH = '33';  // Hex alpha for chunk color highlights (20%)
 const CHUNK_COLOR_ALPHA_LOW = '11';   // Hex alpha for chunk color backgrounds (6.5%)
-const BASE_MARKER_COUNT = 8;  // Base number of timeline markers (scales with zoom)
-const TIMELINE_ZOOM_INCREMENT = 0.25;  // Zoom step size
-const TIMELINE_ZOOM_MIN = 0.5;  // Minimum zoom (50%)
-const TIMELINE_ZOOM_MAX = 3.0;  // Maximum zoom (300%)
+const BASE_MARKER_COUNT = 8;  // Base number of timeline markers
 const PREVIEW_HIDE_DELAY_MS = 150;  // Delay before hiding preview tooltip (matches CSS transition)
 
 // Frames + history (dynamic length)
@@ -452,6 +442,8 @@ let onionDepth = 5;
 let drawing = false;
 let lastPt = null;
 let gridEnabled = false;
+let canvasZoom = 1.0; // Canvas zoom level (1.0 = 100%)
+let cKeyPressed = false; // Track 'c' key state for canvas zoom
 
 // Selection tool state
 let selection = null; // {x1, y1, x2, y2}
@@ -1689,6 +1681,52 @@ function endDraw(ev){
 main.addEventListener('pointerup', endDraw);
 main.addEventListener('pointercancel', endDraw);
 
+// Track 'c' key for canvas zoom
+window.addEventListener('keydown', (ev)=>{
+  if(ev.key === 'c' || ev.code === 'KeyC') cKeyPressed = true;
+});
+window.addEventListener('keyup', (ev)=>{
+  if(ev.key === 'c' || ev.code === 'KeyC') cKeyPressed = false;
+});
+
+// Mouse wheel events for brush size and canvas zoom
+main.addEventListener('wheel', (ev)=>{
+  if(isPlaying) return;
+  
+  // Canvas zoom with C + wheel (or Ctrl/Cmd + wheel)
+  if(cKeyPressed || ev.ctrlKey || ev.metaKey){
+    ev.preventDefault();
+    const delta = ev.deltaY > 0 ? -0.1 : 0.1;
+    canvasZoom = Math.max(0.5, Math.min(canvasZoom + delta, 3.0));
+    updateCanvasZoom();
+  } else {
+    // Brush size with wheel (without modifier)
+    ev.preventDefault();
+    const delta = ev.deltaY > 0 ? -1 : 1;
+    brush = Math.max(1, Math.min(brush + delta, 8));
+    brushSize.value = String(brush);
+    brushSizeLabel.textContent = String(brush);
+  }
+}, { passive: false });
+
+// Canvas zoom functionality
+function updateCanvasZoom(){
+  const scale = canvasZoom;
+  main.style.transform = `scale(${scale})`;
+  main.style.transformOrigin = 'center center';
+  const btn = document.getElementById('canvasZoomResetBtn');
+  if(btn) btn.textContent = `Zoom ${Math.round(scale * 100)}%`;
+}
+
+// Canvas zoom reset button
+const canvasZoomResetBtn = document.getElementById('canvasZoomResetBtn');
+if(canvasZoomResetBtn){
+  canvasZoomResetBtn.addEventListener('click', ()=>{
+    canvasZoom = 1.0;
+    updateCanvasZoom();
+  });
+}
+
 // -------------------- UI events --------------------
 
 toolPencil.addEventListener('click', ()=>setTool('pencil'));
@@ -2176,7 +2214,6 @@ let _editingChunkContext = null; // { chunkIdx: number }
 let _trimDragging = null;
 let currentMode = 'chunk'; // 'chunk' | 'montage' - used to gate drawing and UI state
 let _pendingInsertPosition = null; // null or number - position to insert next imported chunk
-let timelineZoom = 1.0; // Timeline zoom level (1.0 = 100%, 2.0 = 200%, etc.)
 
  // 'left'|'right' or null
 
@@ -2302,10 +2339,9 @@ function updateMontageRulers(totalFrames){
     topRuler.style.display = 'block';
     bottomRuler.style.display = 'block';
     
-    // Top ruler: frame indices (show more markers when zoomed in)
+    // Top ruler: frame indices
     topRuler.innerHTML = '';
-    const markersToShow = Math.ceil(BASE_MARKER_COUNT * timelineZoom); // More markers when zoomed
-    const step = Math.max(1, Math.ceil(totalFrames / markersToShow));
+    const step = Math.max(1, Math.ceil(totalFrames / BASE_MARKER_COUNT));
     for(let i = 0; i <= totalFrames; i += step){
       if(i === 0) continue; // Skip 0, start from 1
       const marker = document.createElement('span');
@@ -2316,11 +2352,10 @@ function updateMontageRulers(totalFrames){
       topRuler.appendChild(marker);
     }
     
-    // Bottom ruler: time in seconds (12 fps, more markers when zoomed)
+    // Bottom ruler: time in seconds (12 fps)
     bottomRuler.innerHTML = '';
     const totalSeconds = totalFrames / FPS;
-    const timeMarkersToShow = Math.ceil(BASE_MARKER_COUNT * timelineZoom);
-    const timeStep = Math.max(0.1, Math.ceil((totalSeconds / timeMarkersToShow) * 10) / 10); // Round to 0.1s increments
+    const timeStep = Math.max(0.5, Math.ceil(totalSeconds / BASE_MARKER_COUNT) / 2) * 2; // Round to 0.5s increments
     for(let t = 0; t <= totalSeconds; t += timeStep){
       const marker = document.createElement('span');
       marker.textContent = `${t.toFixed(1)}s`;
@@ -3040,35 +3075,6 @@ const montageLoadBtn = document.getElementById('montageLoadBtn');
 const montageLoadInputEl = document.getElementById('montageLoadInput');
 const saveMontageBtn = document.getElementById('saveMontageBtn');
 const montagePlayBtn = document.getElementById('montagePlayBtn');
-
-// Timeline zoom controls
-const zoomInBtn = document.getElementById('zoomInBtn');
-const zoomOutBtn = document.getElementById('zoomOutBtn');
-const zoomLevelEl = document.getElementById('zoomLevel');
-
-if(zoomInBtn){
-  zoomInBtn.addEventListener('click', ()=>{
-    timelineZoom = Math.min(timelineZoom + TIMELINE_ZOOM_INCREMENT, TIMELINE_ZOOM_MAX);
-    updateTimelineZoom();
-  });
-}
-
-if(zoomOutBtn){
-  zoomOutBtn.addEventListener('click', ()=>{
-    timelineZoom = Math.max(timelineZoom - TIMELINE_ZOOM_INCREMENT, TIMELINE_ZOOM_MIN);
-    updateTimelineZoom();
-  });
-}
-
-function updateTimelineZoom(){
-  if(zoomLevelEl) zoomLevelEl.textContent = `${Math.round(timelineZoom * 100)}%`;
-  // Update ruler scale and chunk delimiter rendering
-  if(currentMode === 'montage'){
-    const totalFrames = computeMontageTotalFrames();
-    updateMontageRulers(totalFrames);
-    updateChunkDelimiters(totalFrames);
-  }
-}
 
 // Default mode is chunk editor
 setMode('chunk');
