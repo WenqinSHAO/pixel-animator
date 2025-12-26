@@ -902,7 +902,6 @@ let lastMontagePath = '';
 
 function promptForFilename(defaultName, type = 'project'){
   const path = type === 'montage' ? lastMontagePath : lastProjectPath;
-  const prefix = type === 'montage' ? 'montage' : 'chunk';
   const promptMsg = path ? `Filename (last: ${path}):` : 'Filename:';
   const userInput = prompt(promptMsg, defaultName);
   if(userInput === null) return null; // User cancelled
