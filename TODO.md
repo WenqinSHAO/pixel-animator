@@ -49,6 +49,34 @@
 - [ ] **Accessibility improvements** - Better ARIA labels, keyboard navigation, screen reader support
 - [ ] **Internationalization** - Support for multiple languages
 
+## Future Major Features (Requires Separate PR)
+
+### Color and Transparency Support
+- [ ] **Add RGBA color support to chunk editor** - Major feature that will disruptively change file format
+  - **Breaking change**: Will require migration of existing projects from grayscale (1 byte per pixel) to RGBA (4 bytes per pixel)
+  - **UI changes needed**:
+    - Add color picker to drawing tools (replace Gray slider with RGB/HSV controls)
+    - Add alpha/transparency slider (0-255 or 0-100%)
+    - Update brush preview to show current color/alpha
+    - Add color palette for quick color selection
+  - **File format impact**:
+    - Chunk project files: Change frame data from Uint8Array to Uint8ClampedArray (RGBA)
+    - Montage project files: Must handle both legacy grayscale and new RGBA chunks
+    - Version bump required (e.g., v1.x → v2.0)
+    - Implement backward compatibility reader for legacy grayscale projects
+  - **Rendering changes**:
+    - Update all canvas operations to handle RGBA
+    - Implement alpha blending for paste operations (additive/multiplicative/replace modes)
+    - Update onion skinning to respect alpha channels
+    - Update GIF export to handle alpha (flatten or use transparency index)
+  - **Implementation plan**:
+    1. Design file format v2.0 with RGBA support
+    2. Implement backward-compatible loader for v1.x projects
+    3. Update UI with color/alpha controls
+    4. Refactor all drawing operations for RGBA
+    5. Test extensively with both new and legacy projects
+    6. Update documentation and migration guide
+
 ## Performance Optimizations
 
 - [ ] **Lazy loading** - Load chunk frames on-demand rather than all at once
