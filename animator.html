@@ -203,10 +203,12 @@ input[type="range"]{width:160px}
         <button id="montagePlayBtn" class="primary">Play</button>
         <div style="flex:1;position:relative;">
           <!-- Montage info above scrubber (only shown in montage mode) -->
-          <div id="montageInfo" style="display:none;font-size:11px;color:var(--muted);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between">
-            <span>Frames: <strong id="montageTotalFrames" style="color:var(--text)">0</strong></span>
-            <span>Position: <strong id="montagePlayPos" style="color:var(--text)">0 / 0f</strong></span>
-            <span>Time: <strong id="montageTimePos" style="color:var(--text)">0.0s</strong></span>
+          <div id="montageInfo" style="display:none;font-size:11px;color:var(--muted);margin-bottom:4px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span>Frames: <strong id="montageTotalFrames" style="color:var(--text)">0</strong></span>
+              <span>Position: <strong id="montagePlayPos" style="color:var(--text)">0 / 0f</strong></span>
+              <span>Time: <strong id="montageTimePos" style="color:var(--text)">0.0s</strong></span>
+            </div>
           </div>
           
           <!-- Top ruler (frame index) - only shown in montage mode -->
@@ -290,12 +292,6 @@ input[type="range"]{width:160px}
         <button id="insertToMontageBtn" style="display:none">Insert to Montage</button>
         <button id="returnToMontageBtn" style="display:none">Return to Montage</button>
       </div>
-    </div>
-        <button id="loadProjectBtn">Load Project</button>
-        <button id="saveBtn">Save GIF</button>
-        <button id="newBtn" class="danger">New</button>
-      </div>
-      <div class="footerHint" style="margin-top:8px">Save Project is lossless JSON. Save GIF exports 512×512 with a white background.</div>
     </div>
   </aside>
 
@@ -2018,7 +2014,7 @@ function setMode(mode){
     }
     // Show montage info
     const montageInfo = document.getElementById('montageInfo');
-    if(montageInfo) montageInfo.style.display = 'flex';
+    if(montageInfo) montageInfo.style.display = 'block';
     // Show rulers and chunk delimiters
     updateMontageRulers(Math.max(1, computeMontageTotalFrames()));
     updateChunkDelimiters(Math.max(1, computeMontageTotalFrames()));
