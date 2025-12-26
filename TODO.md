@@ -8,7 +8,7 @@
 - [x] **Chunk preview thumbnails** - ✅ Implemented with 56px thumbnails spanning two rows
 - [x] **Drag and drop for chunk reordering** - ✅ Implemented with visual feedback
 - [ ] **Keyboard shortcuts for chunks** - Arrow keys to navigate, Delete to remove, Enter to edit
-- [ ] **Timeline zoom and preview on hover** - Allow zooming in/out of scrubber for detailed frame-by-frame work, show preview when hovering over timeline
+- [x] **Timeline zoom and preview on hover** - ✅ Preview on hover implemented; zoom removed (ruler density change not helpful enough)
 
 ### Chunk Editor
 
@@ -34,7 +34,10 @@
 
 - [x] **Grid overlay option** - ✅ Implemented as layout guides (rule of thirds)
 - [x] **Optimized layout** - ✅ 4-column thumbnails, compact tools, project info in actions
-- [ ] **Color palette** - Quick-access grayscale palette (0, 64, 128, 192, 255 values)
+- [x] **Color palette** - ✅ Quick-access grayscale palette (0, 64, 128, 192, 255 values) inline with tools
+- [x] **Mouse wheel support** - ✅ Scroll to adjust brush size, C+wheel or Ctrl/Cmd+wheel to zoom canvas
+- [x] **Canvas zoom** - ✅ Canvas zoom with reset button (50%-300%)
+- [ ] **Insert-between frames** - Drag thumbnail and drop between frames for real insert (complex, needs drop zone UI)
 
 ### General UX
 
@@ -147,6 +150,16 @@
 - [x] Montage editor: Playhead positioning on chunk selection (December 2025)
 - [x] Chunk editor: Grid overlay toggle (December 2025)
 - [x] Chunk editor: Selection tool (basic implementation) (December 2025)
+- [x] UI/UX improvements (December 2025)
+  - [x] Compact color palette inline with drawing tools
+  - [x] Mouse wheel support for brush size adjustment
+  - [x] Canvas zoom with C+wheel or Ctrl/Cmd+wheel (50%-300%)
+  - [x] Canvas zoom reset button
+  - [x] Timeline preview on hover (montage editor)
+  - [x] Thumbnail drag-drop optimizations (swap behavior, arrow buttons)
+  - [x] Insert to Montage button visibility fix
+  - [x] Enhanced selection tool hints (Ctrl+C/V)
+  - [x] Incremental thumbnail rendering for performance
 
 ## Notes
 
