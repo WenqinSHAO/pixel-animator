@@ -284,7 +284,6 @@ input[type="range"]{width:160px}
         <button id="montageLoadBtn">Load Montage</button>
         <span style="color:var(--border)">|</span>
         <button id="saveMontageBtn">Save</button>
-        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)"><input id="montageEmbedCheckbox" type="checkbox"/> Embed</label>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <div style="font-size:11px;color:var(--muted);letter-spacing:.35px;text-transform:uppercase;width:100%;margin-bottom:4px">Export</div>
@@ -1128,7 +1127,7 @@ let playTimer = null;
 
 function setPlaying(next){
   isPlaying = next;
-  playBtn.textContent = isPlaying ? 'Stop' : 'Play';
+  playBtn.textContent = isPlaying ? 'Pause' : 'Play';
 
   const disable = isPlaying;
 
@@ -1380,8 +1379,8 @@ if(montageScrubber){
             const chunkInfo = {
               name: ch.name,
               alias: ch.alias,
-              frameIdx: frameIdx,
-              totalFrames: len
+              frameIdx: frameInSource,
+              totalFrames: (ch._project.frameCount || (ch._project.frames && ch._project.frames.length))
             };
             renderPreviewFrameBytes(bytes, chunkInfo);
           }
@@ -1750,12 +1749,11 @@ function _globalTrimPointerMove(ev){
   if(frameToPreview >= 0 && frameToPreview < total){
     try{
       const bytes = _decodeFrameFromProject(ch._project, frameToPreview);
-      const relativeIdx = frameToPreview - ch.frameRange.start;
       const chunkInfo = {
         name: ch.name,
         alias: ch.alias,
-        frameIdx: relativeIdx >= 0 ? relativeIdx : 0,
-        totalFrames: ch.frameRange.end - ch.frameRange.start
+        frameIdx: frameToPreview,
+        totalFrames: total
       };
       renderPreviewFrameBytes(bytes, chunkInfo);
     }catch(e){
@@ -1959,22 +1957,18 @@ function renderMontageChunks(){
     const durationBadge = document.createElement('span'); 
     durationBadge.className = 'pill'; 
     durationBadge.textContent = `${(ch.frameRange.end - ch.frameRange.start)}f`;
-    const sourceBadge = document.createElement('span'); 
-    sourceBadge.className = 'pill'; 
-    sourceBadge.textContent = ch.source && ch.source.type === 'embedded' ? 'emb' : 'ref';
     badges.appendChild(durationBadge);
-    badges.appendChild(sourceBadge);
     info.appendChild(badges);
 
-    // Alias input
+    // Alias input (now labeled as "Cut Name")
     const aliasInput = document.createElement('input');
     aliasInput.type = 'text';
     aliasInput.className = 'chunk-alias';
-    aliasInput.placeholder = 'Alias (optional)';
-    aliasInput.value = ch.alias || '';
+    aliasInput.placeholder = 'Cut name';
+    aliasInput.value = ch.alias || ch.name || 'unnamed';
     aliasInput.addEventListener('input', (e)=>{
       e.stopPropagation();
-      ch.alias = aliasInput.value.trim();
+      ch.alias = aliasInput.value.trim() || ch.name || 'unnamed';
       updateMontageScrubberUI();
     });
     aliasInput.addEventListener('click', (e)=>e.stopPropagation());
@@ -2025,7 +2019,6 @@ const montageImportBtn = document.getElementById('montageImportBtn');
 const montageImportInputEl = document.getElementById('montageImportInput');
 const montageLoadBtn = document.getElementById('montageLoadBtn');
 const montageLoadInputEl = document.getElementById('montageLoadInput');
-const montageEmbedCheckbox = document.getElementById('montageEmbedCheckbox');
 const saveMontageBtn = document.getElementById('saveMontageBtn');
 const montagePlayBtn = document.getElementById('montagePlayBtn');
 
@@ -2075,7 +2068,8 @@ montageImportInputEl.addEventListener('change', (ev)=>{
         const ch = {
           id: generateId('chunk'),
           name: f.name.replace(/\.json$/i, ''),
-          source: montageEmbedCheckbox.checked ? {type:'embedded', project: json} : {type:'reference', ref: refVal},
+          alias: f.name.replace(/\.json$/i, ''),
+          source: {type:'embedded', project: json},
           frameRange: {start:0, end: (json.frameCount || (json.frames && json.frames.length) || 0)},
           derived: false,
           _project: json
@@ -2177,9 +2171,9 @@ if(montageLoadBtn && montageLoadInputEl){
           source: chunkData.source,
           frameRange: chunkData.frameRange || {start:0, end:0},
           derived: !!chunkData.derived,
-          _project: project
+          _project: project,
+          alias: chunkData.alias || chunkData.name || generateId('cut')
         };
-        if(chunkData.alias) ch.alias = chunkData.alias;
         
         montageChunks.push(ch);
       }
@@ -2504,8 +2498,8 @@ function renderMontagePreviewChunk(idx){
       const chunkInfo = {
         name: ch.name,
         alias: ch.alias,
-        frameIdx: 0,
-        totalFrames: ch.frameRange.end - ch.frameRange.start
+        frameIdx: ch.frameRange.start,
+        totalFrames: (ch._project.frameCount || (ch._project.frames && ch._project.frames.length))
       };
       renderPreviewFrameBytes(bytes, chunkInfo);
       return;
@@ -2523,20 +2517,20 @@ function renderMontagePreviewChunk(idx){
 
 function startMontagePlayback(){
   if(montageChunks.length === 0) { notify('No chunks to play'); return; }
-  // start at first chunk/frame
-  _montagePos = { chunkIdx: 0, frameIdx: 0 };
-  montagePlaying = true; montagePlayBtn.textContent = 'Stop';
+  // Don't reset position - resume from current position
+  montagePlaying = true; montagePlayBtn.textContent = 'Pause';
 
   // init playback UI
   const playPosEl = document.getElementById('montagePlayPos');
-  if(playPosEl) playPosEl.textContent = `0 / ${computeMontageTotalFrames()}f`;
 
   // remember last highlighted chunk so we only update selection on chunk change (avoids overwriting the current preview)
   let lastChunkIdx = -1;
 
   _montageTimer = setInterval(()=>{
-    // out-of-range -> stop
-    if(_montagePos.chunkIdx >= montageChunks.length){ stopMontagePlayback(); return; }
+    // out-of-range -> stop and loop back to beginning
+    if(_montagePos.chunkIdx >= montageChunks.length){ 
+      _montagePos = { chunkIdx: 0, frameIdx: 0 };
+    }
     const ch = montageChunks[_montagePos.chunkIdx];
     const total = (ch.frameRange && (ch.frameRange.end - ch.frameRange.start)) || 0;
     if(total <= 0){ _montagePos.chunkIdx++; _montagePos.frameIdx = 0; return; }
@@ -2551,8 +2545,8 @@ function startMontagePlayback(){
     const chunkInfo = {
       name: ch.name,
       alias: ch.alias,
-      frameIdx: _montagePos.frameIdx,
-      totalFrames: total
+      frameIdx: frameInSource,
+      totalFrames: (ch._project.frameCount || (ch._project.frames && ch._project.frames.length))
     };
     renderPreviewFrameBytes(bytes, chunkInfo);
 
@@ -2594,10 +2588,16 @@ function startMontagePlayback(){
 function stopMontagePlayback(){
   montagePlaying = false; montagePlayBtn.textContent = 'Play';
   if(_montageTimer){ clearInterval(_montageTimer); _montageTimer = null; }
-  // select the chunk where playback stopped
-  const idx = Math.min(_montagePos.chunkIdx, montageChunks.length - 1);
-  if(idx >= 0 && montageChunks.length > 0) selectMontageChunk(idx);
-  const playPosEl = document.getElementById('montagePlayPos'); if(playPosEl) playPosEl.textContent = `0 / ${computeMontageTotalFrames()}f`;
+  // Keep current position when paused - don't reset
+  const playPosEl = document.getElementById('montagePlayPos'); 
+  const totalMontage = computeMontageTotalFrames();
+  let before = 0;
+  for(let i=0;i<Math.min(_montagePos.chunkIdx, montageChunks.length);i++){
+    const c = montageChunks[i];
+    before += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
+  }
+  const pos = before + (_montagePos.frameIdx || 0) + 1;
+  if(playPosEl) playPosEl.textContent = `${pos} / ${totalMontage}f`;
   // sync montage scrubber to current position and visibility
   if(currentMode === 'montage'){
     const totalMontage = Math.max(1, computeMontageTotalFrames());
@@ -2611,7 +2611,7 @@ function stopMontagePlayback(){
   }else{
     if(montageScrubber) montageScrubber.style.display = 'none';
   }
-  notify('Montage stopped');
+  notify('Montage paused');
 }
 
 montagePlayBtn.addEventListener('click', ()=>{

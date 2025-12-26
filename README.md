@@ -52,7 +52,7 @@ Schema (concise):
 
 **Goal:** arrange animation "chunks" (segments from existing project JSONs) in a timeline, supporting batch import, insert-before, drag-to-reorder, non-destructive **trimming** (time-axis, by frames), and save/load of a montage project. The UI will remain **vanilla** and simple; imports must match the montage `width`/`height`/`fps` (validated, see `scripts/validate_examples.js`).
 
-**Montage project JSON (draft):**
+**Montage project JSON:**
 
 ```json
 {
@@ -65,23 +65,24 @@ Schema (concise):
     {
       "id": "chunk-uuid-1",
       "name": "intro",
-      "source": {
-        "type": "reference",
-        "ref": "example/animation-project-2025-12-24T17-33-23-167Z.json"
-      },
-      "frameRange": { "start": 0, "end": 15 },
-      "derived": true,
-      "meta": {}
-    },
-    {
-      "id": "chunk-uuid-2",
-      "name": "embedded",
+      "alias": "intro-cut",
       "source": {
         "type": "embedded",
         "project": { /* full original project JSON */ }
       },
-      "frameRange": { "start": 0, "end": 31 },
+      "frameRange": { "start": 0, "end": 15 },
       "derived": false
+    },
+    {
+      "id": "chunk-uuid-2",
+      "name": "scene2",
+      "alias": "main-scene",
+      "source": {
+        "type": "embedded",
+        "project": { /* full original project JSON */ }
+      },
+      "frameRange": { "start": 5, "end": 31 },
+      "derived": true
     }
   ]
 }
@@ -89,13 +90,13 @@ Schema (concise):
 
 **Notes:**
 
-- Each chunk references (by default) an existing project JSON and a 0-based frame range `[start, end)` (start inclusive, end exclusive). The montage **must not** modify the original project — trimming is non-destructive and stored only as metadata in the montage file (the original project JSON is left unchanged).
-- **Embedding:** later we can allow `source.type = "embedded"` to store a full copy of the original project inside the montage file (useful for portability); for now, prefer references.
+- Each chunk contains a complete embedded copy of the original project JSON in `source.project`. All chunks use `source.type = "embedded"` for self-sufficiency and portability.
+- **Alias (Cut Name):** Each chunk has an `alias` field (displayed as "Cut name" in the UI) which defaults to the source filename. The alias is used in overlay displays and helps identify chunks in the timeline.
+- **Trimming (non-destructive):** The `frameRange` field specifies which frames from the original project are used in the montage (0-based, `[start, end)` - start inclusive, end exclusive). Trimming adjusts only the `frameRange` and sets `derived: true`; the full raw chunk data is preserved in `source.project`, so no frames are deleted. Frame indices in overlays always refer to the original chunk frame numbers, not the trimmed range.
 - **Validation:** imported chunks must match the montage `width`, `height`, and `fps`; use `scripts/validate_examples.js` as a starting point for enforcement. Auto-scaling is out-of-scope for this phase.
-- **Trimming (time-based):** use `frameRange` to select the subset of frames from the source for playback in the montage. Trimming a chunk creates a derived chunk (new `id`) visible in the montage timeline. Offer a UI action **"Save trimmed chunk"** to export the derived chunk as a standalone project JSON if the user wants it saved separately.
-- **Ordering:** the `chunks` array is ordered; the UI will show per-chunk duration and total timeline length, and allow drag-drop to reorder and insert-before a selected chunk.
+- **Ordering:** the `chunks` array is ordered; the UI shows per-chunk duration and total timeline length, and allows drag-drop to reorder chunks and insert-before a selected chunk.
 - **Interactions:** planned interactions with the existing chunk editor (e.g., insert current chunk into the montage, edit selected chunk in frame editor) are noted but deferred.
-- **Saving:** use a new `montage-1.0` version field for the montage project format. We'll add example montage files to `example/` and extend the validator as we implement imports.
+- **Saving:** use the `montage-1.0` version field for the montage project format. Example montage files can be added to `example/` and validated with the extended validator.
 
 **Wireframes & interaction details:** See `docs/montage-wireframes.md` for ASCII wireframes, interaction notes, and a short implementation-ready API list.
 
