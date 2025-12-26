@@ -183,7 +183,7 @@ input[type="range"]{width:160px}
       <div id="trimBar" style="margin-top:10px;">
         <div class="panelBlock">
           <div class="panelHeader"><div class="panelTitle">Trim selected chunk</div></div>
-          <div id="trimBarCanvas" style="position:relative;height:40px;margin-top:8px;border-radius:8px;background:linear-gradient(90deg, rgba(255,255,255,.02), rgba(255,255,255,.01));border:1px solid var(--border);overflow:hidden">
+          <div id="trimBarCanvas" style="position:relative;height:24px;margin-top:8px;border-radius:8px;background:linear-gradient(90deg, rgba(255,255,255,.02), rgba(255,255,255,.01));border:1px solid var(--border);overflow:hidden">
             <!-- handles will be added dynamically -->
           </div>
           <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
@@ -280,7 +280,8 @@ input[type="range"]{width:160px}
     <!-- Import/Save at bottom -->
     <div class="section" style="margin-top:auto">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-        <button id="montageImportBtn">Import</button>
+        <button id="montageImportBtn">Import Chunks</button>
+        <button id="montageLoadBtn">Load Montage</button>
         <span style="color:var(--border)">|</span>
         <button id="saveMontageBtn">Save</button>
         <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)"><input id="montageEmbedCheckbox" type="checkbox"/> Embed</label>
@@ -297,6 +298,8 @@ input[type="range"]{width:160px}
 <input id="loadProjectInput" type="file" accept=".json" style="display:none"/>
 
 <input id="montageImportInput" type="file" accept=".json" multiple style="display:none"/>
+
+<input id="montageLoadInput" type="file" accept=".json" style="display:none"/>
 
 <!-- Toast container for non-blocking notifications -->
 <div id="toastContainer" aria-live="polite" aria-atomic="true" class="toasts"></div>
@@ -1374,7 +1377,13 @@ if(montageScrubber){
           const frameInSource = ch.frameRange.start + frameIdx;
           if(frameInSource < (ch._project.frameCount || (ch._project.frames && ch._project.frames.length))){
             const bytes = _decodeFrameFromProject(ch._project, frameInSource);
-            renderPreviewFrameBytes(bytes);
+            const chunkInfo = {
+              name: ch.name,
+              alias: ch.alias,
+              frameIdx: frameIdx,
+              totalFrames: len
+            };
+            renderPreviewFrameBytes(bytes, chunkInfo);
           }
         }
         // update selection highlight without forcing the chunk-start preview render
@@ -1488,7 +1497,12 @@ window.addEventListener('keydown', e=>{
 
   if(e.code === 'Space'){
     e.preventDefault();
-    setPlaying(!isPlaying);
+    // Use appropriate play function based on current mode
+    if(currentMode === 'montage'){
+      if(montagePlaying) stopMontagePlayback(); else startMontagePlayback();
+    }else{
+      setPlaying(!isPlaying);
+    }
     return;
   }
 
@@ -1736,7 +1750,14 @@ function _globalTrimPointerMove(ev){
   if(frameToPreview >= 0 && frameToPreview < total){
     try{
       const bytes = _decodeFrameFromProject(ch._project, frameToPreview);
-      renderPreviewFrameBytes(bytes);
+      const relativeIdx = frameToPreview - ch.frameRange.start;
+      const chunkInfo = {
+        name: ch.name,
+        alias: ch.alias,
+        frameIdx: relativeIdx >= 0 ? relativeIdx : 0,
+        totalFrames: ch.frameRange.end - ch.frameRange.start
+      };
+      renderPreviewFrameBytes(bytes, chunkInfo);
     }catch(e){
       console.error('Failed to preview frame during trim', e);
     }
@@ -2002,6 +2023,8 @@ const toggleChunkBtn = document.getElementById('toggleChunk');
 const toggleMontageBtn = document.getElementById('toggleMontage');
 const montageImportBtn = document.getElementById('montageImportBtn');
 const montageImportInputEl = document.getElementById('montageImportInput');
+const montageLoadBtn = document.getElementById('montageLoadBtn');
+const montageLoadInputEl = document.getElementById('montageLoadInput');
 const montageEmbedCheckbox = document.getElementById('montageEmbedCheckbox');
 const saveMontageBtn = document.getElementById('saveMontageBtn');
 const montagePlayBtn = document.getElementById('montagePlayBtn');
@@ -2087,6 +2110,7 @@ saveMontageBtn.addEventListener('click', ()=>{
   };
   montageChunks.forEach(ch => {
     const item = { id: ch.id, name: ch.name, frameRange: ch.frameRange, derived: !!ch.derived };
+    if(ch.alias) item.alias = ch.alias;
     if(ch.source && ch.source.type === 'embedded') item.source = { type: 'embedded', project: ch.source.project };
     else if(ch.source && ch.source.type === 'reference') item.source = { type: 'reference', ref: ch.source.ref };
     out.chunks.push(item);
@@ -2095,6 +2119,84 @@ saveMontageBtn.addEventListener('click', ()=>{
   const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `montage-${new Date().toISOString().replace(/[:.]/g,'-')}.json`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   notify('Montage saved.');
 });
+
+// Load Montage from JSON
+if(montageLoadBtn && montageLoadInputEl){
+  montageLoadBtn.addEventListener('click', ()=>{
+    montageLoadInputEl.value = '';
+    montageLoadInputEl.click();
+  });
+  
+  montageLoadInputEl.addEventListener('change', async (ev)=>{
+    const file = ev.target.files && ev.target.files[0];
+    if(!file) return;
+    
+    try{
+      const text = await file.text();
+      let montageJson;
+      try{ montageJson = JSON.parse(text); }catch(err){ throw new Error(`Failed to parse montage JSON: ${err.message}`); }
+      
+      // Validate montage structure
+      if(!montageJson || montageJson.version !== 'montage-1.0'){
+        throw new Error('Invalid montage file format');
+      }
+      if(montageJson.width !== W || montageJson.height !== H || montageJson.fps !== FPS){
+        throw new Error(`Montage dimensions/fps mismatch (got ${montageJson.width}x${montageJson.height}@${montageJson.fps})`);
+      }
+      if(!Array.isArray(montageJson.chunks)){
+        throw new Error('Invalid montage file: missing chunks array');
+      }
+      
+      // Clear existing chunks
+      montageChunks = [];
+      
+      // Load each chunk
+      for(const chunkData of montageJson.chunks){
+        let project = null;
+        
+        if(chunkData.source && chunkData.source.type === 'embedded'){
+          // Embedded project
+          project = chunkData.source.project;
+        }else if(chunkData.source && chunkData.source.type === 'reference'){
+          // Try to load referenced project
+          try{
+            const resp = await fetch(chunkData.source.ref);
+            if(resp.ok){
+              project = await resp.json();
+            }else{
+              console.warn(`Failed to load referenced chunk: ${chunkData.source.ref}`);
+            }
+          }catch(err){
+            console.warn(`Failed to fetch chunk reference: ${chunkData.source.ref}`, err);
+          }
+        }
+        
+        const ch = {
+          id: chunkData.id || generateId('chunk'),
+          name: chunkData.name,
+          source: chunkData.source,
+          frameRange: chunkData.frameRange || {start:0, end:0},
+          derived: !!chunkData.derived,
+          _project: project
+        };
+        if(chunkData.alias) ch.alias = chunkData.alias;
+        
+        montageChunks.push(ch);
+      }
+      
+      renderMontageChunks();
+      updateMontageMetaUI();
+      updateMontageScrubberUI();
+      if(montageChunks.length > 0) selectMontageChunk(0);
+      
+      notify(`Loaded montage with ${montageChunks.length} chunks`);
+    }catch(err){
+      notify(`Failed to load montage: ${err.message}`);
+      console.error('Load montage error:', err);
+    }
+  });
+}
+
 
 // Export montage as GIF
 const exportMontageGifBtn = document.getElementById('exportMontageGifBtn');
@@ -2341,8 +2443,9 @@ if(exportMontageMp4Btn){
 let _montageTimer = null;
 let _montagePos = { chunkIdx: 0, frameIdx: 0 };
 
-function renderPreviewFrameBytes(bytes){
+function renderPreviewFrameBytes(bytes, chunkInfo = null){
   // bytes: Uint8Array of length W*H
+  // chunkInfo: {name, alias, frameIdx, totalFrames} - optional chunk info for overlay
   const out = new Uint8ClampedArray(W*H*4);
   for(let p=0,o=0; p<bytes.length; p++,o+=4){ const v = bytes[p]; out[o]=v; out[o+1]=v; out[o+2]=v; out[o+3]=255; }
   const id = new ImageData(out, W, H);
@@ -2352,6 +2455,30 @@ function renderPreviewFrameBytes(bytes){
   offCtx.putImageData(id, 0, 0);
   ctx.clearRect(0,0, main.width, main.height);
   ctx.drawImage(off, 0, 0, main.width, main.height);
+  
+  // Render chunk info overlay if in montage mode
+  if(chunkInfo && currentMode === 'montage'){
+    ctx.save();
+    ctx.font = '14px sans-serif';
+    const displayName = chunkInfo.alias || chunkInfo.name;
+    const frameInfo = `${chunkInfo.frameIdx + 1}/${chunkInfo.totalFrames}`;
+    const text = `${displayName} (${frameInfo})`;
+    
+    // Measure text for background
+    const metrics = ctx.measureText(text);
+    const textWidth = metrics.width;
+    const textHeight = 14;
+    const padding = 6;
+    
+    // Draw semi-transparent background
+    ctx.fillStyle = 'rgba(100, 100, 100, 0.7)';
+    ctx.fillRect(8, 8, textWidth + padding * 2, textHeight + padding * 2);
+    
+    // Draw text
+    ctx.fillStyle = 'rgba(230, 230, 230, 0.95)';
+    ctx.fillText(text, 8 + padding, 8 + padding + textHeight - 2);
+    ctx.restore();
+  }
 }
 
 function _decodeFrameFromProject(project, idx){
@@ -2374,14 +2501,13 @@ function renderMontagePreviewChunk(idx){
   if(ch._project && Array.isArray(ch._project.frames) && ch.frameRange && ch.frameRange.start < ch._project.frames.length){
     try{
       const bytes = _decodeFrameFromProject(ch._project, ch.frameRange.start);
-      renderPreviewFrameBytes(bytes);
-      // overlay chunk name so user knows what they're previewing
-      ctx.save();
-      ctx.globalAlpha = 0.95;
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.font = '14px sans-serif';
-      ctx.fillText(ch.name || '', 8, 18);
-      ctx.restore();
+      const chunkInfo = {
+        name: ch.name,
+        alias: ch.alias,
+        frameIdx: 0,
+        totalFrames: ch.frameRange.end - ch.frameRange.start
+      };
+      renderPreviewFrameBytes(bytes, chunkInfo);
       return;
     }catch(e){ console.error('Preview render failed', e); }
   }
@@ -2422,7 +2548,13 @@ function startMontagePlayback(){
 
     // render the actual frame in the chunk (do not let selection preview overwrite it every tick)
     const bytes = _decodeFrameFromProject(ch._project, frameInSource);
-    renderPreviewFrameBytes(bytes);
+    const chunkInfo = {
+      name: ch.name,
+      alias: ch.alias,
+      frameIdx: _montagePos.frameIdx,
+      totalFrames: total
+    };
+    renderPreviewFrameBytes(bytes, chunkInfo);
 
     // only update the selected chunk when we actually moved to a new chunk
     if(lastChunkIdx !== _montagePos.chunkIdx){
