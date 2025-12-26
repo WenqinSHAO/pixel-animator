@@ -1573,6 +1573,14 @@ function generateId(prefix='chunk'){
   return `${prefix}-${Date.now().toString(36)}-${Math.floor(Math.random()*0x10000).toString(16)}`;
 }
 
+// Helper function to ensure chunk has a valid alias
+function ensureChunkAlias(chunk) {
+  if (!chunk.alias || chunk.alias.trim() === '') {
+    chunk.alias = chunk.name || generateId('cut');
+  }
+  return chunk.alias;
+}
+
 // append a small import log helper for Montage imports (visible in the Montage sidebar)
 function addImportLog(msg){
   try{
@@ -1965,10 +1973,11 @@ function renderMontageChunks(){
     aliasInput.type = 'text';
     aliasInput.className = 'chunk-alias';
     aliasInput.placeholder = 'Cut name';
-    aliasInput.value = ch.alias || ch.name || 'unnamed';
+    aliasInput.value = ensureChunkAlias(ch);
     aliasInput.addEventListener('input', (e)=>{
       e.stopPropagation();
-      ch.alias = aliasInput.value.trim() || ch.name || 'unnamed';
+      const newValue = aliasInput.value.trim();
+      ch.alias = newValue || ch.name || generateId('cut');
       updateMontageScrubberUI();
     });
     aliasInput.addEventListener('click', (e)=>e.stopPropagation());
@@ -2527,10 +2536,8 @@ function startMontagePlayback(){
   let lastChunkIdx = -1;
 
   _montageTimer = setInterval(()=>{
-    // out-of-range -> stop and loop back to beginning
-    if(_montagePos.chunkIdx >= montageChunks.length){ 
-      _montagePos = { chunkIdx: 0, frameIdx: 0 };
-    }
+    // out-of-range -> stop playback
+    if(_montagePos.chunkIdx >= montageChunks.length){ stopMontagePlayback(); return; }
     const ch = montageChunks[_montagePos.chunkIdx];
     const total = (ch.frameRange && (ch.frameRange.end - ch.frameRange.start)) || 0;
     if(total <= 0){ _montagePos.chunkIdx++; _montagePos.frameIdx = 0; return; }
