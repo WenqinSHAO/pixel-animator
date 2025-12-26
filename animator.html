@@ -92,19 +92,20 @@ input[type="range"]{width:160px}
 
 /* Montage sidebar styles */
 #montageSidebar .section{padding:10px}
-#montageChunks{max-height:400px;overflow-y:auto}
-#montageChunks .chunk-item{display:grid;grid-template-columns:48px 1fr auto;align-items:start;padding:8px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.02);cursor:move;gap:8px;transition:opacity 0.2s ease}
+#montageChunks{overflow-y:auto;flex:1}
+#montageChunks .chunk-item{display:grid;grid-template-columns:56px 1fr auto;align-items:center;padding:8px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.02);cursor:move;gap:8px;transition:opacity 0.2s ease}
 #montageChunks .chunk-item:hover{border-color:#35507c}
 #montageChunks .chunk-item.active{outline:2px solid rgba(90,162,255,.8);border-color:rgba(90,162,255,.65);background:linear-gradient(180deg,rgba(90,162,255,.06),rgba(255,255,255,.02))}
 #montageChunks .chunk-item.dragging{opacity:0.4;cursor:grabbing}
 #montageChunks .chunk-item.drag-over{outline:2px dashed rgba(90,162,255,.8);border-color:rgba(90,162,255,.65);background:rgba(90,162,255,.1)}
-#montageChunks .chunk-thumb{width:48px;height:48px;border-radius:4px;background:rgba(0,0,0,.2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);overflow:hidden}
+#montageChunks .chunk-thumb{width:56px;height:56px;border-radius:4px;background:rgba(0,0,0,.2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);overflow:hidden}
 #montageChunks .chunk-thumb canvas{width:100%;height:100%;image-rendering:pixelated}
-#montageChunks .chunk-info{display:flex;flex-direction:column;gap:4px;min-width:0}
-#montageChunks .chunk-badges{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
-.chunk-color-picker{width:24px;height:24px;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:0;background:none}
-#montageChunks .chunk-alias{font-size:11px;font-weight:600;color:var(--text);width:100%;padding:2px 4px;background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:4px}
+#montageChunks .chunk-info{display:flex;flex-direction:column;gap:6px;min-width:0}
+#montageChunks .chunk-info-row{display:flex;gap:6px;align-items:center}
+.chunk-color-picker{width:24px;height:24px;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:0;background:none;flex-shrink:0}
+#montageChunks .chunk-alias{font-size:11px;font-weight:600;color:var(--text);flex:1;padding:3px 6px;background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:4px;min-width:0}
 #montageChunks .chunk-alias::placeholder{color:var(--muted);opacity:.6}
+#montageChunks .chunk-duration{font-size:10px;color:var(--muted);padding:2px 6px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:4px}
 #montageChunks .chunk-controls{display:flex;gap:4px;flex-wrap:wrap}
 
 /* Insert zone for chunk insertion */
@@ -143,41 +144,36 @@ input[type="range"]{width:160px}
     <div class="canvasPanel">
 
       <!-- Drawing Ops -->
-      <div id="drawingPanel" class="panelBlock">
-        <div class="panelHeader">
-          <div class="panelTitle">Drawing</div>
+      <div id="drawingPanel" class="panelBlock" style="padding:8px">
+        <div class="panelHeader" style="margin-bottom:6px">
+          <div class="panelTitle">Drawing Tools</div>
         </div>
-        <div class="toolbar">
-          <div class="group">
-            <button id="toolPencil" class="primary">Pencil</button>
-            <button id="toolEraser">Eraser</button>
-            <button id="toolSoft">Soft</button>
-            <button id="toolSelect">Select</button>
-            <button id="undoBtn">Undo</button>
-            <button id="redoBtn">Redo</button>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <!-- Tools row -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button id="toolPencil" class="primary" style="padding:6px 10px">Pencil</button>
+            <button id="toolEraser" style="padding:6px 10px">Eraser</button>
+            <button id="toolSoft" style="padding:6px 10px">Soft</button>
+            <button id="toolSelect" style="padding:6px 10px">Select</button>
+            <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
+            <button id="undoBtn" style="padding:6px 10px">Undo</button>
+            <button id="redoBtn" style="padding:6px 10px">Redo</button>
+            <button id="gridToggleBtn" style="padding:6px 10px;margin-left:auto">Grid Off</button>
           </div>
-          <div class="group">
-            <label>Brush
-              <input id="brushSize" type="range" min="1" max="8" value="1"/>
-              <span id="brushSizeLabel" class="pill">1</span>
+          <!-- Settings row -->
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11px">
+            <label style="gap:6px">Brush
+              <input id="brushSize" type="range" min="1" max="8" value="1" style="width:100px"/>
+              <span id="brushSizeLabel" class="pill" style="padding:3px 6px;font-size:10px">1</span>
             </label>
-          </div>
-        </div>
-        <div class="toolbar">
-          <div class="group">
-            <label>Gray
-              <input id="gray" type="range" min="0" max="255" value="0"/>
-              <span id="grayLabel" class="pill">0</span>
+            <label style="gap:6px">Gray
+              <input id="gray" type="range" min="0" max="255" value="0" style="width:100px"/>
+              <span id="grayLabel" class="pill" style="padding:3px 6px;font-size:10px">0</span>
             </label>
-          </div>
-          <div class="group">
-            <label>Onion
-              <input id="onion" type="range" min="0" max="8" value="5"/>
-              <span id="onionLabel" class="pill">5</span>
+            <label style="gap:6px">Onion
+              <input id="onion" type="range" min="0" max="8" value="5" style="width:100px"/>
+              <span id="onionLabel" class="pill" style="padding:3px 6px;font-size:10px">5</span>
             </label>
-          </div>
-          <div class="group">
-            <button id="gridToggleBtn">Grid Off</button>
           </div>
         </div>
       </div>
@@ -259,29 +255,18 @@ input[type="range"]{width:160px}
           <button id="dupFrameBtn">Duplicate</button>
           <button id="delFrameBtn" class="danger">Delete</button>
         </div>
-        <div class="group">
-          <span class="pill">Selected: <span id="selectedFramePill">1</span></span>
-        </div>
       </div>
 
       <div style="margin-top:10px;color:var(--muted);font-size:12px">Click thumbnail to edit — drag to reorder frames.</div>
-    </div>
-
-    <!-- Meta -->
-    <div class="section" style="padding:8px">
-      <div class="panelTitle" style="margin-bottom:6px">Project Info</div>
-      <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:11px">
-        <small>Length:</small><span id="lengthPill" class="pill" style="padding:4px 8px;font-size:11px">1.00 sec</span>
-        <small>FPS:</small><span class="pill" style="padding:4px 8px;font-size:11px">12</span>
-        <small>Frames:</small><span id="framesPill" class="pill" style="padding:4px 8px;font-size:11px">12</span>
-        <small>Canvas:</small><span class="pill" style="padding:4px 8px;font-size:11px">128×128</span>
-      </div>
     </div>
 
     <!-- Project Actions -->
     <div class="section">
       <div class="panelHeader">
         <div class="panelTitle">Project Actions</div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--muted);line-height:1.4">
+        <div>Length: <span id="lengthPill" style="color:var(--text)">1.00 sec</span> | FPS: 12 | Frames: <span id="framesPill" style="color:var(--text)">12</span> | Canvas: 128×128</div>
       </div>
       <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         <button id="saveProjectBtn">Save Project</button>
@@ -448,7 +433,6 @@ ctx.imageSmoothingEnabled = false;
 
 const frameLabel = document.getElementById('frameLabel');
 const frameTotalEl = document.getElementById('frameTotal');
-const selectedFramePill = document.getElementById('selectedFramePill');
 
 const playBtn = document.getElementById('playBtn');
 const saveProjectBtn = document.getElementById('saveProjectBtn');
@@ -523,7 +507,6 @@ function updateProjectMetaUI(){
   frameTotalEl.textContent = String(count);
   framesPill.textContent = String(count);
   lengthPill.textContent = `${roundTo(count / FPS, 2)} sec`;
-  selectedFramePill.textContent = String(current + 1);
 
   // scrubber sync (if present) — use `montageScrubber` as the single control
   if(montageScrubber){
@@ -545,7 +528,6 @@ function updateProjectMetaUI(){
 
 function updateUI(){
   frameLabel.textContent = String(current + 1);
-  selectedFramePill.textContent = String(current + 1);
   updateProjectMetaUI();
   updateUndoRedoButtons();
 }
@@ -740,28 +722,39 @@ function renderMain(){
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(off, 0, 0, main.width, main.height);
   
-  // Draw grid overlay if enabled
+  // Draw layout guide overlay if enabled (rule of thirds)
   if(gridEnabled && currentMode === 'chunk'){
     ctx.save();
-    ctx.strokeStyle = 'rgba(90, 162, 255, 0.3)';
-    ctx.lineWidth = 1;
-    const gridSize = main.width / W; // pixels per grid cell
+    ctx.strokeStyle = 'rgba(90, 162, 255, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 4]);
     
-    // Draw vertical lines
-    for(let x = gridSize; x < main.width; x += gridSize){
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, main.height);
-      ctx.stroke();
-    }
+    // Draw vertical lines at 1/3 and 2/3
+    const x1 = main.width / 3;
+    const x2 = (main.width * 2) / 3;
+    ctx.beginPath();
+    ctx.moveTo(x1, 0);
+    ctx.lineTo(x1, main.height);
+    ctx.stroke();
     
-    // Draw horizontal lines
-    for(let y = gridSize; y < main.height; y += gridSize){
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(main.width, y);
-      ctx.stroke();
-    }
+    ctx.beginPath();
+    ctx.moveTo(x2, 0);
+    ctx.lineTo(x2, main.height);
+    ctx.stroke();
+    
+    // Draw horizontal lines at 1/3 and 2/3
+    const y1 = main.height / 3;
+    const y2 = (main.height * 2) / 3;
+    ctx.beginPath();
+    ctx.moveTo(0, y1);
+    ctx.lineTo(main.width, y1);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(0, y2);
+    ctx.lineTo(main.width, y2);
+    ctx.stroke();
+    
     ctx.restore();
   }
   
@@ -1575,6 +1568,7 @@ if(montageScrubber){
         // update selection highlight without forcing the chunk-start preview render
         selectMontageChunk(i, false);
         const playPosEl = document.getElementById('montagePlayPos'); if(playPosEl) playPosEl.textContent = `${pos} / ${totalMontage}f`;
+        updateMontageTimeDisplay(pos); // Update time display
         found = true;
         break;
       }
@@ -1757,6 +1751,70 @@ window.addEventListener('keydown', e=>{
   }
 
   const k = e.key.toLowerCase();
+  // Handle Ctrl/Cmd keyboard shortcuts for selection tool
+  if((e.ctrlKey || e.metaKey) && tool === 'select' && selection && !isPlaying){
+    if(k === 'c'){
+      // Copy selection
+      e.preventDefault();
+      notify('Selection copied');
+      return;
+    }
+    if(k === 'x'){
+      // Cut selection
+      e.preventDefault();
+      beginStroke();
+      const frameArr = frames[current];
+      const x1 = Math.min(selection.x1, selection.x2);
+      const y1 = Math.min(selection.y1, selection.y2);
+      const x2 = Math.max(selection.x1, selection.x2);
+      const y2 = Math.max(selection.y1, selection.y2);
+      for(let y = y1; y <= y2; y++){
+        for(let x = x1; x <= x2; x++){
+          const idx = xyToIndex(x, y);
+          if(activeStrokeMap && !activeStrokeMap.has(idx)){
+            activeStrokeMap.set(idx, frameArr[idx]);
+          }
+          frameArr[idx] = WHITE_FILL;
+        }
+      }
+      commitStroke();
+      renderMain();
+      renderThumb(current);
+      notify('Selection cut');
+      return;
+    }
+    if(k === 'v'){
+      // Paste selection
+      e.preventDefault();
+      if(selectionData){
+        beginStroke();
+        const frameArr = frames[current];
+        const x1 = Math.min(selection.x1, selection.x2);
+        const y1 = Math.min(selection.y1, selection.y2);
+        const x2 = Math.max(selection.x1, selection.x2);
+        const y2 = Math.max(selection.y1, selection.y2);
+        const w = x2 - x1 + 1;
+        for(let y = y1; y <= y2; y++){
+          for(let x = x1; x <= x2; x++){
+            const srcIdx = (y - y1) * w + (x - x1);
+            if(srcIdx < selectionData.length){
+              const destIdx = xyToIndex(x, y);
+              if(activeStrokeMap && !activeStrokeMap.has(destIdx)){
+                activeStrokeMap.set(destIdx, frameArr[destIdx]);
+              }
+              frameArr[destIdx] = selectionData[srcIdx];
+            }
+          }
+        }
+        commitStroke();
+        renderMain();
+        renderThumb(current);
+        notify('Selection pasted');
+      }
+      return;
+    }
+  }
+  
   // Do not run single-letter shortcuts when any modifier key is pressed — this avoids colliding
   // with browser or OS shortcuts like Ctrl/Cmd+S, Ctrl/Cmd+G, etc.
   const hasModifier = e.ctrlKey || e.metaKey || e.altKey || e.shiftKey;
@@ -1804,6 +1862,27 @@ let _pendingInsertPosition = null; // null or number - position to insert next i
 
 function generateId(prefix='chunk'){
   return `${prefix}-${Date.now().toString(36)}-${Math.floor(Math.random()*0x10000).toString(16)}`;
+}
+
+// Predefined color palette for chunks
+const CHUNK_COLORS = [
+  '#5aa2ff', // blue
+  '#ff5a7a', // red/pink
+  '#50c878', // emerald
+  '#ffa500', // orange
+  '#9370db', // purple
+  '#20b2aa', // turquoise
+  '#ff6b9d', // hot pink
+  '#32cd32', // lime green
+  '#ff8c00', // dark orange
+  '#4169e1', // royal blue
+  '#dc143c', // crimson
+  '#00ced1', // dark turquoise
+];
+
+// Get next color from palette based on chunk index
+function getNextChunkColor(index){
+  return CHUNK_COLORS[index % CHUNK_COLORS.length];
 }
 
 // Helper function to ensure chunk has a valid alias
@@ -2534,7 +2613,7 @@ function renderMontageChunks(){
         tempCtx.putImageData(new ImageData(imgData, w, h), 0, 0);
         
         // Scale to thumbnail size
-        thumbCtx.drawImage(tempCanvas, 0, 0, 48, 48);
+        thumbCtx.drawImage(tempCanvas, 0, 0, 56, 56);
         thumb.appendChild(thumbCanvas);
       }catch(e){
         console.error('Failed to render chunk thumbnail', ch.name, e);
@@ -2549,32 +2628,11 @@ function renderMontageChunks(){
     const info = document.createElement('div');
     info.className = 'chunk-info';
 
-    // Badges
-    const badges = document.createElement('div');
-    badges.className = 'chunk-badges';
-    const durationBadge = document.createElement('span'); 
-    durationBadge.className = 'pill'; 
-    durationBadge.textContent = `${(ch.frameRange.end - ch.frameRange.start)}f`;
-    badges.appendChild(durationBadge);
+    // Row 1: Alias and Color picker
+    const infoRow1 = document.createElement('div');
+    infoRow1.className = 'chunk-info-row';
     
-    // Color picker for chunk color coding
-    const colorPicker = document.createElement('input');
-    colorPicker.type = 'color';
-    colorPicker.className = 'chunk-color-picker';
-    colorPicker.value = ch.color || '#5aa2ff';
-    colorPicker.title = 'Set chunk color';
-    colorPicker.addEventListener('input', (e)=>{
-      e.stopPropagation();
-      ch.color = colorPicker.value;
-      updateChunkDelimiters(computeMontageTotalFrames());
-      notify('Chunk color updated');
-    });
-    colorPicker.addEventListener('click', (e)=>e.stopPropagation());
-    badges.appendChild(colorPicker);
-    
-    info.appendChild(badges);
-
-    // Alias input (now labeled as "Cut Name")
+    // Alias input
     const aliasInput = document.createElement('input');
     aliasInput.type = 'text';
     aliasInput.className = 'chunk-alias';
@@ -2587,7 +2645,34 @@ function renderMontageChunks(){
       updateMontageScrubberUI();
     });
     aliasInput.addEventListener('click', (e)=>e.stopPropagation());
-    info.appendChild(aliasInput);
+    infoRow1.appendChild(aliasInput);
+    
+    // Color picker for chunk color coding
+    const colorPicker = document.createElement('input');
+    colorPicker.type = 'color';
+    colorPicker.className = 'chunk-color-picker';
+    colorPicker.value = ch.color || getNextChunkColor(idx);
+    if(!ch.color) ch.color = colorPicker.value; // Assign default color if not set
+    colorPicker.title = 'Chunk color';
+    colorPicker.addEventListener('input', (e)=>{
+      e.stopPropagation();
+      ch.color = colorPicker.value;
+      updateChunkDelimiters(computeMontageTotalFrames());
+      notify('Chunk color updated');
+    });
+    colorPicker.addEventListener('click', (e)=>e.stopPropagation());
+    infoRow1.appendChild(colorPicker);
+    
+    info.appendChild(infoRow1);
+    
+    // Row 2: Duration badge
+    const infoRow2 = document.createElement('div');
+    infoRow2.className = 'chunk-info-row';
+    const durationBadge = document.createElement('span'); 
+    durationBadge.className = 'chunk-duration'; 
+    durationBadge.textContent = `${(ch.frameRange.end - ch.frameRange.start)} frames`;
+    infoRow2.appendChild(durationBadge);
+    info.appendChild(infoRow2);
 
     div.appendChild(info);
 
@@ -3197,13 +3282,8 @@ function startMontagePlayback(){
     }
     const pos = before + _montagePos.frameIdx + 1;
     if(playPosEl) playPosEl.textContent = `${pos} / ${totalMontage}f`;
+    updateMontageTimeDisplay(pos); // Update time display during playback
     // sync montageScrubber if present
-    if(montageScrubber && currentMode === 'montage'){
-      montageScrubber.max = String(totalMontage);
-      montageScrubber.value = String(pos);
-    }
-
-    // update montage scrubber so progress moves during montage playback
     if(montageScrubber && currentMode === 'montage'){
       montageScrubber.max = String(totalMontage);
       montageScrubber.value = String(pos);
