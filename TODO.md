@@ -8,8 +8,9 @@
 ### Montage Editor
 - [ ] **Unsaved changes indicator** - Warn before closing/navigating with unsaved work (High importance for data loss prevention)
 - [ ] **Chunk preview thumbnails** - Already implemented! Could be enhanced with larger previews on hover
-- [ ] **Drag and drop for chunk reordering** -  allow for drag a chunk and place it between two chunks to reorder, or a reasonable interaction logic and possible to implement
+- [x] **Drag and drop for chunk reordering** - ✅ Implemented! Chunks can be dragged and dropped to reorder
 - [ ] **Keyboard shortcuts for chunks** - Arrow keys to navigate, Delete to remove, Enter to edit
+- [ ] **Timeline zoom and preview on hover** - Allow zooming in/out of scrubber for detailed frame-by-frame work, show preview when hovering over timeline
 
 ### Chunk Editor
 - [ ] **Unsaved changes indicator** - Warn before switching modes or loading new project
@@ -22,11 +23,11 @@
 ## Medium Priority
 
 ### Montage Editor
-- [ ] **Chunk color coding** - Assign colors to chunks for easier visual tracking on scrubber and timeline
-- [ ] **Timeline zoom** - Allow zooming in/out of scrubber for detailed frame-by-frame work
+- [x] **Chunk color coding** - ✅ Implemented! Each chunk can be assigned a color visible on the timeline
+- [ ] **Playhead positioning on chunk selection** - Already partially implemented, could be enhanced
 
 ### Chunk Editor
-- [ ] **Grid overlay option** - Toggle pixel grid for pixel-perfect alignment
+- [x] **Grid overlay option** - ✅ Implemented! Toggle pixel grid for pixel-perfect alignment
 - [ ] **Color palette** - Quick-access grayscale palette (0, 64, 128, 192, 255 values)
 
 ### General UX
@@ -40,7 +41,7 @@
 - [ ] **Chunk groups/folders** - Organize chunks into logical groups for large projects
 
 ### Chunk Editor
-- [ ] **Selection tool** - Allow for select an area and then cut, copy, drag, paste 
+- [x] **Selection tool** - ✅ Implemented! Select an area with rectangular selection (basic version, ready for future copy/paste/drag operations)
 - [ ] **Drawing tools expansion** - Add line, rectangle, circle, fill tools
 
 ### General UX
@@ -94,6 +95,16 @@
 - [x] Frame info moved to scrubber area with time display
 - [x] Chunk/montage editor integration (edit, insert, return)
 - [x] Chunk preview thumbnails
+- [x] UI layout improvements (December 2025)
+  - [x] Chunk editor: Larger frame thumbnails (4 columns instead of 6)
+  - [x] Chunk editor: Compressed project info panel
+  - [x] Montage editor: Fixed "Frames" text appearing in wrong context
+  - [x] Montage editor: Fixed play button width to prevent scrubber movement
+- [x] Montage editor: Drag and drop chunk reordering (December 2025)
+- [x] Montage editor: Chunk color coding system (December 2025)
+- [x] Montage editor: Playhead positioning on chunk selection (December 2025)
+- [x] Chunk editor: Grid overlay toggle (December 2025)
+- [x] Chunk editor: Selection tool (basic implementation) (December 2025)
 
 ## Notes
 

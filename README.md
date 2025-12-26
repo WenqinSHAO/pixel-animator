@@ -105,6 +105,21 @@ Schema (concise):
 - Open `animator.html` in a browser (no build step required).
 - Use UI buttons to add frames, play, import/export JSON, and export GIF.
 
+### Chunk Editor Mode
+- **Drawing tools**: Pencil, Eraser, Soft brush, and Selection tool
+- **Grid overlay**: Toggle pixel grid for precise alignment (Grid On/Off button)
+- **Selection tool**: Click and drag to select an area, press Delete to clear selected pixels
+- **Frame management**: Add, duplicate, delete frames; drag thumbnails to reorder
+- **Onion skinning**: Adjust transparency to see previous frames while drawing
+
+### Montage Editor Mode
+- **Import chunks**: Load multiple project JSON files to assemble a montage
+- **Chunk reordering**: Drag and drop chunks to change their order in the timeline
+- **Color coding**: Assign colors to chunks for visual tracking on the timeline
+- **Trim chunks**: Adjust start/end frames for each chunk non-destructively
+- **Timeline scrubber**: Visual representation with color-coded chunk regions
+- **Playback**: Preview the entire montage sequence
+
 ## Implementation details — `animator.html` 
 
 - **Data model**: `frames` is an Array of `Uint8Array` (length `W*H`), one byte per pixel (0 = black, 255 = white). New frames are created with `makeBlankFrame()`.
