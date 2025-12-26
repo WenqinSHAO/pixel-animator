@@ -57,10 +57,10 @@ input[type="range"]{width:160px}
 .sidebar h2{display:none}
 .sidebar .section{padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(0,0,0,.18);margin-bottom:12px;flex-shrink:0}
 .sidebar .section:first-of-type{flex-shrink:1;display:flex;flex-direction:column;min-height:0}
-.sidebar .section:first-of-type::before{content:'Frames';display:block;font-size:11px;color:var(--muted);letter-spacing:.35px;text-transform:uppercase;margin:0 0 10px;flex-shrink:0}
+
 .sidebar .row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0;flex-wrap:wrap}
 .sidebar small{color:var(--muted)}
-.frames{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.frames{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .framesWrap{flex:1;overflow:auto;padding-right:4px;min-height:0}
 .thumb{border:1px solid var(--border);background:#060a12;border-radius:12px;padding:6px;cursor:pointer;position:relative}
 .thumb.active{outline:2px solid rgba(90,162,255,.8);border-color:rgba(90,162,255,.65)}
@@ -199,8 +199,8 @@ input[type="range"]{width:160px}
 
       <!-- Unified Scrubber (used in both chunk and montage modes) -->
       <div class="frameControls" style="margin-top:6px;">
-        <button id="playBtn" class="primary">Play</button>
-        <button id="montagePlayBtn" class="primary">Play</button>
+        <button id="playBtn" class="primary" style="min-width:65px">Play</button>
+        <button id="montagePlayBtn" class="primary" style="min-width:65px">Play</button>
         <div style="flex:1;position:relative;">
           <!-- Montage info above scrubber (only shown in montage mode) -->
           <div id="montageInfo" style="display:none;font-size:11px;color:var(--muted);margin-bottom:4px">
@@ -236,6 +236,7 @@ input[type="range"]{width:160px}
 
     <!-- Frames + Frame Ops -->
     <div class="section">
+      <div class="panelTitle" style="margin-bottom:10px">Frames</div>
 
       <div class="frameControls">
         <span class="pill">Frame <span id="frameLabel">1</span> / <span id="frameTotal">12</span></span>
@@ -260,13 +261,14 @@ input[type="range"]{width:160px}
     </div>
 
     <!-- Meta -->
-    <div class="section">
-      <div class="row"><small>Project</small><span id="lengthPill" class="pill">1.00 sec</span></div>
-      <div class="row"><small>FPS</small><span class="pill">12</span></div>
-      <div class="row"><small>Frames</small><span id="framesPill" class="pill">12</span></div>
-      <div class="row"><small>Canvas</small><span class="pill">128×128</span></div>
-
-      <div style="color:var(--muted);font-size:12px;margin-top:6px">Length updates automatically as you add/delete frames.</div>
+    <div class="section" style="padding:8px">
+      <div class="panelTitle" style="margin-bottom:6px">Project Info</div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:11px">
+        <small>Length:</small><span id="lengthPill" class="pill" style="padding:4px 8px;font-size:11px">1.00 sec</span>
+        <small>FPS:</small><span class="pill" style="padding:4px 8px;font-size:11px">12</span>
+        <small>Frames:</small><span id="framesPill" class="pill" style="padding:4px 8px;font-size:11px">12</span>
+        <small>Canvas:</small><span class="pill" style="padding:4px 8px;font-size:11px">128×128</span>
+      </div>
     </div>
 
     <!-- Project Actions -->
