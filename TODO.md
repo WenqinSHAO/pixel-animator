@@ -7,8 +7,8 @@
 
 ### Montage Editor
 - [ ] **Unsaved changes indicator** - Warn before closing/navigating with unsaved work (High importance for data loss prevention)
-- [ ] **Chunk preview thumbnails** - Already implemented! Could be enhanced with larger previews on hover
-- [x] **Drag and drop for chunk reordering** - ✅ Implemented! Chunks can be dragged and dropped to reorder
+- [x] **Chunk preview thumbnails** - ✅ Implemented with 56px thumbnails spanning two rows
+- [x] **Drag and drop for chunk reordering** - ✅ Implemented with visual feedback
 - [ ] **Keyboard shortcuts for chunks** - Arrow keys to navigate, Delete to remove, Enter to edit
 - [ ] **Timeline zoom and preview on hover** - Allow zooming in/out of scrubber for detailed frame-by-frame work, show preview when hovering over timeline
 
@@ -23,11 +23,15 @@
 ## Medium Priority
 
 ### Montage Editor
-- [x] **Chunk color coding** - ✅ Implemented! Each chunk can be assigned a color visible on the timeline
-- [ ] **Playhead positioning on chunk selection** - Already partially implemented, could be enhanced
+- [x] **Chunk color coding** - ✅ Implemented with 12-color pre-allocated palette
+- [x] **Playhead positioning on chunk selection** - ✅ Implemented, positions to chunk start
+- [x] **Optimized chunk layout** - ✅ Two-row design with duration (Xf format), color, alias, and controls
+- [x] **Alias overflow handling** - ✅ Ellipsis with hover tooltip for long names
+- [x] **Time display** - ✅ Fixed to update correctly during scrubbing and playback
 
 ### Chunk Editor
-- [x] **Grid overlay option** - ✅ Implemented! Toggle pixel grid for pixel-perfect alignment
+- [x] **Grid overlay option** - ✅ Implemented as layout guides (rule of thirds)
+- [x] **Optimized layout** - ✅ 4-column thumbnails, compact tools, project info in actions
 - [ ] **Color palette** - Quick-access grayscale palette (0, 64, 128, 192, 255 values)
 
 ### General UX
@@ -41,7 +45,7 @@
 - [ ] **Chunk groups/folders** - Organize chunks into logical groups for large projects
 
 ### Chunk Editor
-- [x] **Selection tool** - ✅ Implemented! Select an area with rectangular selection (basic version, ready for future copy/paste/drag operations)
+- [x] **Selection tool** - ✅ Fully implemented with copy/cut/paste, drag-and-drop, and floating selection
 - [ ] **Drawing tools expansion** - Add line, rectangle, circle, fill tools
 
 ### General UX
