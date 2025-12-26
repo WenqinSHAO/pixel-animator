@@ -200,8 +200,19 @@ input[type="range"]{width:160px}
       <div class="frameControls" style="margin-top:6px;">
         <button id="playBtn" class="primary">Play</button>
         <button id="montagePlayBtn" class="primary">Play</button>
-        <div style="flex:1;">
-          <input id="montageScrubber" class="scrubber" type="range" min="1" max="1" value="1" />
+        <div style="flex:1;position:relative;">
+          <!-- Top ruler (frame index) - only shown in montage mode -->
+          <div id="scrubberTopRuler" style="display:none;height:16px;font-size:10px;color:var(--muted);position:relative;margin-bottom:2px"></div>
+          
+          <!-- Scrubber with chunk delimiters -->
+          <div style="position:relative;">
+            <input id="montageScrubber" class="scrubber" type="range" min="1" max="1" value="1" />
+            <!-- Chunk delimiter markers - only shown in montage mode -->
+            <div id="chunkDelimiters" style="display:none;position:absolute;top:0;left:0;right:0;height:100%;pointer-events:none"></div>
+          </div>
+          
+          <!-- Bottom ruler (time) - only shown in montage mode -->
+          <div id="scrubberBottomRuler" style="display:none;height:16px;font-size:10px;color:var(--muted);position:relative;margin-top:2px"></div>
         </div>
       </div>
 
@@ -267,14 +278,16 @@ input[type="range"]{width:160px}
   <aside id="montageSidebar" class="card sidebar" style="display:none">
     <h2>Montage</h2>
 
-    <div class="section">
-      <div class="row"><small>Total frames</small><span id="montageTotalFrames" class="pill">0</span></div>
-      <div style="margin-top:6px" class="row"><small>Position</small><span id="montagePlayPos" class="pill">0 / 0f</span></div>
+    <div class="section" style="padding:8px 10px">
+      <div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span>Frames: <strong id="montageTotalFrames" style="color:var(--text)">0</strong></span>
+        <span>Position: <strong id="montagePlayPos" style="color:var(--text)">0 / 0f</strong></span>
+      </div>
     </div>
 
-    <div class="section" style="padding-top:8px">
+    <div class="section" style="padding-top:8px;flex:1;display:flex;flex-direction:column;min-height:0">
       <div class="panelHeader"><div class="panelTitle">Chunks</div></div>
-      <div id="montageChunks" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
+      <div id="montageChunks" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;overflow-y:auto;flex:1"></div>
     </div>
 
     <!-- Import/Save at bottom -->
@@ -1635,6 +1648,86 @@ function updateMontageScrubberUI(){
 
   scrub.value = String(pos);
   const playPosEl = document.getElementById('montagePlayPos'); if(playPosEl) playPosEl.textContent = `${pos} / ${total}f`;
+  
+  // Update rulers and chunk delimiters for montage mode
+  if(currentMode === 'montage'){
+    updateMontageRulers(total);
+    updateChunkDelimiters(total);
+  }
+}
+
+function updateMontageRulers(totalFrames){
+  const topRuler = document.getElementById('scrubberTopRuler');
+  const bottomRuler = document.getElementById('scrubberBottomRuler');
+  if(!topRuler || !bottomRuler) return;
+  
+  // Show rulers in montage mode
+  if(currentMode === 'montage'){
+    topRuler.style.display = 'block';
+    bottomRuler.style.display = 'block';
+    
+    // Top ruler: frame indices (show every ~10% of total or key positions)
+    topRuler.innerHTML = '';
+    const step = Math.max(1, Math.ceil(totalFrames / 8)); // Show ~8-10 markers
+    for(let i = 0; i <= totalFrames; i += step){
+      if(i === 0) continue; // Skip 0, start from 1
+      const marker = document.createElement('span');
+      marker.textContent = String(i);
+      marker.style.position = 'absolute';
+      marker.style.left = `${(i / totalFrames) * 100}%`;
+      marker.style.transform = 'translateX(-50%)';
+      topRuler.appendChild(marker);
+    }
+    
+    // Bottom ruler: time in seconds (12 fps)
+    bottomRuler.innerHTML = '';
+    const totalSeconds = totalFrames / FPS;
+    const timeStep = Math.max(0.5, Math.ceil(totalSeconds / 8) / 2) * 2; // Round to 0.5s increments
+    for(let t = 0; t <= totalSeconds; t += timeStep){
+      const marker = document.createElement('span');
+      marker.textContent = `${t.toFixed(1)}s`;
+      marker.style.position = 'absolute';
+      marker.style.left = `${(t / totalSeconds) * 100}%`;
+      marker.style.transform = 'translateX(-50%)';
+      bottomRuler.appendChild(marker);
+    }
+  }else{
+    topRuler.style.display = 'none';
+    bottomRuler.style.display = 'none';
+  }
+}
+
+function updateChunkDelimiters(totalFrames){
+  const delimiters = document.getElementById('chunkDelimiters');
+  if(!delimiters) return;
+  
+  if(currentMode === 'montage' && montageChunks.length > 0){
+    delimiters.style.display = 'block';
+    delimiters.innerHTML = '';
+    
+    // Add delimiter markers at chunk boundaries
+    let cumulativeFrames = 0;
+    for(let i = 0; i < montageChunks.length; i++){
+      const chunk = montageChunks[i];
+      const chunkLength = (chunk.frameRange && (chunk.frameRange.end - chunk.frameRange.start)) || 0;
+      cumulativeFrames += chunkLength;
+      
+      // Add marker at end of chunk (unless it's the last chunk)
+      if(i < montageChunks.length - 1 && cumulativeFrames > 0){
+        const marker = document.createElement('div');
+        marker.style.position = 'absolute';
+        marker.style.left = `${(cumulativeFrames / totalFrames) * 100}%`;
+        marker.style.top = '0';
+        marker.style.bottom = '0';
+        marker.style.width = '2px';
+        marker.style.background = 'rgba(90,162,255,0.6)';
+        marker.style.transform = 'translateX(-1px)';
+        delimiters.appendChild(marker);
+      }
+    }
+  }else{
+    delimiters.style.display = 'none';
+  }
 }
 
 function selectMontageChunk(idx, renderPreview = true){
@@ -1840,6 +1933,9 @@ function setMode(mode){
         montageScrubber.value = String(before + 1);
       }
     }
+    // Show rulers and chunk delimiters
+    updateMontageRulers(Math.max(1, computeMontageTotalFrames()));
+    updateChunkDelimiters(Math.max(1, computeMontageTotalFrames()));
     main.style.cursor = 'default';
   }else{
     // restore chunk editor view and cursor
@@ -1850,6 +1946,13 @@ function setMode(mode){
       montageScrubber.max = String(frames.length);
       montageScrubber.value = String(current + 1);
     }
+    // Hide rulers and chunk delimiters
+    const topRuler = document.getElementById('scrubberTopRuler');
+    const bottomRuler = document.getElementById('scrubberBottomRuler');
+    const delimiters = document.getElementById('chunkDelimiters');
+    if(topRuler) topRuler.style.display = 'none';
+    if(bottomRuler) bottomRuler.style.display = 'none';
+    if(delimiters) delimiters.style.display = 'none';
     main.style.cursor = 'crosshair';
   }
 } 
