@@ -1,16 +1,19 @@
 # Frame-by-Frame Animator - TODO
 
+
+
+
 ## High Priority
 
 ### Montage Editor
 - [ ] **Unsaved changes indicator** - Warn before closing/navigating with unsaved work (High importance for data loss prevention)
 - [ ] **Chunk preview thumbnails** - Already implemented! Could be enhanced with larger previews on hover
-- [ ] **Drag-and-drop import** - Allow dragging JSON files directly onto chunks panel for easier workflow
+- [ ] **Drag and drop for chunk reordering** -  allow for drag a chunk and place it between two chunks to reorder, or a reasonable interaction logic and possible to implement
 - [ ] **Keyboard shortcuts for chunks** - Arrow keys to navigate, Delete to remove, Enter to edit
 
 ### Chunk Editor
 - [ ] **Unsaved changes indicator** - Warn before switching modes or loading new project
-- [ ] **Copy/paste frames** - Between projects or within project for faster animation creation
+
 
 ### General UX
 - [ ] **Tooltips enhancement** - Add helpful tooltips on all buttons and controls for better discoverability
@@ -19,16 +22,12 @@
 ## Medium Priority
 
 ### Montage Editor
-- [ ] **Trim preview on hover** - Show tooltip with start/end frame when hovering over trim handles
 - [ ] **Chunk color coding** - Assign colors to chunks for easier visual tracking on scrubber and timeline
-- [ ] **Batch chunk operations** - Multi-select chunks for delete/reorder/export operations
 - [ ] **Timeline zoom** - Allow zooming in/out of scrubber for detailed frame-by-frame work
 
 ### Chunk Editor
 - [ ] **Grid overlay option** - Toggle pixel grid for pixel-perfect alignment
 - [ ] **Color palette** - Quick-access grayscale palette (0, 64, 128, 192, 255 values)
-- [ ] **Frame range selection** - Select multiple frames for batch operations (delete, duplicate, reorder)
-- [ ] **Undo history viewer** - Show undo/redo stack with small previews for better control
 
 ### General UX
 - [ ] **Recent files list** - Quick access to recently loaded projects/montages (localStorage)
@@ -38,17 +37,13 @@
 ## Low Priority
 
 ### Montage Editor
-- [ ] **Audio sync markers** - Add audio waveform display for precise timing (would require audio file support)
-- [ ] **Effects preview** - Show transition effects between chunks (fade, wipe, etc.)
 - [ ] **Chunk groups/folders** - Organize chunks into logical groups for large projects
 
-### Chunk Editor  
-- [ ] **Frame rate preview toggle** - Temporarily change preview FPS without affecting export
-- [ ] **Onion skin customization** - More control over previous/next frame opacity and count
+### Chunk Editor
+- [ ] **Selection tool** - Allow for select an area and then cut, copy, drag, paste 
 - [ ] **Drawing tools expansion** - Add line, rectangle, circle, fill tools
 
 ### General UX
-- [ ] **Dark/light theme toggle** - User preference for interface theme
 - [ ] **Mobile/tablet support** - Touch-friendly controls and responsive layout
 - [ ] **Accessibility improvements** - Better ARIA labels, keyboard navigation, screen reader support
 - [ ] **Internationalization** - Support for multiple languages
