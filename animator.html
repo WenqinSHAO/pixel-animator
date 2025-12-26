@@ -1668,7 +1668,7 @@ function updateMontageRulers(totalFrames){
     
     // Top ruler: frame indices (show every ~10% of total or key positions)
     topRuler.innerHTML = '';
-    const step = Math.max(1, Math.ceil(totalFrames / 8)); // Show ~8-10 markers
+    const step = Math.max(1, Math.ceil(totalFrames / 8)); // Show ~8 markers
     for(let i = 0; i <= totalFrames; i += step){
       if(i === 0) continue; // Skip 0, start from 1
       const marker = document.createElement('span');
