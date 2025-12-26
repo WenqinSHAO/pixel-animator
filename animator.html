@@ -202,6 +202,13 @@ input[type="range"]{width:160px}
         <button id="playBtn" class="primary">Play</button>
         <button id="montagePlayBtn" class="primary">Play</button>
         <div style="flex:1;position:relative;">
+          <!-- Montage info above scrubber (only shown in montage mode) -->
+          <div id="montageInfo" style="display:none;font-size:11px;color:var(--muted);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between">
+            <span>Frames: <strong id="montageTotalFrames" style="color:var(--text)">0</strong></span>
+            <span>Position: <strong id="montagePlayPos" style="color:var(--text)">0 / 0f</strong></span>
+            <span>Time: <strong id="montageTimePos" style="color:var(--text)">0.0s</strong></span>
+          </div>
+          
           <!-- Top ruler (frame index) - only shown in montage mode -->
           <div id="scrubberTopRuler" style="display:none;height:16px;font-size:10px;color:var(--muted);position:relative;margin-bottom:2px"></div>
           
@@ -278,13 +285,6 @@ input[type="range"]{width:160px}
   <!-- Montage Sidebar (hidden by default) -->
   <aside id="montageSidebar" class="card sidebar" style="display:none">
     <h2>Montage</h2>
-
-    <div class="section" style="padding:8px 10px">
-      <div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <span>Frames: <strong id="montageTotalFrames" style="color:var(--text)">0</strong></span>
-        <span>Position: <strong id="montagePlayPos" style="color:var(--text)">0 / 0f</strong></span>
-      </div>
-    </div>
 
     <div class="section" style="padding-top:8px;flex:1;display:flex;flex-direction:column;min-height:0">
       <div class="panelHeader">
@@ -1642,9 +1642,17 @@ function computeMontageTotalFrames(){
 }
 
 function updateMontageMetaUI(){
+  const totalFrames = computeMontageTotalFrames();
   const el = document.getElementById('montageTotalFrames');
-  if(!el) return;
-  el.textContent = String(computeMontageTotalFrames());
+  if(el) el.textContent = String(totalFrames);
+  
+  // Update time position
+  const timeEl = document.getElementById('montageTimePos');
+  if(timeEl && currentMode === 'montage'){
+    const pos = Number(montageScrubber.value) || 1;
+    const timeInSeconds = ((pos - 1) / FPS).toFixed(1);
+    timeEl.textContent = `${timeInSeconds}s`;
+  }
 }
 
 function updateMontageScrubberUI(){
@@ -1676,6 +1684,13 @@ function updateMontageScrubberUI(){
 
   scrub.value = String(pos);
   const playPosEl = document.getElementById('montagePlayPos'); if(playPosEl) playPosEl.textContent = `${pos} / ${total}f`;
+  
+  // Update time display
+  const timeEl = document.getElementById('montageTimePos');
+  if(timeEl && currentMode === 'montage'){
+    const timeInSeconds = ((pos - 1) / FPS).toFixed(1);
+    timeEl.textContent = `${timeInSeconds}s`;
+  }
   
   // Update rulers and chunk delimiters for montage mode
   if(currentMode === 'montage'){
@@ -1961,9 +1976,13 @@ function setMode(mode){
         montageScrubber.value = String(before + 1);
       }
     }
+    // Show montage info
+    const montageInfo = document.getElementById('montageInfo');
+    if(montageInfo) montageInfo.style.display = 'flex';
     // Show rulers and chunk delimiters
     updateMontageRulers(Math.max(1, computeMontageTotalFrames()));
     updateChunkDelimiters(Math.max(1, computeMontageTotalFrames()));
+    updateMontageMetaUI();
     main.style.cursor = 'default';
   }else{
     // restore chunk editor view and cursor
@@ -1974,6 +1993,9 @@ function setMode(mode){
       montageScrubber.max = String(frames.length);
       montageScrubber.value = String(current + 1);
     }
+    // Hide montage info
+    const montageInfo = document.getElementById('montageInfo');
+    if(montageInfo) montageInfo.style.display = 'none';
     // Hide rulers and chunk delimiters
     const topRuler = document.getElementById('scrubberTopRuler');
     const bottomRuler = document.getElementById('scrubberBottomRuler');
