@@ -280,6 +280,23 @@ input[type="range"]{width:160px}
       </div>
       <div class="footerHint" style="margin-top:8px">Save Project is lossless JSON. Save GIF exports 512×512 with a white background.</div>
     </div>
+    
+    <!-- Montage Integration -->
+    <div class="section">
+      <div class="panelHeader">
+        <div class="panelTitle">Montage Integration</div>
+      </div>
+      <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <button id="insertToMontageBtn" style="display:none">Insert to Montage</button>
+        <button id="returnToMontageBtn" style="display:none">Return to Montage</button>
+      </div>
+    </div>
+        <button id="loadProjectBtn">Load Project</button>
+        <button id="saveBtn">Save GIF</button>
+        <button id="newBtn" class="danger">New</button>
+      </div>
+      <div class="footerHint" style="margin-top:8px">Save Project is lossless JSON. Save GIF exports 512×512 with a white background.</div>
+    </div>
   </aside>
 
   <!-- Montage Sidebar (hidden by default) -->
@@ -1496,7 +1513,27 @@ newBtn.addEventListener('click', ()=>{
   renderAllThumbs();
   renderMain();
   updateUI();
+  
+  // Clear editing context when creating new project
+  _editingChunkContext = null;
+  updateMontageIntegrationButtons();
 });
+
+// Montage integration buttons
+const insertToMontageBtn = document.getElementById('insertToMontageBtn');
+const returnToMontageBtn = document.getElementById('returnToMontageBtn');
+if(insertToMontageBtn){
+  insertToMontageBtn.addEventListener('click', ()=>{
+    if(isPlaying) return;
+    insertChunkToMontage();
+  });
+}
+if(returnToMontageBtn){
+  returnToMontageBtn.addEventListener('click', ()=>{
+    if(isPlaying) return;
+    returnChunkToMontage();
+  });
+}
 
 brushSize.addEventListener('input', ()=>{
   brush = Number(brushSize.value);
@@ -1605,6 +1642,9 @@ window.addEventListener('keydown', e=>{
 let montageChunks = []; // {id,name,source:{type,ref|project}, frameRange:{start,end}, derived:boolean, _project:optional, alias:optional}
 let montagePlaying = false;
 let selectedChunkIdx = -1;
+// Track editing context: which montage chunk is being edited in chunk editor
+let _editingChunkContext = null; // { chunkIdx: number, montageChunks: array }
+
 let _trimDragging = null;
 let currentMode = 'chunk'; // 'chunk' | 'montage' - used to gate drawing and UI state
 let _pendingInsertPosition = null; // null or number - position to insert next imported chunk
@@ -1984,6 +2024,7 @@ function setMode(mode){
     updateChunkDelimiters(Math.max(1, computeMontageTotalFrames()));
     updateMontageMetaUI();
     main.style.cursor = 'default';
+    updateMontageIntegrationButtons();
   }else{
     // restore chunk editor view and cursor
     renderMain();
@@ -2004,6 +2045,7 @@ function setMode(mode){
     if(bottomRuler) bottomRuler.style.display = 'none';
     if(delimiters) delimiters.style.display = 'none';
     main.style.cursor = 'crosshair';
+    updateMontageIntegrationButtons();
   }
 } 
 
@@ -2021,6 +2063,157 @@ function addMontageChunk(obj, insertPosition = null){
   updateMontageScrubberUI();
   // select first chunk by default when first chunk added
   if(montageChunks.length === 1){ selectMontageChunk(0); }
+}
+
+// -------------------- Chunk/Montage Editor Integration --------------------
+// Edit a montage chunk in the chunk editor
+function editChunkInChunkEditor(chunkIdx){
+  if(chunkIdx < 0 || chunkIdx >= montageChunks.length) return;
+  const chunk = montageChunks[chunkIdx];
+  
+  if(!chunk._project || !chunk._project.frames){
+    notify('Chunk project data not available');
+    return;
+  }
+  
+  // Store editing context
+  _editingChunkContext = { chunkIdx, montageChunks: [...montageChunks] };
+  
+  // Load chunk frames into chunk editor
+  const project = chunk._project;
+  const frameCount = project.frameCount || (project.frames && project.frames.length) || 0;
+  
+  frames = Array.from({length: frameCount}, ()=>makeBlankFrame());
+  undoStacks = [];
+  redoStacks = [];
+  ensureStacks(frameCount);
+  
+  for(let i=0; i<frameCount; i++){
+    if(i < project.frames.length){
+      const base64 = project.frames[i];
+      const binary = atob(base64);
+      const arr = new Uint8Array(binary.length);
+      for(let j=0; j<binary.length; j++) arr[j] = binary.charCodeAt(j);
+      frames[i].set(arr);
+    }
+  }
+  
+  // Switch to chunk editor
+  setMode('chunk');
+  initThumbs(false);
+  setCurrent(chunk.frameRange.start);
+  renderAllThumbs();
+  renderMain();
+  updateUI();
+  
+  // Show "Return to Montage" button
+  updateMontageIntegrationButtons();
+  notify(`Editing chunk: ${chunk.alias || chunk.name}`);
+}
+
+// Insert current chunk editor project to montage
+function insertChunkToMontage(){
+  if(frames.length === 0){
+    notify('No frames to insert');
+    return;
+  }
+  
+  // Create project from current frames
+  const project = {
+    version: '1.3',
+    width: W,
+    height: H,
+    fps: FPS,
+    frameCount: frames.length,
+    timestamp: new Date().toISOString(),
+    frames: frames.map(f=>{
+      let binary = '';
+      for(let i=0;i<f.length;i++) binary += String.fromCharCode(f[i]);
+      return btoa(binary);
+    })
+  };
+  
+  const ts = new Date().toISOString().replace(/[:.]/g,'-');
+  const chunkName = lastProjectPath || `chunk-${ts}`;
+  const ch = {
+    id: generateId('chunk'),
+    name: chunkName,
+    alias: chunkName.replace(/\.json$/i, ''),
+    source: {type:'embedded', project: project},
+    frameRange: {start:0, end: frames.length},
+    derived: false,
+    _project: project
+  };
+  
+  // Switch to montage editor and add chunk
+  setMode('montage');
+  addMontageChunk(ch);
+  notify(`Inserted chunk to montage`);
+}
+
+// Return edited chunk to montage
+function returnChunkToMontage(){
+  if(!_editingChunkContext){
+    notify('No montage context to return to');
+    return;
+  }
+  
+  // Update chunk with edited frames
+  const { chunkIdx } = _editingChunkContext;
+  
+  // Create updated project from current frames
+  const project = {
+    version: '1.3',
+    width: W,
+    height: H,
+    fps: FPS,
+    frameCount: frames.length,
+    timestamp: new Date().toISOString(),
+    frames: frames.map(f=>{
+      let binary = '';
+      for(let i=0;i<f.length;i++) binary += String.fromCharCode(f[i]);
+      return btoa(binary);
+    })
+  };
+  
+  // Update the chunk
+  if(chunkIdx >= 0 && chunkIdx < montageChunks.length){
+    const chunk = montageChunks[chunkIdx];
+    chunk._project = project;
+    chunk.source = {type:'embedded', project: project};
+    // Update frame range if frame count changed
+    if(frames.length !== chunk.frameRange.end){
+      chunk.frameRange.end = frames.length;
+    }
+  }
+  
+  // Clear editing context
+  _editingChunkContext = null;
+  
+  // Switch back to montage
+  setMode('montage');
+  renderMontageChunks();
+  updateMontageMetaUI();
+  updateMontageScrubberUI();
+  updateMontageIntegrationButtons();
+  notify('Chunk updated in montage');
+}
+
+// Update visibility of montage integration buttons
+function updateMontageIntegrationButtons(){
+  const insertBtn = document.getElementById('insertToMontageBtn');
+  const returnBtn = document.getElementById('returnToMontageBtn');
+  
+  if(currentMode === 'chunk'){
+    // Show insert button if not editing from montage
+    if(insertBtn) insertBtn.style.display = _editingChunkContext ? 'none' : '';
+    // Show return button if editing from montage
+    if(returnBtn) returnBtn.style.display = _editingChunkContext ? '' : 'none';
+  }else{
+    // Hide both in montage mode
+    if(insertBtn) insertBtn.style.display = 'none';
+    if(returnBtn) returnBtn.style.display = 'none';
+  }
 }
 
 // Extract thumbnail frame index from chunk - picks a frame a few frames in for better representation
@@ -2145,6 +2338,9 @@ function renderMontageChunks(){
     // events: select on click
     div.addEventListener('click', ()=>{ selectMontageChunk(idx); });
 
+    const editBtn = document.createElement('button'); editBtn.className = 'iconBtn'; editBtn.title = 'Edit in Chunk Editor'; editBtn.textContent = '✏';
+    editBtn.addEventListener('click', (e)=>{ e.stopPropagation(); editChunkInChunkEditor(idx); });
+
     const upBtn = document.createElement('button'); upBtn.className = 'iconBtn'; upBtn.title = 'Move Up'; upBtn.textContent = '▴';
     upBtn.addEventListener('click', (e)=>{ e.stopPropagation(); if(idx === 0) return; [montageChunks[idx-1], montageChunks[idx]] = [montageChunks[idx], montageChunks[idx-1]]; renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); });
 
@@ -2154,6 +2350,7 @@ function renderMontageChunks(){
     const delBtn = document.createElement('button'); delBtn.className = 'iconBtn danger'; delBtn.title = 'Delete'; delBtn.textContent = '✖';
     delBtn.addEventListener('click', (e)=>{ e.stopPropagation(); montageChunks.splice(idx,1); renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); });
 
+    controls.appendChild(editBtn);
     controls.appendChild(upBtn);
     controls.appendChild(downBtn);
     controls.appendChild(delBtn);
