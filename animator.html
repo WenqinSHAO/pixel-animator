@@ -411,6 +411,11 @@ const FPS = 12;
 const MAX_FRAMES = 600;
 const UNDO_LIMIT = 100;
 
+// Visual constants
+const WHITE_FILL = 255;  // White color value for clearing/erasing
+const CHUNK_COLOR_ALPHA_HIGH = '33';  // Hex alpha for chunk color highlights (20%)
+const CHUNK_COLOR_ALPHA_LOW = '11';   // Hex alpha for chunk color backgrounds (6.5%)
+
 // Frames + history (dynamic length)
 // NOTE: `frames` holds Uint8Array instances (W*H bytes each) representing grayscale pixels
 // (0 = black, 255 = white). `undoStacks` / `redoStacks` are per-frame arrays of stroke deltas.
@@ -502,7 +507,7 @@ function makeBlankFrame(){
   // To switch to color or RGBA frames, replace this with a Uint8ClampedArray(W*H*4)
   // and update compose/draw functions accordingly.
   const a = new Uint8Array(W*H);
-  a.fill(255);
+  a.fill(WHITE_FILL);
   return a;
 }
 
@@ -685,7 +690,7 @@ function ghostGrayForDistance(d){ return clamp(110 + (d-1)*30, 110, 235); }
 function composeWithOnionSkin(frameIndex, depth){
   const out = new Uint8ClampedArray(W*H*4);
   const base = new Uint8Array(W*H);
-  base.fill(255);
+  base.fill(WHITE_FILL);
 
   for(let d=1; d<=depth; d++){
     const idx = frameIndex - d;
@@ -1084,7 +1089,7 @@ async function loadProject(file){
       for(let j=0; j<binary.length; j++) arr[j] = binary.charCodeAt(j);
       frames[i].set(arr);
     }else{
-      frames[i].fill(255);
+      frames[i].fill(WHITE_FILL);
     }
   }
 
@@ -1396,7 +1401,7 @@ frameGrid.addEventListener('drop', ev => { ev.preventDefault(); const from = Num
 
 function applyStroke(from, to){
   const frameArr = frames[current];
-  const value = (tool === 'eraser') ? 255 : gray;
+  const value = (tool === 'eraser') ? WHITE_FILL : gray;
 
   if(tool === 'soft'){
     if(!from){
@@ -1738,7 +1743,7 @@ window.addEventListener('keydown', e=>{
           if(activeStrokeMap && !activeStrokeMap.has(idx)){
             activeStrokeMap.set(idx, frameArr[idx]);
           }
-          frameArr[idx] = 255; // Fill with white
+          frameArr[idx] = WHITE_FILL; // Fill with white
         }
       }
       commitStroke();
@@ -1955,7 +1960,7 @@ function updateChunkDelimiters(totalFrames){
         region.style.top = '0';
         region.style.bottom = '0';
         const chunkColor = chunk.color || '#5aa2ff';
-        region.style.background = `linear-gradient(180deg, ${chunkColor}33, ${chunkColor}11)`;
+        region.style.background = `linear-gradient(180deg, ${chunkColor}${CHUNK_COLOR_ALPHA_HIGH}, ${chunkColor}${CHUNK_COLOR_ALPHA_LOW})`;
         region.style.borderLeft = `1px solid ${chunkColor}66`;
         region.style.borderRight = `1px solid ${chunkColor}66`;
         region.title = chunk.alias || chunk.name;
@@ -2478,7 +2483,9 @@ function renderMontageChunks(){
       if(fromIdx !== toIdx && !isNaN(fromIdx)){
         // Reorder chunks: move fromIdx to toIdx position
         const [movedChunk] = montageChunks.splice(fromIdx, 1);
-        const insertIdx = fromIdx < toIdx ? toIdx : toIdx;
+        // When moving backward (to lower index), insert at toIdx
+        // When moving forward (to higher index), the splice removed an item before toIdx, so insert at toIdx-1
+        const insertIdx = fromIdx < toIdx ? (toIdx - 1) : toIdx;
         montageChunks.splice(insertIdx, 0, movedChunk);
         
         // Update selection to follow moved chunk
