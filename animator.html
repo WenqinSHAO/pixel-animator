@@ -430,6 +430,10 @@ const WHITE_FILL = 255;  // White color value for clearing/erasing
 const CHUNK_COLOR_ALPHA_HIGH = '33';  // Hex alpha for chunk color highlights (20%)
 const CHUNK_COLOR_ALPHA_LOW = '11';   // Hex alpha for chunk color backgrounds (6.5%)
 const BASE_MARKER_COUNT = 8;  // Base number of timeline markers (scales with zoom)
+const TIMELINE_ZOOM_INCREMENT = 0.25;  // Zoom step size
+const TIMELINE_ZOOM_MIN = 0.5;  // Minimum zoom (50%)
+const TIMELINE_ZOOM_MAX = 3.0;  // Maximum zoom (300%)
+const PREVIEW_HIDE_DELAY_MS = 150;  // Delay before hiding preview tooltip (matches CSS transition)
 
 // Frames + history (dynamic length)
 // NOTE: `frames` holds Uint8Array instances (W*H bytes each) representing grayscale pixels
@@ -1846,7 +1850,7 @@ if(montageScrubber && timelinePreview && previewCanvas){
     timelinePreview.classList.remove('visible');
     setTimeout(()=> {
       if(!timelinePreview.classList.contains('visible')) timelinePreview.style.display = 'none';
-    }, 150);
+    }, PREVIEW_HIDE_DELAY_MS);
   });
 }
 
@@ -3044,14 +3048,14 @@ const zoomLevelEl = document.getElementById('zoomLevel');
 
 if(zoomInBtn){
   zoomInBtn.addEventListener('click', ()=>{
-    timelineZoom = Math.min(timelineZoom + 0.25, 3.0); // Max 300%
+    timelineZoom = Math.min(timelineZoom + TIMELINE_ZOOM_INCREMENT, TIMELINE_ZOOM_MAX);
     updateTimelineZoom();
   });
 }
 
 if(zoomOutBtn){
   zoomOutBtn.addEventListener('click', ()=>{
-    timelineZoom = Math.max(timelineZoom - 0.25, 0.5); // Min 50%
+    timelineZoom = Math.max(timelineZoom - TIMELINE_ZOOM_INCREMENT, TIMELINE_ZOOM_MIN);
     updateTimelineZoom();
   });
 }
