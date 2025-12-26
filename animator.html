@@ -429,6 +429,7 @@ const UNDO_LIMIT = 100;
 const WHITE_FILL = 255;  // White color value for clearing/erasing
 const CHUNK_COLOR_ALPHA_HIGH = '33';  // Hex alpha for chunk color highlights (20%)
 const CHUNK_COLOR_ALPHA_LOW = '11';   // Hex alpha for chunk color backgrounds (6.5%)
+const BASE_MARKER_COUNT = 8;  // Base number of timeline markers (scales with zoom)
 
 // Frames + history (dynamic length)
 // NOTE: `frames` holds Uint8Array instances (W*H bytes each) representing grayscale pixels
@@ -1806,14 +1807,17 @@ if(montageScrubber && timelinePreview && previewCanvas){
           const frameInSource = ch.frameRange.start + frameIdx;
           if(frameInSource < (ch._project.frameCount || (ch._project.frames && ch._project.frames.length))){
             const bytes = _decodeFrameFromProject(ch._project, frameInSource);
-            // Render to preview canvas
-            offCtx.putImageData(new ImageData(new Uint8ClampedArray(bytes.length * 4), W, H), 0, 0);
+            // Render to preview canvas using ImageData for better performance
+            const imgData = new ImageData(W, H);
             for(let j=0; j<bytes.length; j++){
               const v = bytes[j];
               const idx = j * 4;
-              offCtx.fillStyle = `rgb(${v},${v},${v})`;
-              offCtx.fillRect(j % W, Math.floor(j / W), 1, 1);
+              imgData.data[idx] = v;     // R
+              imgData.data[idx+1] = v;   // G
+              imgData.data[idx+2] = v;   // B
+              imgData.data[idx+3] = 255; // A
             }
+            offCtx.putImageData(imgData, 0, 0);
             previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
             previewCtx.drawImage(off, 0, 0, previewCanvas.width, previewCanvas.height);
             
@@ -2296,7 +2300,7 @@ function updateMontageRulers(totalFrames){
     
     // Top ruler: frame indices (show more markers when zoomed in)
     topRuler.innerHTML = '';
-    const markersToShow = Math.ceil(8 * timelineZoom); // More markers when zoomed
+    const markersToShow = Math.ceil(BASE_MARKER_COUNT * timelineZoom); // More markers when zoomed
     const step = Math.max(1, Math.ceil(totalFrames / markersToShow));
     for(let i = 0; i <= totalFrames; i += step){
       if(i === 0) continue; // Skip 0, start from 1
@@ -2311,7 +2315,7 @@ function updateMontageRulers(totalFrames){
     // Bottom ruler: time in seconds (12 fps, more markers when zoomed)
     bottomRuler.innerHTML = '';
     const totalSeconds = totalFrames / FPS;
-    const timeMarkersToShow = Math.ceil(8 * timelineZoom);
+    const timeMarkersToShow = Math.ceil(BASE_MARKER_COUNT * timelineZoom);
     const timeStep = Math.max(0.1, Math.ceil((totalSeconds / timeMarkersToShow) * 10) / 10); // Round to 0.1s increments
     for(let t = 0; t <= totalSeconds; t += timeStep){
       const marker = document.createElement('span');
