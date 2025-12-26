@@ -93,13 +93,16 @@ input[type="range"]{width:160px}
 /* Montage sidebar styles */
 #montageSidebar .section{padding:10px}
 #montageChunks{max-height:400px;overflow-y:auto}
-#montageChunks .chunk-item{display:grid;grid-template-columns:48px 1fr auto;align-items:start;padding:8px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.02);cursor:pointer;gap:8px}
+#montageChunks .chunk-item{display:grid;grid-template-columns:48px 1fr auto;align-items:start;padding:8px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.02);cursor:move;gap:8px;transition:opacity 0.2s ease}
 #montageChunks .chunk-item:hover{border-color:#35507c}
 #montageChunks .chunk-item.active{outline:2px solid rgba(90,162,255,.8);border-color:rgba(90,162,255,.65);background:linear-gradient(180deg,rgba(90,162,255,.06),rgba(255,255,255,.02))}
+#montageChunks .chunk-item.dragging{opacity:0.4;cursor:grabbing}
+#montageChunks .chunk-item.drag-over{outline:2px dashed rgba(90,162,255,.8);border-color:rgba(90,162,255,.65);background:rgba(90,162,255,.1)}
 #montageChunks .chunk-thumb{width:48px;height:48px;border-radius:4px;background:rgba(0,0,0,.2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);overflow:hidden}
 #montageChunks .chunk-thumb canvas{width:100%;height:100%;image-rendering:pixelated}
 #montageChunks .chunk-info{display:flex;flex-direction:column;gap:4px;min-width:0}
-#montageChunks .chunk-badges{display:flex;gap:4px;flex-wrap:wrap}
+#montageChunks .chunk-badges{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.chunk-color-picker{width:24px;height:24px;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:0;background:none}
 #montageChunks .chunk-alias{font-size:11px;font-weight:600;color:var(--text);width:100%;padding:2px 4px;background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:4px}
 #montageChunks .chunk-alias::placeholder{color:var(--muted);opacity:.6}
 #montageChunks .chunk-controls{display:flex;gap:4px;flex-wrap:wrap}
@@ -149,6 +152,7 @@ input[type="range"]{width:160px}
             <button id="toolPencil" class="primary">Pencil</button>
             <button id="toolEraser">Eraser</button>
             <button id="toolSoft">Soft</button>
+            <button id="toolSelect">Select</button>
             <button id="undoBtn">Undo</button>
             <button id="redoBtn">Redo</button>
           </div>
@@ -171,6 +175,9 @@ input[type="range"]{width:160px}
               <input id="onion" type="range" min="0" max="8" value="5"/>
               <span id="onionLabel" class="pill">5</span>
             </label>
+          </div>
+          <div class="group">
+            <button id="gridToggleBtn">Grid Off</button>
           </div>
         </div>
       </div>
@@ -420,6 +427,11 @@ let gray = 0;
 let onionDepth = 5;
 let drawing = false;
 let lastPt = null;
+let gridEnabled = false;
+
+// Selection tool state
+let selection = null; // {x1, y1, x2, y2}
+let selectionData = null; // Uint8Array of selected pixels
 
 // Active stroke diff recording
 let activeStrokeMap = null;
@@ -448,6 +460,7 @@ const delFrameBtn = document.getElementById('delFrameBtn');
 const toolPencil = document.getElementById('toolPencil');
 const toolEraser = document.getElementById('toolEraser');
 const toolSoft = document.getElementById('toolSoft');
+const toolSelect = document.getElementById('toolSelect');
 
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
@@ -460,6 +473,8 @@ const grayLabel = document.getElementById('grayLabel');
 
 const onionSlider = document.getElementById('onion');
 const onionLabel = document.getElementById('onionLabel');
+
+const gridToggleBtn = document.getElementById('gridToggleBtn');
 
 const frameGrid = document.getElementById('frameGrid');
 const lengthPill = document.getElementById('lengthPill');
@@ -535,11 +550,30 @@ function setTool(next){
   toolPencil.classList.toggle('primary', tool === 'pencil');
   toolEraser.classList.toggle('primary', tool === 'eraser');
   toolSoft.classList.toggle('primary', tool === 'soft');
+  toolSelect.classList.toggle('primary', tool === 'select');
+  
+  // Clear selection when switching away from select tool
+  if(tool !== 'select'){
+    selection = null;
+    selectionData = null;
+    renderMain();
+  }
+  
+  // Update cursor style
+  if(tool === 'select'){
+    main.style.cursor = 'crosshair';
+  } else if(currentMode === 'montage'){
+    main.style.cursor = 'default';
+  } else {
+    main.style.cursor = 'crosshair';
+  }
+  
   // Reflect state for assistive technologies
   try{
     toolPencil.setAttribute('aria-pressed', String(tool === 'pencil'));
     toolEraser.setAttribute('aria-pressed', String(tool === 'eraser'));
     toolSoft.setAttribute('aria-pressed', String(tool === 'soft'));
+    toolSelect.setAttribute('aria-pressed', String(tool === 'select'));
   }catch(_){ }
 }
 
@@ -700,6 +734,46 @@ function renderMain(){
   ctx.clearRect(0, 0, main.width, main.height);
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(off, 0, 0, main.width, main.height);
+  
+  // Draw grid overlay if enabled
+  if(gridEnabled && currentMode === 'chunk'){
+    ctx.save();
+    ctx.strokeStyle = 'rgba(90, 162, 255, 0.3)';
+    ctx.lineWidth = 1;
+    const gridSize = main.width / W; // pixels per grid cell
+    
+    // Draw vertical lines
+    for(let x = gridSize; x < main.width; x += gridSize){
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, main.height);
+      ctx.stroke();
+    }
+    
+    // Draw horizontal lines
+    for(let y = gridSize; y < main.height; y += gridSize){
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(main.width, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  
+  // Draw selection rectangle if active
+  if(selection && tool === 'select'){
+    const scale = main.width / W;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(90, 162, 255, 0.8)';
+    ctx.setLineDash([5, 5]);
+    ctx.lineWidth = 2;
+    const x1 = Math.min(selection.x1, selection.x2) * scale;
+    const y1 = Math.min(selection.y1, selection.y2) * scale;
+    const x2 = Math.max(selection.x1, selection.x2) * scale;
+    const y2 = Math.max(selection.y1, selection.y2) * scale;
+    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    ctx.restore();
+  }
 }
 
 function renderThumb(i){
@@ -1345,11 +1419,22 @@ function applyStroke(from, to){
 main.addEventListener('pointerdown', ev=>{
   if(isPlaying) return;
   if(currentMode !== 'chunk') return; // disable drawing in montage mode
+  
+  const pt = getPointerXY(ev);
+  
+  if(tool === 'select'){
+    // Start selection
+    drawing = true;
+    main.setPointerCapture(ev.pointerId);
+    selection = {x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y};
+    renderMain();
+    return;
+  }
+  
   drawing = true;
   main.setPointerCapture(ev.pointerId);
 
   beginStroke();
-  const pt = getPointerXY(ev);
   lastPt = pt;
   applyStroke(null, pt);
 });
@@ -1357,7 +1442,17 @@ main.addEventListener('pointerdown', ev=>{
 main.addEventListener('pointermove', ev=>{
   if(!drawing || isPlaying) return;
   if(currentMode !== 'chunk') return; // disable drawing in montage mode
+  
   const pt = getPointerXY(ev);
+  
+  if(tool === 'select'){
+    // Update selection rectangle
+    selection.x2 = pt.x;
+    selection.y2 = pt.y;
+    renderMain();
+    return;
+  }
+  
   applyStroke(lastPt, pt);
   lastPt = pt;
 });
@@ -1365,9 +1460,32 @@ main.addEventListener('pointermove', ev=>{
 function endDraw(ev){
   if(!drawing) return;
   drawing = false;
-  lastPt = null;
-
-  commitStroke();
+  
+  if(tool === 'select' && selection){
+    // Finalize selection - copy selected pixels
+    const x1 = Math.min(selection.x1, selection.x2);
+    const y1 = Math.min(selection.y1, selection.y2);
+    const x2 = Math.max(selection.x1, selection.x2);
+    const y2 = Math.max(selection.y1, selection.y2);
+    const w = x2 - x1 + 1;
+    const h = y2 - y1 + 1;
+    
+    if(w > 0 && h > 0){
+      selectionData = new Uint8Array(w * h);
+      const frameArr = frames[current];
+      for(let y = y1; y <= y2; y++){
+        for(let x = x1; x <= x2; x++){
+          const srcIdx = xyToIndex(x, y);
+          const destIdx = (y - y1) * w + (x - x1);
+          selectionData[destIdx] = frameArr[srcIdx];
+        }
+      }
+      notify('Selection created. Use Ctrl+C to copy, Ctrl+X to cut, Delete to clear.');
+    }
+  }else{
+    lastPt = null;
+    commitStroke();
+  }
 
   try{ main.releasePointerCapture(ev.pointerId); }catch(_){}
 }
@@ -1380,6 +1498,14 @@ main.addEventListener('pointercancel', endDraw);
 toolPencil.addEventListener('click', ()=>setTool('pencil'));
 toolEraser.addEventListener('click', ()=>setTool('eraser'));
 toolSoft.addEventListener('click', ()=>setTool('soft'));
+toolSelect.addEventListener('click', ()=>setTool('select'));
+
+gridToggleBtn.addEventListener('click', ()=>{
+  gridEnabled = !gridEnabled;
+  gridToggleBtn.textContent = gridEnabled ? 'Grid On' : 'Grid Off';
+  gridToggleBtn.classList.toggle('primary', gridEnabled);
+  renderMain();
+});
 
 undoBtn.addEventListener('click', ()=>undo());
 redoBtn.addEventListener('click', ()=>redo());
@@ -1595,10 +1721,33 @@ window.addEventListener('keydown', e=>{
     }
   }
 
-  // Delete current frame
+  // Delete current frame or clear selection
   if(!isPlaying && (e.code === 'Delete' || e.code === 'Backspace')){
     e.preventDefault();
-    deleteCurrentFrame();
+    // If selection tool is active and there's a selection, clear the selected area
+    if(tool === 'select' && selection){
+      beginStroke();
+      const frameArr = frames[current];
+      const x1 = Math.min(selection.x1, selection.x2);
+      const y1 = Math.min(selection.y1, selection.y2);
+      const x2 = Math.max(selection.x1, selection.x2);
+      const y2 = Math.max(selection.y1, selection.y2);
+      for(let y = y1; y <= y2; y++){
+        for(let x = x1; x <= x2; x++){
+          const idx = xyToIndex(x, y);
+          if(activeStrokeMap && !activeStrokeMap.has(idx)){
+            activeStrokeMap.set(idx, frameArr[idx]);
+          }
+          frameArr[idx] = 255; // Fill with white
+        }
+      }
+      commitStroke();
+      renderMain();
+      renderThumb(current);
+      notify('Selection cleared');
+    }else{
+      deleteCurrentFrame();
+    }
     return;
   }
 
@@ -1788,12 +1937,30 @@ function updateChunkDelimiters(totalFrames){
     delimiters.style.display = 'block';
     delimiters.innerHTML = '';
     
-    // Add delimiter markers at chunk boundaries
+    // Add colored background regions for each chunk and delimiter markers at boundaries
     let cumulativeFrames = 0;
     for(let i = 0; i < montageChunks.length; i++){
       const chunk = montageChunks[i];
       const chunkLength = (chunk.frameRange && (chunk.frameRange.end - chunk.frameRange.start)) || 0;
+      const startPercent = (cumulativeFrames / totalFrames) * 100;
       cumulativeFrames += chunkLength;
+      const endPercent = (cumulativeFrames / totalFrames) * 100;
+      
+      // Add colored region for this chunk
+      if(chunkLength > 0){
+        const region = document.createElement('div');
+        region.style.position = 'absolute';
+        region.style.left = `${startPercent}%`;
+        region.style.width = `${endPercent - startPercent}%`;
+        region.style.top = '0';
+        region.style.bottom = '0';
+        const chunkColor = chunk.color || '#5aa2ff';
+        region.style.background = `linear-gradient(180deg, ${chunkColor}33, ${chunkColor}11)`;
+        region.style.borderLeft = `1px solid ${chunkColor}66`;
+        region.style.borderRight = `1px solid ${chunkColor}66`;
+        region.title = chunk.alias || chunk.name;
+        delimiters.appendChild(region);
+      }
       
       // Add marker at end of chunk (unless it's the last chunk)
       if(i < montageChunks.length - 1 && cumulativeFrames > 0){
@@ -1803,8 +1970,10 @@ function updateChunkDelimiters(totalFrames){
         marker.style.top = '0';
         marker.style.bottom = '0';
         marker.style.width = '2px';
-        marker.style.background = 'rgba(90,162,255,0.6)';
+        const nextChunkColor = montageChunks[i+1].color || '#5aa2ff';
+        marker.style.background = `${nextChunkColor}aa`;
         marker.style.transform = 'translateX(-1px)';
+        marker.style.zIndex = '1';
         delimiters.appendChild(marker);
       }
     }
@@ -1860,7 +2029,18 @@ function selectMontageChunk(idx, renderPreview = true){
 
   updateTrimBar();
   // update canvas preview when in montage mode unless caller asked to skip render
-  if(currentMode === 'montage' && renderPreview){ renderMontagePreviewChunk(selectedChunkIdx); }
+  if(currentMode === 'montage' && renderPreview){ 
+    renderMontagePreviewChunk(selectedChunkIdx); 
+    
+    // Position playhead to start of selected chunk
+    let framesBefore = 0;
+    for(let i = 0; i < selectedChunkIdx; i++){
+      const c = montageChunks[i];
+      framesBefore += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
+    }
+    _montagePos = { chunkIdx: selectedChunkIdx, frameIdx: 0 };
+    updateMontageMetaUI();
+  }
 }
 
 function updateTrimBar(){
@@ -2259,6 +2439,63 @@ function renderMontageChunks(){
     const div = document.createElement('div');
     div.className = 'chunk-item';
     div.title = ch.name; // Show full filename on hover
+    div.draggable = true; // Make chunk draggable
+
+    // Drag and drop event handlers
+    div.addEventListener('dragstart', (e)=>{
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(idx));
+      div.classList.add('dragging');
+    });
+    
+    div.addEventListener('dragend', (e)=>{
+      div.classList.remove('dragging');
+      // Remove drag-over class from all items
+      document.querySelectorAll('.chunk-item').forEach(el => el.classList.remove('drag-over'));
+    });
+    
+    div.addEventListener('dragover', (e)=>{
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const dragging = document.querySelector('.chunk-item.dragging');
+      if(dragging && dragging !== div){
+        div.classList.add('drag-over');
+      }
+    });
+    
+    div.addEventListener('dragleave', (e)=>{
+      if(!div.contains(e.relatedTarget)){
+        div.classList.remove('drag-over');
+      }
+    });
+    
+    div.addEventListener('drop', (e)=>{
+      e.preventDefault();
+      div.classList.remove('drag-over');
+      const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+      const toIdx = idx;
+      
+      if(fromIdx !== toIdx && !isNaN(fromIdx)){
+        // Reorder chunks: move fromIdx to toIdx position
+        const [movedChunk] = montageChunks.splice(fromIdx, 1);
+        const insertIdx = fromIdx < toIdx ? toIdx : toIdx;
+        montageChunks.splice(insertIdx, 0, movedChunk);
+        
+        // Update selection to follow moved chunk
+        if(selectedChunkIdx === fromIdx){
+          selectedChunkIdx = insertIdx;
+        } else if(fromIdx < selectedChunkIdx && insertIdx >= selectedChunkIdx){
+          selectedChunkIdx--;
+        } else if(fromIdx > selectedChunkIdx && insertIdx <= selectedChunkIdx){
+          selectedChunkIdx++;
+        }
+        
+        renderMontageChunks();
+        updateMontageMetaUI();
+        updateMontageScrubberUI();
+        notify('Chunk reordered');
+      }
+    });
 
     // Thumbnail
     const thumb = document.createElement('div');
@@ -2312,6 +2549,22 @@ function renderMontageChunks(){
     durationBadge.className = 'pill'; 
     durationBadge.textContent = `${(ch.frameRange.end - ch.frameRange.start)}f`;
     badges.appendChild(durationBadge);
+    
+    // Color picker for chunk color coding
+    const colorPicker = document.createElement('input');
+    colorPicker.type = 'color';
+    colorPicker.className = 'chunk-color-picker';
+    colorPicker.value = ch.color || '#5aa2ff';
+    colorPicker.title = 'Set chunk color';
+    colorPicker.addEventListener('input', (e)=>{
+      e.stopPropagation();
+      ch.color = colorPicker.value;
+      updateChunkDelimiters(computeMontageTotalFrames());
+      notify('Chunk color updated');
+    });
+    colorPicker.addEventListener('click', (e)=>e.stopPropagation());
+    badges.appendChild(colorPicker);
+    
     info.appendChild(badges);
 
     // Alias input (now labeled as "Cut Name")
