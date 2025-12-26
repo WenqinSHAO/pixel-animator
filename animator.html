@@ -831,7 +831,15 @@ function renderThumb(i){
 }
 
 function renderAllThumbs(){
-  for(let i=0; i<frames.length; i++) renderThumb(i);
+  // Incremental thumbnail rendering to avoid blocking UI
+  let i = 0;
+  const renderBatch = () => {
+    const batchSize = 4; // Render 4 thumbnails per frame
+    const end = Math.min(i + batchSize, frames.length);
+    for(; i < end; i++) renderThumb(i);
+    if(i < frames.length) requestAnimationFrame(renderBatch);
+  };
+  requestAnimationFrame(renderBatch);
 }
 
 // Simple non-blocking toast notifications (falls back to alert)
