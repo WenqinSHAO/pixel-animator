@@ -93,19 +93,20 @@ input[type="range"]{width:160px}
 /* Montage sidebar styles */
 #montageSidebar .section{padding:10px}
 #montageChunks{overflow-y:auto;flex:1}
-#montageChunks .chunk-item{display:grid;grid-template-columns:56px 1fr auto;align-items:center;padding:8px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.02);cursor:move;gap:8px;transition:opacity 0.2s ease}
+#montageChunks .chunk-item{display:grid;grid-template-columns:56px 1fr;grid-template-rows:auto auto;align-items:start;padding:8px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.02);cursor:move;gap:6px 8px;transition:opacity 0.2s ease}
 #montageChunks .chunk-item:hover{border-color:#35507c}
 #montageChunks .chunk-item.active{outline:2px solid rgba(90,162,255,.8);border-color:rgba(90,162,255,.65);background:linear-gradient(180deg,rgba(90,162,255,.06),rgba(255,255,255,.02))}
 #montageChunks .chunk-item.dragging{opacity:0.4;cursor:grabbing}
 #montageChunks .chunk-item.drag-over{outline:2px dashed rgba(90,162,255,.8);border-color:rgba(90,162,255,.65);background:rgba(90,162,255,.1)}
-#montageChunks .chunk-thumb{width:56px;height:56px;border-radius:4px;background:rgba(0,0,0,.2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);overflow:hidden}
+#montageChunks .chunk-thumb{width:56px;height:56px;border-radius:4px;background:rgba(0,0,0,.2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);overflow:hidden;grid-row:1/3}
 #montageChunks .chunk-thumb canvas{width:100%;height:100%;image-rendering:pixelated}
 #montageChunks .chunk-info{display:flex;flex-direction:column;gap:6px;min-width:0}
-#montageChunks .chunk-info-row{display:flex;gap:6px;align-items:center}
+#montageChunks .chunk-row1{display:flex;gap:6px;align-items:center;width:100%}
+#montageChunks .chunk-row2{display:flex;gap:4px;align-items:center}
+#montageChunks .chunk-duration{font-size:10px;color:var(--muted);padding:3px 6px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:4px;white-space:nowrap;flex-shrink:0}
 .chunk-color-picker{width:24px;height:24px;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:0;background:none;flex-shrink:0}
-#montageChunks .chunk-alias{font-size:11px;font-weight:600;color:var(--text);flex:1;padding:3px 6px;background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:4px;min-width:0}
+#montageChunks .chunk-alias{font-size:11px;font-weight:600;color:var(--text);flex:1;padding:4px 6px;background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:4px;min-width:80px}
 #montageChunks .chunk-alias::placeholder{color:var(--muted);opacity:.6}
-#montageChunks .chunk-duration{font-size:10px;color:var(--muted);padding:2px 6px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:4px}
 #montageChunks .chunk-controls{display:flex;gap:4px;flex-wrap:wrap}
 
 /* Insert zone for chunk insertion */
@@ -422,6 +423,8 @@ let gridEnabled = false;
 // Selection tool state
 let selection = null; // {x1, y1, x2, y2}
 let selectionData = null; // Uint8Array of selected pixels
+let selectionFloating = false; // true when selection can be dragged (after paste)
+let selectionDragging = false; // true during drag operation
 
 // Active stroke diff recording
 let activeStrokeMap = null;
@@ -758,11 +761,43 @@ function renderMain(){
     ctx.restore();
   }
   
+  // Draw floating selection content on top of canvas
+  if(selectionFloating && selection && selectionData && tool === 'select'){
+    const scale = main.width / W;
+    const x1 = Math.min(selection.x1, selection.x2);
+    const y1 = Math.min(selection.y1, selection.y2);
+    const x2 = Math.max(selection.x1, selection.x2);
+    const y2 = Math.max(selection.y1, selection.y2);
+    const w = x2 - x1 + 1;
+    const h = y2 - y1 + 1;
+    
+    // Create temporary canvas for floating selection
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = w;
+    tempCanvas.height = h;
+    const tempCtx = tempCanvas.getContext('2d');
+    const imgData = new Uint8ClampedArray(w * h * 4);
+    
+    for(let i = 0; i < selectionData.length; i++){
+      const v = selectionData[i];
+      imgData[i * 4] = v;
+      imgData[i * 4 + 1] = v;
+      imgData[i * 4 + 2] = v;
+      imgData[i * 4 + 3] = 255;
+    }
+    
+    tempCtx.putImageData(new ImageData(imgData, w, h), 0, 0);
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(tempCanvas, x1 * scale, y1 * scale, w * scale, h * scale);
+    ctx.restore();
+  }
+  
   // Draw selection rectangle if active
   if(selection && tool === 'select'){
     const scale = main.width / W;
     ctx.save();
-    ctx.strokeStyle = 'rgba(90, 162, 255, 0.8)';
+    ctx.strokeStyle = selectionFloating ? 'rgba(255, 162, 0, 0.9)' : 'rgba(90, 162, 255, 0.8)';
     ctx.setLineDash([5, 5]);
     ctx.lineWidth = 2;
     const x1 = Math.min(selection.x1, selection.x2) * scale;
@@ -1421,10 +1456,31 @@ main.addEventListener('pointerdown', ev=>{
   const pt = getPointerXY(ev);
   
   if(tool === 'select'){
-    // Start selection
+    // Check if clicking inside existing floating selection to drag it
+    if(selectionFloating && selection && selectionData){
+      const x1 = Math.min(selection.x1, selection.x2);
+      const y1 = Math.min(selection.y1, selection.y2);
+      const x2 = Math.max(selection.x1, selection.x2);
+      const y2 = Math.max(selection.y1, selection.y2);
+      
+      if(pt.x >= x1 && pt.x <= x2 && pt.y >= y1 && pt.y <= y2){
+        // Start dragging the floating selection
+        selectionDragging = true;
+        drawing = true;
+        main.setPointerCapture(ev.pointerId);
+        lastPt = pt;
+        renderMain();
+        return;
+      }
+    }
+    
+    // Start new selection (clears any existing floating selection)
     drawing = true;
     main.setPointerCapture(ev.pointerId);
     selection = {x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y};
+    selectionData = null;
+    selectionFloating = false;
+    selectionDragging = false;
     renderMain();
     return;
   }
@@ -1444,11 +1500,24 @@ main.addEventListener('pointermove', ev=>{
   const pt = getPointerXY(ev);
   
   if(tool === 'select'){
-    // Update selection rectangle
-    selection.x2 = pt.x;
-    selection.y2 = pt.y;
-    renderMain();
-    return;
+    if(selectionDragging && lastPt){
+      // Drag the floating selection
+      const dx = pt.x - lastPt.x;
+      const dy = pt.y - lastPt.y;
+      selection.x1 += dx;
+      selection.y1 += dy;
+      selection.x2 += dx;
+      selection.y2 += dy;
+      lastPt = pt;
+      renderMain();
+      return;
+    } else {
+      // Update selection rectangle
+      selection.x2 = pt.x;
+      selection.y2 = pt.y;
+      renderMain();
+      return;
+    }
   }
   
   applyStroke(lastPt, pt);
@@ -1460,25 +1529,59 @@ function endDraw(ev){
   drawing = false;
   
   if(tool === 'select' && selection){
-    // Finalize selection - copy selected pixels
-    const x1 = Math.min(selection.x1, selection.x2);
-    const y1 = Math.min(selection.y1, selection.y2);
-    const x2 = Math.max(selection.x1, selection.x2);
-    const y2 = Math.max(selection.y1, selection.y2);
-    const w = x2 - x1 + 1;
-    const h = y2 - y1 + 1;
-    
-    if(w > 0 && h > 0){
-      selectionData = new Uint8Array(w * h);
-      const frameArr = frames[current];
-      for(let y = y1; y <= y2; y++){
-        for(let x = x1; x <= x2; x++){
-          const srcIdx = xyToIndex(x, y);
-          const destIdx = (y - y1) * w + (x - x1);
-          selectionData[destIdx] = frameArr[srcIdx];
+    if(selectionDragging){
+      // Commit dragged selection to canvas
+      selectionDragging = false;
+      if(selectionData){
+        beginStroke();
+        const frameArr = frames[current];
+        const x1 = Math.min(selection.x1, selection.x2);
+        const y1 = Math.min(selection.y1, selection.y2);
+        const x2 = Math.max(selection.x1, selection.x2);
+        const y2 = Math.max(selection.y1, selection.y2);
+        const w = x2 - x1 + 1;
+        
+        // Paste selection at new location
+        for(let y = y1; y <= y2; y++){
+          for(let x = x1; x <= x2; x++){
+            if(x >= 0 && x < W && y >= 0 && y < H){
+              const srcIdx = (y - y1) * w + (x - x1);
+              if(srcIdx < selectionData.length){
+                const destIdx = xyToIndex(x, y);
+                if(activeStrokeMap && !activeStrokeMap.has(destIdx)){
+                  activeStrokeMap.set(destIdx, frameArr[destIdx]);
+                }
+                frameArr[destIdx] = selectionData[srcIdx];
+              }
+            }
+          }
         }
+        commitStroke();
+        renderMain();
+        renderThumb(current);
+        // Keep selection floating for further moves
       }
-      notify('Selection created. Use Ctrl+C to copy, Ctrl+X to cut, Delete to clear.');
+    } else {
+      // Finalize selection - copy selected pixels
+      const x1 = Math.min(selection.x1, selection.x2);
+      const y1 = Math.min(selection.y1, selection.y2);
+      const x2 = Math.max(selection.x1, selection.x2);
+      const y2 = Math.max(selection.y1, selection.y2);
+      const w = x2 - x1 + 1;
+      const h = y2 - y1 + 1;
+      
+      if(w > 0 && h > 0){
+        selectionData = new Uint8Array(w * h);
+        const frameArr = frames[current];
+        for(let y = y1; y <= y2; y++){
+          for(let x = x1; x <= x2; x++){
+            const srcIdx = xyToIndex(x, y);
+            const destIdx = (y - y1) * w + (x - x1);
+            selectionData[destIdx] = frameArr[srcIdx];
+          }
+        }
+        notify('Selection created. Drag to move, Ctrl+X to cut, or Delete to clear.');
+      }
     }
   }else{
     lastPt = null;
@@ -1760,31 +1863,7 @@ window.addEventListener('keydown', e=>{
       return;
     }
     if(k === 'x'){
-      // Cut selection
-      e.preventDefault();
-      beginStroke();
-      const frameArr = frames[current];
-      const x1 = Math.min(selection.x1, selection.x2);
-      const y1 = Math.min(selection.y1, selection.y2);
-      const x2 = Math.max(selection.x1, selection.x2);
-      const y2 = Math.max(selection.y1, selection.y2);
-      for(let y = y1; y <= y2; y++){
-        for(let x = x1; x <= x2; x++){
-          const idx = xyToIndex(x, y);
-          if(activeStrokeMap && !activeStrokeMap.has(idx)){
-            activeStrokeMap.set(idx, frameArr[idx]);
-          }
-          frameArr[idx] = WHITE_FILL;
-        }
-      }
-      commitStroke();
-      renderMain();
-      renderThumb(current);
-      notify('Selection cut');
-      return;
-    }
-    if(k === 'v'){
-      // Paste selection
+      // Cut selection - clear original area and keep selection data
       e.preventDefault();
       if(selectionData){
         beginStroke();
@@ -1793,24 +1872,80 @@ window.addEventListener('keydown', e=>{
         const y1 = Math.min(selection.y1, selection.y2);
         const x2 = Math.max(selection.x1, selection.x2);
         const y2 = Math.max(selection.y1, selection.y2);
-        const w = x2 - x1 + 1;
         for(let y = y1; y <= y2; y++){
           for(let x = x1; x <= x2; x++){
-            const srcIdx = (y - y1) * w + (x - x1);
-            if(srcIdx < selectionData.length){
-              const destIdx = xyToIndex(x, y);
-              if(activeStrokeMap && !activeStrokeMap.has(destIdx)){
-                activeStrokeMap.set(destIdx, frameArr[destIdx]);
-              }
-              frameArr[destIdx] = selectionData[srcIdx];
+            const idx = xyToIndex(x, y);
+            if(activeStrokeMap && !activeStrokeMap.has(idx)){
+              activeStrokeMap.set(idx, frameArr[idx]);
             }
+            frameArr[idx] = WHITE_FILL;
           }
         }
         commitStroke();
         renderMain();
         renderThumb(current);
-        notify('Selection pasted');
+        notify('Selection cut. Drag to move or paste to new location.');
+        // Keep selection for paste
       }
+      return;
+    }
+    if(k === 'v'){
+      // Paste selection as floating layer that can be dragged
+      e.preventDefault();
+      if(selectionData){
+        // Shift selection slightly to show it's a new paste
+        const w = Math.abs(selection.x2 - selection.x1);
+        const h = Math.abs(selection.y2 - selection.y1);
+        const offsetX = Math.min(10, (W - w) / 2);
+        const offsetY = Math.min(10, (H - h) / 2);
+        
+        selection.x1 += offsetX;
+        selection.x2 += offsetX;
+        selection.y1 += offsetY;
+        selection.y2 += offsetY;
+        
+        // Clamp to canvas bounds
+        const x1 = Math.min(selection.x1, selection.x2);
+        const x2 = Math.max(selection.x1, selection.x2);
+        if(x2 >= W){
+          const shift = x2 - W + 1;
+          selection.x1 -= shift;
+          selection.x2 -= shift;
+        }
+        const y1 = Math.min(selection.y1, selection.y2);
+        const y2 = Math.max(selection.y1, selection.y2);
+        if(y2 >= H){
+          const shift = y2 - H + 1;
+          selection.y1 -= shift;
+          selection.y2 -= shift;
+        }
+        
+        selectionFloating = true;
+        renderMain();
+        notify('Selection pasted. Drag to reposition.');
+      }
+      return;
+    }
+  }
+  
+  // Handle Ctrl/Cmd keyboard shortcuts for selection tool (without selection)
+  if((e.ctrlKey || e.metaKey) && tool === 'select' && selectionData && !isPlaying){
+    const k = e.key.toLowerCase();
+    if(k === 'v'){
+      // Paste at center or cursor position
+      e.preventDefault();
+      const w = Math.abs(selection.x2 - selection.x1);
+      const h = Math.abs(selection.y2 - selection.y1);
+      // Paste at center
+      selection = {
+        x1: Math.floor((W - w) / 2),
+        y1: Math.floor((H - h) / 2),
+        x2: Math.floor((W - w) / 2) + w,
+        y2: Math.floor((H - h) / 2) + h
+      };
+      selectionFloating = true;
+      renderMain();
+      notify('Selection pasted at center. Drag to reposition.');
       return;
     }
   }
@@ -2624,28 +2759,15 @@ function renderMontageChunks(){
     }
     div.appendChild(thumb);
 
-    // Info section
-    const info = document.createElement('div');
-    info.className = 'chunk-info';
-
-    // Row 1: Alias and Color picker
-    const infoRow1 = document.createElement('div');
-    infoRow1.className = 'chunk-info-row';
+    // Info section - Row 1: Duration, Color Picker, Alias
+    const row1 = document.createElement('div');
+    row1.className = 'chunk-row1';
     
-    // Alias input
-    const aliasInput = document.createElement('input');
-    aliasInput.type = 'text';
-    aliasInput.className = 'chunk-alias';
-    aliasInput.placeholder = 'Cut name';
-    aliasInput.value = ensureChunkAlias(ch);
-    aliasInput.addEventListener('input', (e)=>{
-      e.stopPropagation();
-      const newValue = aliasInput.value.trim();
-      ch.alias = newValue || ch.name || generateId('cut');
-      updateMontageScrubberUI();
-    });
-    aliasInput.addEventListener('click', (e)=>e.stopPropagation());
-    infoRow1.appendChild(aliasInput);
+    // Duration badge with "XXf" format
+    const durationBadge = document.createElement('span'); 
+    durationBadge.className = 'chunk-duration'; 
+    durationBadge.textContent = `${(ch.frameRange.end - ch.frameRange.start)}f`;
+    row1.appendChild(durationBadge);
     
     // Color picker for chunk color coding
     const colorPicker = document.createElement('input');
@@ -2661,24 +2783,28 @@ function renderMontageChunks(){
       notify('Chunk color updated');
     });
     colorPicker.addEventListener('click', (e)=>e.stopPropagation());
-    infoRow1.appendChild(colorPicker);
+    row1.appendChild(colorPicker);
     
-    info.appendChild(infoRow1);
+    // Alias input
+    const aliasInput = document.createElement('input');
+    aliasInput.type = 'text';
+    aliasInput.className = 'chunk-alias';
+    aliasInput.placeholder = 'Cut name';
+    aliasInput.value = ensureChunkAlias(ch);
+    aliasInput.addEventListener('input', (e)=>{
+      e.stopPropagation();
+      const newValue = aliasInput.value.trim();
+      ch.alias = newValue || ch.name || generateId('cut');
+      updateMontageScrubberUI();
+    });
+    aliasInput.addEventListener('click', (e)=>e.stopPropagation());
+    row1.appendChild(aliasInput);
     
-    // Row 2: Duration badge
-    const infoRow2 = document.createElement('div');
-    infoRow2.className = 'chunk-info-row';
-    const durationBadge = document.createElement('span'); 
-    durationBadge.className = 'chunk-duration'; 
-    durationBadge.textContent = `${(ch.frameRange.end - ch.frameRange.start)} frames`;
-    infoRow2.appendChild(durationBadge);
-    info.appendChild(infoRow2);
-
-    div.appendChild(info);
-
-    // Controls section
-    const controls = document.createElement('div');
-    controls.className = 'chunk-controls';
+    div.appendChild(row1);
+    
+    // Row 2: Control buttons
+    const row2 = document.createElement('div');
+    row2.className = 'chunk-row2';
 
     // events: select on click
     div.addEventListener('click', ()=>{ selectMontageChunk(idx); });
@@ -2695,12 +2821,12 @@ function renderMontageChunks(){
     const delBtn = document.createElement('button'); delBtn.className = 'iconBtn danger'; delBtn.title = 'Delete'; delBtn.textContent = '✖';
     delBtn.addEventListener('click', (e)=>{ e.stopPropagation(); montageChunks.splice(idx,1); renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); });
 
-    controls.appendChild(editBtn);
-    controls.appendChild(upBtn);
-    controls.appendChild(downBtn);
-    controls.appendChild(delBtn);
+    row2.appendChild(editBtn);
+    row2.appendChild(upBtn);
+    row2.appendChild(downBtn);
+    row2.appendChild(delBtn);
 
-    div.appendChild(controls);
+    div.appendChild(row2);
 
     div.addEventListener('dblclick', (e)=>{ // on dblclick select and focus alias input
       e.stopPropagation();
