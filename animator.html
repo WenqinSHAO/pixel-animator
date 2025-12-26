@@ -182,16 +182,17 @@ input[type="range"]{width:160px}
       <!-- Trim bar for montage chunk trimming (always visible; disabled until a chunk is selected) -->
       <div id="trimBar" style="margin-top:10px;">
         <div class="panelBlock">
-          <div class="panelHeader"><div class="panelTitle">Trim selected chunk</div></div>
-          <div id="trimBarCanvas" style="position:relative;height:24px;margin-top:8px;border-radius:8px;background:linear-gradient(90deg, rgba(255,255,255,.02), rgba(255,255,255,.01));border:1px solid var(--border);overflow:hidden">
-            <!-- handles will be added dynamically -->
+          <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:600;color:var(--text)">Trim Range:</div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <label style="font-size:11px;color:var(--muted)">Start <input id="trimStartInput" type="number" style="width:60px"/></label>
+              <label style="font-size:11px;color:var(--muted)">End <input id="trimEndInput" type="number" style="width:60px"/></label>
+              <button id="trimApplyBtn" style="padding:4px 10px">Apply</button>
+              <button id="trimResetBtn" style="padding:4px 10px">Reset</button>
+            </div>
           </div>
-          <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
-            <div style="font-size:12px;color:var(--muted)">Range:</div>
-            <label style="font-size:12px;color:var(--muted)">Start <input id="trimStartInput" type="number" style="width:70px"/></label>
-            <label style="font-size:12px;color:var(--muted)">End <input id="trimEndInput" type="number" style="width:70px"/></label>
-            <button id="trimApplyBtn">Apply</button>
-            <button id="trimResetBtn">Reset</button>
+          <div id="trimBarCanvas" style="position:relative;height:24px;border-radius:8px;background:linear-gradient(90deg, rgba(255,255,255,.02), rgba(255,255,255,.01));border:1px solid var(--border);overflow:hidden">
+            <!-- handles will be added dynamically -->
           </div>
         </div>
       </div>
@@ -200,8 +201,28 @@ input[type="range"]{width:160px}
       <div class="frameControls" style="margin-top:6px;">
         <button id="playBtn" class="primary">Play</button>
         <button id="montagePlayBtn" class="primary">Play</button>
-        <div style="flex:1;">
-          <input id="montageScrubber" class="scrubber" type="range" min="1" max="1" value="1" />
+        <div style="flex:1;position:relative;">
+          <!-- Montage info above scrubber (only shown in montage mode) -->
+          <div id="montageInfo" style="display:none;font-size:11px;color:var(--muted);margin-bottom:4px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span>Frames: <strong id="montageTotalFrames" style="color:var(--text)">0</strong></span>
+              <span>Position: <strong id="montagePlayPos" style="color:var(--text)">0 / 0f</strong></span>
+              <span>Time: <strong id="montageTimePos" style="color:var(--text)">0.0s</strong></span>
+            </div>
+          </div>
+          
+          <!-- Top ruler (frame index) - only shown in montage mode -->
+          <div id="scrubberTopRuler" style="display:none;height:16px;font-size:10px;color:var(--muted);position:relative;margin-bottom:2px"></div>
+          
+          <!-- Scrubber with chunk delimiters -->
+          <div style="position:relative;">
+            <input id="montageScrubber" class="scrubber" type="range" min="1" max="1" value="1" />
+            <!-- Chunk delimiter markers - only shown in montage mode -->
+            <div id="chunkDelimiters" style="display:none;position:absolute;top:0;left:0;right:0;height:100%;pointer-events:none"></div>
+          </div>
+          
+          <!-- Bottom ruler (time) - only shown in montage mode -->
+          <div id="scrubberBottomRuler" style="display:none;height:16px;font-size:10px;color:var(--muted);position:relative;margin-top:2px"></div>
         </div>
       </div>
 
@@ -261,30 +282,36 @@ input[type="range"]{width:160px}
       </div>
       <div class="footerHint" style="margin-top:8px">Save Project is lossless JSON. Save GIF exports 512×512 with a white background.</div>
     </div>
+    
+    <!-- Montage Integration -->
+    <div class="section">
+      <div class="panelHeader">
+        <div class="panelTitle">Montage Integration</div>
+      </div>
+      <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <button id="insertToMontageBtn" style="display:none">Insert to Montage</button>
+        <button id="returnToMontageBtn" style="display:none">Return to Montage</button>
+      </div>
+    </div>
   </aside>
 
   <!-- Montage Sidebar (hidden by default) -->
   <aside id="montageSidebar" class="card sidebar" style="display:none">
     <h2>Montage</h2>
 
-    <div class="section">
-      <div class="row"><small>Total frames</small><span id="montageTotalFrames" class="pill">0</span></div>
-      <div style="margin-top:6px" class="row"><small>Position</small><span id="montagePlayPos" class="pill">0 / 0f</span></div>
+    <div class="section" style="padding-top:8px;flex:1;display:flex;flex-direction:column;min-height:0">
+      <div class="panelHeader">
+        <div class="panelTitle">Chunks</div>
+        <button id="montageImportBtn" style="margin-left:auto;padding:4px 10px;font-size:11px">+ Import</button>
+      </div>
+      <div id="montageChunks" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;overflow-y:auto;flex:1"></div>
     </div>
 
-    <div class="section" style="padding-top:8px">
-      <div class="panelHeader"><div class="panelTitle">Chunks</div></div>
-      <div id="montageChunks" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
-    </div>
-
-    <!-- Import/Save at bottom -->
+    <!-- Load/Save at bottom -->
     <div class="section" style="margin-top:auto">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-        <button id="montageImportBtn">Import Chunks</button>
-        <button id="montageLoadBtn">Load Montage</button>
-        <span style="color:var(--border)">|</span>
+        <button id="montageLoadBtn">Load</button>
         <button id="saveMontageBtn">Save</button>
-        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)"><input id="montageEmbedCheckbox" type="checkbox"/> Embed</label>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <div style="font-size:11px;color:var(--muted);letter-spacing:.35px;text-transform:uppercase;width:100%;margin-bottom:4px">Export</div>
@@ -881,7 +908,29 @@ function insertFrameBefore(from, to){
 // Projects store raw frame bytes base64-encoded. This keeps export/import tiny and
 // fully lossless for the internal byte representation. To switch to PNG data URIs,
 // change `saveProject()` to encode `off.toDataURL()` per-frame and update `loadProject()` accordingly.
+
+// Helper to prompt for filename
+let lastProjectPath = '';
+let lastMontagePath = '';
+
+function promptForFilename(defaultName, type = 'project'){
+  const path = type === 'montage' ? lastMontagePath : lastProjectPath;
+  const promptMsg = path ? `Filename (last: ${path}):` : 'Filename:';
+  const userInput = prompt(promptMsg, defaultName);
+  if(userInput === null) return null; // User cancelled
+  const filename = userInput.trim() || defaultName;
+  // Store the path
+  if(type === 'montage') lastMontagePath = filename;
+  else lastProjectPath = filename;
+  return filename;
+}
+
 function saveProject(){
+  const ts = new Date().toISOString().replace(/[:.]/g,'-');
+  const defaultName = lastProjectPath || `chunk-${ts}.json`;
+  const filename = promptForFilename(defaultName, 'project');
+  if(!filename) return; // User cancelled
+  
   const project = {
     version: '1.3',
     width: W,
@@ -900,8 +949,7 @@ function saveProject(){
   const blob = new Blob([json], { type:'application/json' });
 
   const a = document.createElement('a');
-  const ts = new Date().toISOString().replace(/[:.]/g,'-');
-  a.download = `animation-project-${ts}.json`;
+  a.download = filename.endsWith('.json') ? filename : `${filename}.json`;
   a.href = URL.createObjectURL(blob);
 
   document.body.appendChild(a);
@@ -909,6 +957,7 @@ function saveProject(){
   a.remove();
 
   setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
+  notify(`Project saved as ${a.download}`);
 }
 
 async function loadProject(file){
@@ -968,6 +1017,10 @@ async function loadProject(file){
   renderAllThumbs();
   renderMain();
   updateUI();
+  
+  // Store filename for future saves
+  lastProjectPath = file.name;
+  notify(`Loaded ${file.name}`);
 }
 
 // -------------------- GIF Export (512×512, white background) --------------------
@@ -1128,7 +1181,7 @@ let playTimer = null;
 
 function setPlaying(next){
   isPlaying = next;
-  playBtn.textContent = isPlaying ? 'Stop' : 'Play';
+  playBtn.textContent = isPlaying ? 'Pause' : 'Play';
 
   const disable = isPlaying;
 
@@ -1380,8 +1433,8 @@ if(montageScrubber){
             const chunkInfo = {
               name: ch.name,
               alias: ch.alias,
-              frameIdx: frameIdx,
-              totalFrames: len
+              frameIdx: frameInSource,
+              totalFrames: (ch._project.frameCount || (ch._project.frames && ch._project.frames.length))
             };
             renderPreviewFrameBytes(bytes, chunkInfo);
           }
@@ -1456,7 +1509,27 @@ newBtn.addEventListener('click', ()=>{
   renderAllThumbs();
   renderMain();
   updateUI();
+  
+  // Clear editing context when creating new project
+  _editingChunkContext = null;
+  updateMontageIntegrationButtons();
 });
+
+// Montage integration buttons
+const insertToMontageBtn = document.getElementById('insertToMontageBtn');
+const returnToMontageBtn = document.getElementById('returnToMontageBtn');
+if(insertToMontageBtn){
+  insertToMontageBtn.addEventListener('click', ()=>{
+    if(isPlaying) return;
+    insertChunkToMontage();
+  });
+}
+if(returnToMontageBtn){
+  returnToMontageBtn.addEventListener('click', ()=>{
+    if(isPlaying) return;
+    returnChunkToMontage();
+  });
+}
 
 brushSize.addEventListener('input', ()=>{
   brush = Number(brushSize.value);
@@ -1565,6 +1638,9 @@ window.addEventListener('keydown', e=>{
 let montageChunks = []; // {id,name,source:{type,ref|project}, frameRange:{start,end}, derived:boolean, _project:optional, alias:optional}
 let montagePlaying = false;
 let selectedChunkIdx = -1;
+// Track editing context: which montage chunk is being edited in chunk editor
+let _editingChunkContext = null; // { chunkIdx: number }
+
 let _trimDragging = null;
 let currentMode = 'chunk'; // 'chunk' | 'montage' - used to gate drawing and UI state
 let _pendingInsertPosition = null; // null or number - position to insert next imported chunk
@@ -1572,6 +1648,14 @@ let _pendingInsertPosition = null; // null or number - position to insert next i
 
 function generateId(prefix='chunk'){
   return `${prefix}-${Date.now().toString(36)}-${Math.floor(Math.random()*0x10000).toString(16)}`;
+}
+
+// Helper function to ensure chunk has a valid alias
+function ensureChunkAlias(chunk) {
+  if (!chunk.alias || chunk.alias.trim() === '') {
+    chunk.alias = chunk.name || generateId('cut');
+  }
+  return chunk.alias;
 }
 
 // append a small import log helper for Montage imports (visible in the Montage sidebar)
@@ -1593,10 +1677,24 @@ function computeMontageTotalFrames(){
   return montageChunks.reduce((s,ch)=> s + Math.max(0, (ch.frameRange && (ch.frameRange.end - ch.frameRange.start)) || 0), 0);
 }
 
+function updateMontageTimeDisplay(pos){
+  const timeEl = document.getElementById('montageTimePos');
+  if(timeEl && currentMode === 'montage'){
+    const timeInSeconds = ((pos - 1) / FPS).toFixed(1);
+    timeEl.textContent = `${timeInSeconds}s`;
+  }
+}
+
 function updateMontageMetaUI(){
+  const totalFrames = computeMontageTotalFrames();
   const el = document.getElementById('montageTotalFrames');
-  if(!el) return;
-  el.textContent = String(computeMontageTotalFrames());
+  if(el) el.textContent = String(totalFrames);
+  
+  // Update time position
+  if(currentMode === 'montage'){
+    const pos = Number(montageScrubber.value) || 1;
+    updateMontageTimeDisplay(pos);
+  }
 }
 
 function updateMontageScrubberUI(){
@@ -1628,6 +1726,89 @@ function updateMontageScrubberUI(){
 
   scrub.value = String(pos);
   const playPosEl = document.getElementById('montagePlayPos'); if(playPosEl) playPosEl.textContent = `${pos} / ${total}f`;
+  
+  // Update time display
+  updateMontageTimeDisplay(pos);
+  
+  // Update rulers and chunk delimiters for montage mode
+  if(currentMode === 'montage'){
+    updateMontageRulers(total);
+    updateChunkDelimiters(total);
+  }
+}
+
+function updateMontageRulers(totalFrames){
+  const topRuler = document.getElementById('scrubberTopRuler');
+  const bottomRuler = document.getElementById('scrubberBottomRuler');
+  if(!topRuler || !bottomRuler) return;
+  
+  // Show rulers in montage mode
+  if(currentMode === 'montage'){
+    topRuler.style.display = 'block';
+    bottomRuler.style.display = 'block';
+    
+    // Top ruler: frame indices (show every ~10% of total or key positions)
+    topRuler.innerHTML = '';
+    const step = Math.max(1, Math.ceil(totalFrames / 8)); // Show ~8 markers
+    for(let i = 0; i <= totalFrames; i += step){
+      if(i === 0) continue; // Skip 0, start from 1
+      const marker = document.createElement('span');
+      marker.textContent = String(i);
+      marker.style.position = 'absolute';
+      marker.style.left = `${(i / totalFrames) * 100}%`;
+      marker.style.transform = 'translateX(-50%)';
+      topRuler.appendChild(marker);
+    }
+    
+    // Bottom ruler: time in seconds (12 fps)
+    bottomRuler.innerHTML = '';
+    const totalSeconds = totalFrames / FPS;
+    const timeStep = Math.max(0.5, Math.ceil(totalSeconds / 8) / 2) * 2; // Round to 0.5s increments
+    for(let t = 0; t <= totalSeconds; t += timeStep){
+      const marker = document.createElement('span');
+      marker.textContent = `${t.toFixed(1)}s`;
+      marker.style.position = 'absolute';
+      marker.style.left = `${(t / totalSeconds) * 100}%`;
+      marker.style.transform = 'translateX(-50%)';
+      bottomRuler.appendChild(marker);
+    }
+  }else{
+    topRuler.style.display = 'none';
+    bottomRuler.style.display = 'none';
+  }
+}
+
+function updateChunkDelimiters(totalFrames){
+  const delimiters = document.getElementById('chunkDelimiters');
+  if(!delimiters) return;
+  
+  if(currentMode === 'montage' && montageChunks.length > 0){
+    delimiters.style.display = 'block';
+    delimiters.innerHTML = '';
+    
+    // Add delimiter markers at chunk boundaries
+    let cumulativeFrames = 0;
+    for(let i = 0; i < montageChunks.length; i++){
+      const chunk = montageChunks[i];
+      const chunkLength = (chunk.frameRange && (chunk.frameRange.end - chunk.frameRange.start)) || 0;
+      cumulativeFrames += chunkLength;
+      
+      // Add marker at end of chunk (unless it's the last chunk)
+      if(i < montageChunks.length - 1 && cumulativeFrames > 0){
+        const marker = document.createElement('div');
+        marker.style.position = 'absolute';
+        marker.style.left = `${(cumulativeFrames / totalFrames) * 100}%`;
+        marker.style.top = '0';
+        marker.style.bottom = '0';
+        marker.style.width = '2px';
+        marker.style.background = 'rgba(90,162,255,0.6)';
+        marker.style.transform = 'translateX(-1px)';
+        delimiters.appendChild(marker);
+      }
+    }
+  }else{
+    delimiters.style.display = 'none';
+  }
 }
 
 function selectMontageChunk(idx, renderPreview = true){
@@ -1750,12 +1931,11 @@ function _globalTrimPointerMove(ev){
   if(frameToPreview >= 0 && frameToPreview < total){
     try{
       const bytes = _decodeFrameFromProject(ch._project, frameToPreview);
-      const relativeIdx = frameToPreview - ch.frameRange.start;
       const chunkInfo = {
         name: ch.name,
         alias: ch.alias,
-        frameIdx: relativeIdx >= 0 ? relativeIdx : 0,
-        totalFrames: ch.frameRange.end - ch.frameRange.start
+        frameIdx: frameToPreview,
+        totalFrames: total
       };
       renderPreviewFrameBytes(bytes, chunkInfo);
     }catch(e){
@@ -1834,7 +2014,15 @@ function setMode(mode){
         montageScrubber.value = String(before + 1);
       }
     }
+    // Show montage info
+    const montageInfo = document.getElementById('montageInfo');
+    if(montageInfo) montageInfo.style.display = 'block';
+    // Show rulers and chunk delimiters
+    updateMontageRulers(Math.max(1, computeMontageTotalFrames()));
+    updateChunkDelimiters(Math.max(1, computeMontageTotalFrames()));
+    updateMontageMetaUI();
     main.style.cursor = 'default';
+    updateMontageIntegrationButtons();
   }else{
     // restore chunk editor view and cursor
     renderMain();
@@ -1844,7 +2032,18 @@ function setMode(mode){
       montageScrubber.max = String(frames.length);
       montageScrubber.value = String(current + 1);
     }
+    // Hide montage info
+    const montageInfo = document.getElementById('montageInfo');
+    if(montageInfo) montageInfo.style.display = 'none';
+    // Hide rulers and chunk delimiters
+    const topRuler = document.getElementById('scrubberTopRuler');
+    const bottomRuler = document.getElementById('scrubberBottomRuler');
+    const delimiters = document.getElementById('chunkDelimiters');
+    if(topRuler) topRuler.style.display = 'none';
+    if(bottomRuler) bottomRuler.style.display = 'none';
+    if(delimiters) delimiters.style.display = 'none';
     main.style.cursor = 'crosshair';
+    updateMontageIntegrationButtons();
   }
 } 
 
@@ -1862,6 +2061,157 @@ function addMontageChunk(obj, insertPosition = null){
   updateMontageScrubberUI();
   // select first chunk by default when first chunk added
   if(montageChunks.length === 1){ selectMontageChunk(0); }
+}
+
+// -------------------- Chunk/Montage Editor Integration --------------------
+// Edit a montage chunk in the chunk editor
+function editChunkInChunkEditor(chunkIdx){
+  if(chunkIdx < 0 || chunkIdx >= montageChunks.length) return;
+  const chunk = montageChunks[chunkIdx];
+  
+  if(!chunk._project || !chunk._project.frames){
+    notify('Chunk project data not available');
+    return;
+  }
+  
+  // Store editing context
+  _editingChunkContext = { chunkIdx };
+  
+  // Load chunk frames into chunk editor
+  const project = chunk._project;
+  const frameCount = project.frameCount || (project.frames && project.frames.length) || 0;
+  
+  frames = Array.from({length: frameCount}, ()=>makeBlankFrame());
+  undoStacks = [];
+  redoStacks = [];
+  ensureStacks(frameCount);
+  
+  for(let i=0; i<frameCount; i++){
+    if(i < project.frames.length){
+      const base64 = project.frames[i];
+      const binary = atob(base64);
+      const arr = new Uint8Array(binary.length);
+      for(let j=0; j<binary.length; j++) arr[j] = binary.charCodeAt(j);
+      frames[i].set(arr);
+    }
+  }
+  
+  // Switch to chunk editor
+  setMode('chunk');
+  initThumbs(false);
+  setCurrent(chunk.frameRange.start);
+  renderAllThumbs();
+  renderMain();
+  updateUI();
+  
+  // Show "Return to Montage" button
+  updateMontageIntegrationButtons();
+  notify(`Editing chunk: ${chunk.alias || chunk.name}`);
+}
+
+// Insert current chunk editor project to montage
+function insertChunkToMontage(){
+  if(frames.length === 0){
+    notify('No frames to insert');
+    return;
+  }
+  
+  // Create project from current frames
+  const project = {
+    version: '1.3',
+    width: W,
+    height: H,
+    fps: FPS,
+    frameCount: frames.length,
+    timestamp: new Date().toISOString(),
+    frames: frames.map(f=>{
+      let binary = '';
+      for(let i=0;i<f.length;i++) binary += String.fromCharCode(f[i]);
+      return btoa(binary);
+    })
+  };
+  
+  const ts = new Date().toISOString().replace(/[:.]/g,'-');
+  const chunkName = lastProjectPath || `chunk-${ts}`;
+  const ch = {
+    id: generateId('chunk'),
+    name: chunkName,
+    alias: chunkName.replace(/\.json$/i, ''),
+    source: {type:'embedded', project: project},
+    frameRange: {start:0, end: frames.length},
+    derived: false,
+    _project: project
+  };
+  
+  // Switch to montage editor and add chunk
+  setMode('montage');
+  addMontageChunk(ch);
+  notify(`Inserted chunk to montage`);
+}
+
+// Return edited chunk to montage
+function returnChunkToMontage(){
+  if(!_editingChunkContext){
+    notify('No montage context to return to');
+    return;
+  }
+  
+  // Update chunk with edited frames
+  const { chunkIdx } = _editingChunkContext;
+  
+  // Create updated project from current frames
+  const project = {
+    version: '1.3',
+    width: W,
+    height: H,
+    fps: FPS,
+    frameCount: frames.length,
+    timestamp: new Date().toISOString(),
+    frames: frames.map(f=>{
+      let binary = '';
+      for(let i=0;i<f.length;i++) binary += String.fromCharCode(f[i]);
+      return btoa(binary);
+    })
+  };
+  
+  // Update the chunk
+  if(chunkIdx >= 0 && chunkIdx < montageChunks.length){
+    const chunk = montageChunks[chunkIdx];
+    chunk._project = project;
+    chunk.source = {type:'embedded', project: project};
+    // Update frame range if frame count changed
+    if(frames.length !== chunk.frameRange.end){
+      chunk.frameRange.end = frames.length;
+    }
+  }
+  
+  // Clear editing context
+  _editingChunkContext = null;
+  
+  // Switch back to montage
+  setMode('montage');
+  renderMontageChunks();
+  updateMontageMetaUI();
+  updateMontageScrubberUI();
+  updateMontageIntegrationButtons();
+  notify('Chunk updated in montage');
+}
+
+// Update visibility of montage integration buttons
+function updateMontageIntegrationButtons(){
+  const insertBtn = document.getElementById('insertToMontageBtn');
+  const returnBtn = document.getElementById('returnToMontageBtn');
+  
+  if(currentMode === 'chunk'){
+    // Show insert button if not editing from montage
+    if(insertBtn) insertBtn.style.display = _editingChunkContext ? 'none' : '';
+    // Show return button if editing from montage
+    if(returnBtn) returnBtn.style.display = _editingChunkContext ? '' : 'none';
+  }else{
+    // Hide both in montage mode
+    if(insertBtn) insertBtn.style.display = 'none';
+    if(returnBtn) returnBtn.style.display = 'none';
+  }
 }
 
 // Extract thumbnail frame index from chunk - picks a frame a few frames in for better representation
@@ -1959,22 +2309,19 @@ function renderMontageChunks(){
     const durationBadge = document.createElement('span'); 
     durationBadge.className = 'pill'; 
     durationBadge.textContent = `${(ch.frameRange.end - ch.frameRange.start)}f`;
-    const sourceBadge = document.createElement('span'); 
-    sourceBadge.className = 'pill'; 
-    sourceBadge.textContent = ch.source && ch.source.type === 'embedded' ? 'emb' : 'ref';
     badges.appendChild(durationBadge);
-    badges.appendChild(sourceBadge);
     info.appendChild(badges);
 
-    // Alias input
+    // Alias input (now labeled as "Cut Name")
     const aliasInput = document.createElement('input');
     aliasInput.type = 'text';
     aliasInput.className = 'chunk-alias';
-    aliasInput.placeholder = 'Alias (optional)';
-    aliasInput.value = ch.alias || '';
+    aliasInput.placeholder = 'Cut name';
+    aliasInput.value = ensureChunkAlias(ch);
     aliasInput.addEventListener('input', (e)=>{
       e.stopPropagation();
-      ch.alias = aliasInput.value.trim();
+      const newValue = aliasInput.value.trim();
+      ch.alias = newValue || ch.name || generateId('cut');
       updateMontageScrubberUI();
     });
     aliasInput.addEventListener('click', (e)=>e.stopPropagation());
@@ -1989,6 +2336,9 @@ function renderMontageChunks(){
     // events: select on click
     div.addEventListener('click', ()=>{ selectMontageChunk(idx); });
 
+    const editBtn = document.createElement('button'); editBtn.className = 'iconBtn'; editBtn.title = 'Edit in Chunk Editor'; editBtn.textContent = '✎';
+    editBtn.addEventListener('click', (e)=>{ e.stopPropagation(); editChunkInChunkEditor(idx); });
+
     const upBtn = document.createElement('button'); upBtn.className = 'iconBtn'; upBtn.title = 'Move Up'; upBtn.textContent = '▴';
     upBtn.addEventListener('click', (e)=>{ e.stopPropagation(); if(idx === 0) return; [montageChunks[idx-1], montageChunks[idx]] = [montageChunks[idx], montageChunks[idx-1]]; renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); });
 
@@ -1998,6 +2348,7 @@ function renderMontageChunks(){
     const delBtn = document.createElement('button'); delBtn.className = 'iconBtn danger'; delBtn.title = 'Delete'; delBtn.textContent = '✖';
     delBtn.addEventListener('click', (e)=>{ e.stopPropagation(); montageChunks.splice(idx,1); renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); });
 
+    controls.appendChild(editBtn);
     controls.appendChild(upBtn);
     controls.appendChild(downBtn);
     controls.appendChild(delBtn);
@@ -2025,7 +2376,6 @@ const montageImportBtn = document.getElementById('montageImportBtn');
 const montageImportInputEl = document.getElementById('montageImportInput');
 const montageLoadBtn = document.getElementById('montageLoadBtn');
 const montageLoadInputEl = document.getElementById('montageLoadInput');
-const montageEmbedCheckbox = document.getElementById('montageEmbedCheckbox');
 const saveMontageBtn = document.getElementById('saveMontageBtn');
 const montagePlayBtn = document.getElementById('montagePlayBtn');
 
@@ -2075,7 +2425,8 @@ montageImportInputEl.addEventListener('change', (ev)=>{
         const ch = {
           id: generateId('chunk'),
           name: f.name.replace(/\.json$/i, ''),
-          source: montageEmbedCheckbox.checked ? {type:'embedded', project: json} : {type:'reference', ref: refVal},
+          alias: f.name.replace(/\.json$/i, ''),
+          source: {type:'embedded', project: json},
           frameRange: {start:0, end: (json.frameCount || (json.frames && json.frames.length) || 0)},
           derived: false,
           _project: json
@@ -2105,6 +2456,11 @@ montageImportInputEl.addEventListener('change', (ev)=>{
 });
 
 saveMontageBtn.addEventListener('click', ()=>{
+  const ts = new Date().toISOString().replace(/[:.]/g,'-');
+  const defaultName = lastMontagePath || `montage-${ts}.json`;
+  const filename = promptForFilename(defaultName, 'montage');
+  if(!filename) return; // User cancelled
+  
   const out = {
     version: 'montage-1.0', width: W, height: H, fps: FPS, timestamp: new Date().toISOString(), chunks: []
   };
@@ -2116,8 +2472,15 @@ saveMontageBtn.addEventListener('click', ()=>{
     out.chunks.push(item);
   });
   const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `montage-${new Date().toISOString().replace(/[:.]/g,'-')}.json`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  notify('Montage saved.');
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename.endsWith('.json') ? filename : `${filename}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  notify(`Montage saved as ${a.download}`);
 });
 
 // Load Montage from JSON
@@ -2177,9 +2540,9 @@ if(montageLoadBtn && montageLoadInputEl){
           source: chunkData.source,
           frameRange: chunkData.frameRange || {start:0, end:0},
           derived: !!chunkData.derived,
-          _project: project
+          _project: project,
+          alias: chunkData.alias || chunkData.name || generateId('cut')
         };
-        if(chunkData.alias) ch.alias = chunkData.alias;
         
         montageChunks.push(ch);
       }
@@ -2189,7 +2552,9 @@ if(montageLoadBtn && montageLoadInputEl){
       updateMontageScrubberUI();
       if(montageChunks.length > 0) selectMontageChunk(0);
       
-      notify(`Loaded montage with ${montageChunks.length} chunks`);
+      // Store filename for future saves
+      lastMontagePath = file.name;
+      notify(`Loaded ${file.name} with ${montageChunks.length} chunks`);
     }catch(err){
       notify(`Failed to load montage: ${err.message}`);
       console.error('Load montage error:', err);
@@ -2504,8 +2869,8 @@ function renderMontagePreviewChunk(idx){
       const chunkInfo = {
         name: ch.name,
         alias: ch.alias,
-        frameIdx: 0,
-        totalFrames: ch.frameRange.end - ch.frameRange.start
+        frameIdx: ch.frameRange.start,
+        totalFrames: (ch._project.frameCount || (ch._project.frames && ch._project.frames.length))
       };
       renderPreviewFrameBytes(bytes, chunkInfo);
       return;
@@ -2523,19 +2888,17 @@ function renderMontagePreviewChunk(idx){
 
 function startMontagePlayback(){
   if(montageChunks.length === 0) { notify('No chunks to play'); return; }
-  // start at first chunk/frame
-  _montagePos = { chunkIdx: 0, frameIdx: 0 };
-  montagePlaying = true; montagePlayBtn.textContent = 'Stop';
+  // Don't reset position - resume from current position
+  montagePlaying = true; montagePlayBtn.textContent = 'Pause';
 
   // init playback UI
   const playPosEl = document.getElementById('montagePlayPos');
-  if(playPosEl) playPosEl.textContent = `0 / ${computeMontageTotalFrames()}f`;
 
   // remember last highlighted chunk so we only update selection on chunk change (avoids overwriting the current preview)
   let lastChunkIdx = -1;
 
   _montageTimer = setInterval(()=>{
-    // out-of-range -> stop
+    // out-of-range -> stop playback
     if(_montagePos.chunkIdx >= montageChunks.length){ stopMontagePlayback(); return; }
     const ch = montageChunks[_montagePos.chunkIdx];
     const total = (ch.frameRange && (ch.frameRange.end - ch.frameRange.start)) || 0;
@@ -2551,8 +2914,8 @@ function startMontagePlayback(){
     const chunkInfo = {
       name: ch.name,
       alias: ch.alias,
-      frameIdx: _montagePos.frameIdx,
-      totalFrames: total
+      frameIdx: frameInSource,
+      totalFrames: (ch._project.frameCount || (ch._project.frames && ch._project.frames.length))
     };
     renderPreviewFrameBytes(bytes, chunkInfo);
 
@@ -2594,24 +2957,34 @@ function startMontagePlayback(){
 function stopMontagePlayback(){
   montagePlaying = false; montagePlayBtn.textContent = 'Play';
   if(_montageTimer){ clearInterval(_montageTimer); _montageTimer = null; }
-  // select the chunk where playback stopped
-  const idx = Math.min(_montagePos.chunkIdx, montageChunks.length - 1);
-  if(idx >= 0 && montageChunks.length > 0) selectMontageChunk(idx);
-  const playPosEl = document.getElementById('montagePlayPos'); if(playPosEl) playPosEl.textContent = `0 / ${computeMontageTotalFrames()}f`;
+  // Keep current position when paused - don't reset
+  const playPosEl = document.getElementById('montagePlayPos'); 
+  const totalMontage = computeMontageTotalFrames();
+  let before = 0;
+  for(let i = 0; i < Math.min(_montagePos.chunkIdx, montageChunks.length); i++){
+    const c = montageChunks[i];
+    before += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
+  }
+  const pos = before + (_montagePos.frameIdx || 0) + 1;
+  if(playPosEl) playPosEl.textContent = `${pos} / ${totalMontage}f`;
   // sync montage scrubber to current position and visibility
   if(currentMode === 'montage'){
     const totalMontage = Math.max(1, computeMontageTotalFrames());
     if(montageScrubber){
       montageScrubber.step = '1';
       montageScrubber.max = String(totalMontage);
-      let before = 0; for(let i=0;i<Math.min(_montagePos.chunkIdx, montageChunks.length);i++){ const c = montageChunks[i]; before += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0; }
+      let before = 0;
+      for(let i = 0; i < Math.min(_montagePos.chunkIdx, montageChunks.length); i++){
+        const c = montageChunks[i];
+        before += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
+      }
       montageScrubber.value = String(Math.min(before + (_montagePos.frameIdx || 0) + 1, totalMontage));
       montageScrubber.style.display = '';
     }
   }else{
     if(montageScrubber) montageScrubber.style.display = 'none';
   }
-  notify('Montage stopped');
+  notify('Montage paused');
 }
 
 montagePlayBtn.addEventListener('click', ()=>{
