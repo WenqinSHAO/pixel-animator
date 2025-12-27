@@ -117,49 +117,54 @@ input[type="range"]{width:160px}
 /* Mobile-friendly vertical layout for narrow screens */
 @media (max-width:768px){
   .wrap{grid-template-columns:1fr;padding:8px;gap:8px;height:calc(100vh - 80px)}
+  /* Give chunk editor more vertical space for drawing tools + canvas */
+  body:not(.montage-mode) .wrap{height:calc(100vh - 60px)}
   header{padding:8px 10px}
   header h1{font-size:13px}
   #editorToggle{width:100%;justify-content:center}
   canvas#main{width:min(85vw,350px);height:min(85vw,350px)}
-  .stage{padding:6px;gap:4px;overflow-y:auto;display:flex;flex-direction:column}
+  .stage{padding:6px;gap:4px;overflow-y:auto;display:flex;flex-direction:column;min-height:0}
   .canvasPanel{flex-shrink:0}
   .sidebar{padding:8px;overflow-y:auto;max-height:calc(100vh - 80px)}
   .frames{grid-template-columns:repeat(3,1fr);gap:6px}
-  .framesWrap{overflow-y:auto;overflow-x:hidden;max-height:200px;flex:0 1 auto}
+  .framesWrap{overflow-y:auto;overflow-x:hidden;max-height:180px;flex:0 1 auto}
   .card{border-radius:10px;overflow:hidden}
   button{padding:5px 7px;font-size:11px}
   .panelBlock{padding:6px;gap:4px}
-  body.montage-mode .stage{padding:6px;gap:4px}
+  body.montage-mode .stage{padding:6px;gap:4px;overflow-y:scroll}
   body.montage-mode .canvasPanel{flex-shrink:1}
+  body.montage-mode .playControls{flex-shrink:0;margin-top:auto;position:sticky;bottom:0;background:var(--panel);padding-top:8px}
   .canvasPanel{gap:4px}
   .mainCanvasWrap{padding:6px}
   .sidebar .section{margin-bottom:8px}
   .sidebar .section:first-of-type{flex-shrink:0}
-  .playControls{flex-shrink:0;margin-top:auto}
 }
 
 /* Extra small screens / mobile portrait */
 @media (max-width:480px){
   .wrap{padding:6px;gap:6px;height:calc(100vh - 70px)}
+  /* Give chunk editor more vertical space for drawing tools + canvas */
+  body:not(.montage-mode) .wrap{height:calc(100vh - 50px)}
   header{padding:6px 8px;gap:6px}
   header h1{font-size:12px}
   canvas#main{width:min(80vw,300px);height:min(80vw,300px)}
   .frames{grid-template-columns:repeat(2,1fr);gap:6px}
-  .stage{padding:4px;gap:4px;overflow-y:auto;display:flex;flex-direction:column}
+  .stage{padding:4px;gap:4px;overflow-y:auto;display:flex;flex-direction:column;min-height:0}
   .canvasPanel{flex-shrink:0}
   .sidebar{padding:6px;overflow-y:auto;max-height:calc(100vh - 70px)}
-  .framesWrap{overflow-y:auto;overflow-x:hidden;max-height:180px;flex:0 1 auto}
+  .framesWrap{overflow-y:auto;overflow-x:hidden;max-height:160px;flex:0 1 auto}
   #montageChunks .chunk-item{padding:6px;gap:4px 6px}
   #montageChunks .chunk-thumb{width:48px;height:48px}
   .card{overflow:hidden}
   body.montage-mode .canvasPanel{flex-shrink:1}
+  body.montage-mode .stage{overflow-y:scroll}
+  body.montage-mode .playControls{flex-shrink:0;margin-top:auto;position:sticky;bottom:0;background:var(--panel);padding-top:6px}
   .canvasPanel{gap:4px}
   .mainCanvasWrap{padding:4px}
   .panelBlock{padding:6px;gap:4px}
   button{padding:4px 6px;font-size:10px}
   .sidebar .section{margin-bottom:6px}
   .sidebar .section:first-of-type{flex-shrink:0}
-  .playControls{flex-shrink:0;margin-top:auto}
 }
 
 /* Montage sidebar styles */
