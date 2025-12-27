@@ -1837,6 +1837,13 @@ main.addEventListener('pointermove', ev=>{
       selection.y1 += dy;
       selection.x2 += dx;
       selection.y2 += dy;
+      
+      // Update lasso path if this is a lasso selection
+      if(selection.path && lassoPath.length > 0){
+        lassoPath = lassoPath.map(p => ({x: p.x + dx, y: p.y + dy}));
+        selection.path = lassoPath;
+      }
+      
       lastPt = pt;
       renderMain();
       return;
@@ -2671,8 +2678,8 @@ window.addEventListener('keydown', e=>{
         // Shift selection slightly to show it's a new paste
         const w = Math.abs(selection.x2 - selection.x1);
         const h = Math.abs(selection.y2 - selection.y1);
-        const offsetX = Math.min(10, (W - w) / 2);
-        const offsetY = Math.min(10, (H - h) / 2);
+        let offsetX = Math.min(10, (W - w) / 2);
+        let offsetY = Math.min(10, (H - h) / 2);
         
         selection.x1 += offsetX;
         selection.x2 += offsetX;
@@ -2686,6 +2693,7 @@ window.addEventListener('keydown', e=>{
           const shift = x2 - W + 1;
           selection.x1 -= shift;
           selection.x2 -= shift;
+          offsetX -= shift;
         }
         const y1 = Math.min(selection.y1, selection.y2);
         const y2 = Math.max(selection.y1, selection.y2);
@@ -2693,6 +2701,13 @@ window.addEventListener('keydown', e=>{
           const shift = y2 - H + 1;
           selection.y1 -= shift;
           selection.y2 -= shift;
+          offsetY -= shift;
+        }
+        
+        // Update lasso path if this is a lasso selection
+        if(selection.path && lassoPath.length > 0){
+          lassoPath = lassoPath.map(pt => ({x: pt.x + offsetX, y: pt.y + offsetY}));
+          selection.path = lassoPath;
         }
         
         selectionFloating = true;
@@ -2711,13 +2726,27 @@ window.addEventListener('keydown', e=>{
       e.preventDefault();
       const w = Math.abs(selection.x2 - selection.x1);
       const h = Math.abs(selection.y2 - selection.y1);
+      const oldX1 = Math.min(selection.x1, selection.x2);
+      const oldY1 = Math.min(selection.y1, selection.y2);
+      const newX1 = Math.floor((W - w) / 2);
+      const newY1 = Math.floor((H - h) / 2);
+      const offsetX = newX1 - oldX1;
+      const offsetY = newY1 - oldY1;
+      
       // Paste at center
       selection = {
-        x1: Math.floor((W - w) / 2),
-        y1: Math.floor((H - h) / 2),
-        x2: Math.floor((W - w) / 2) + w,
-        y2: Math.floor((H - h) / 2) + h
+        x1: newX1,
+        y1: newY1,
+        x2: newX1 + w,
+        y2: newY1 + h
       };
+      
+      // Update lasso path if this is a lasso selection
+      if(selection.path && lassoPath.length > 0){
+        lassoPath = lassoPath.map(pt => ({x: pt.x + offsetX, y: pt.y + offsetY}));
+        selection.path = lassoPath;
+      }
+      
       selectionFloating = true;
       renderMain();
       notify('Selection pasted at center. Drag to reposition.');
