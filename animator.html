@@ -689,26 +689,36 @@ function drawDot(frameArr, x, y, value, size){
         activeStrokeMap.set(idx, [frameArr[idx], frameArr[idx+1], frameArr[idx+2], frameArr[idx+3]]);
       }
       
-      // Alpha compositing when drawing over existing pixels
-      const prevR = frameArr[idx];
-      const prevG = frameArr[idx+1];
-      const prevB = frameArr[idx+2];
-      const prevA = frameArr[idx+3];
-      
-      const srcA = value.a / 255;
-      const dstA = prevA / 255;
-      const outA = srcA + dstA * (1 - srcA);
-      
-      if(outA > 0){
-        frameArr[idx] = Math.round((value.r * srcA + prevR * dstA * (1 - srcA)) / outA);
-        frameArr[idx+1] = Math.round((value.g * srcA + prevG * dstA * (1 - srcA)) / outA);
-        frameArr[idx+2] = Math.round((value.b * srcA + prevB * dstA * (1 - srcA)) / outA);
-        frameArr[idx+3] = Math.round(outA * 255);
+      // For eraser (alpha=0), directly set pixels to transparent
+      // For other tools, use alpha compositing
+      if(value.a === 0){
+        // Eraser: replace with transparent
+        frameArr[idx] = 0;
+        frameArr[idx+1] = 0;
+        frameArr[idx+2] = 0;
+        frameArr[idx+3] = 0;
       }else{
-        frameArr[idx] = value.r;
-        frameArr[idx+1] = value.g;
-        frameArr[idx+2] = value.b;
-        frameArr[idx+3] = value.a;
+        // Alpha compositing when drawing over existing pixels
+        const prevR = frameArr[idx];
+        const prevG = frameArr[idx+1];
+        const prevB = frameArr[idx+2];
+        const prevA = frameArr[idx+3];
+        
+        const srcA = value.a / 255;
+        const dstA = prevA / 255;
+        const outA = srcA + dstA * (1 - srcA);
+        
+        if(outA > 0){
+          frameArr[idx] = Math.round((value.r * srcA + prevR * dstA * (1 - srcA)) / outA);
+          frameArr[idx+1] = Math.round((value.g * srcA + prevG * dstA * (1 - srcA)) / outA);
+          frameArr[idx+2] = Math.round((value.b * srcA + prevB * dstA * (1 - srcA)) / outA);
+          frameArr[idx+3] = Math.round(outA * 255);
+        }else{
+          frameArr[idx] = value.r;
+          frameArr[idx+1] = value.g;
+          frameArr[idx+2] = value.b;
+          frameArr[idx+3] = value.a;
+        }
       }
     }
   }
@@ -756,27 +766,44 @@ function drawSoftDot(frameArr, x, y, value, size){
       const prevB = frameArr[idx+2];
       const prevA = frameArr[idx+3];
       
-      // Apply softness through alpha channel - color at full intensity, alpha fades at edges
-      const brushAlpha = value.a * edgeSoftness / 255;
-      const prevAlpha = prevA / 255;
-      
-      // Alpha compositing: out_a = src_a + dst_a * (1 - src_a)
-      const outA = brushAlpha + prevAlpha * (1 - brushAlpha);
-      
-      if(outA > 0){
-        // Color blend with alpha compositing
-        const blendedR = Math.round((value.r * brushAlpha + prevR * prevAlpha * (1 - brushAlpha)) / outA);
-        const blendedG = Math.round((value.g * brushAlpha + prevG * prevAlpha * (1 - brushAlpha)) / outA);
-        const blendedB = Math.round((value.b * brushAlpha + prevB * prevAlpha * (1 - brushAlpha)) / outA);
-        const blendedA = Math.round(outA * 255);
-        
+      // For eraser (alpha=0), directly set pixels to transparent with soft edges
+      // For other tools, use alpha compositing
+      if(value.a === 0){
+        // Soft eraser: erase with soft edges (reduce alpha based on distance)
+        const newAlpha = Math.round(prevA * (1 - edgeSoftness));
         if(activeStrokeMap && !activeStrokeMap.has(idx)){
           activeStrokeMap.set(idx, [prevR, prevG, prevB, prevA]);
         }
-        frameArr[idx] = blendedR;
-        frameArr[idx+1] = blendedG;
-        frameArr[idx+2] = blendedB;
-        frameArr[idx+3] = blendedA;
+        frameArr[idx+3] = newAlpha;
+        // If fully transparent, clear color channels too
+        if(newAlpha === 0){
+          frameArr[idx] = 0;
+          frameArr[idx+1] = 0;
+          frameArr[idx+2] = 0;
+        }
+      }else{
+        // Apply softness through alpha channel - color at full intensity, alpha fades at edges
+        const brushAlpha = value.a * edgeSoftness / 255;
+        const prevAlpha = prevA / 255;
+        
+        // Alpha compositing: out_a = src_a + dst_a * (1 - src_a)
+        const outA = brushAlpha + prevAlpha * (1 - brushAlpha);
+        
+        if(outA > 0){
+          // Color blend with alpha compositing
+          const blendedR = Math.round((value.r * brushAlpha + prevR * prevAlpha * (1 - brushAlpha)) / outA);
+          const blendedG = Math.round((value.g * brushAlpha + prevG * prevAlpha * (1 - brushAlpha)) / outA);
+          const blendedB = Math.round((value.b * brushAlpha + prevB * prevAlpha * (1 - brushAlpha)) / outA);
+          const blendedA = Math.round(outA * 255);
+          
+          if(activeStrokeMap && !activeStrokeMap.has(idx)){
+            activeStrokeMap.set(idx, [prevR, prevG, prevB, prevA]);
+          }
+          frameArr[idx] = blendedR;
+          frameArr[idx+1] = blendedG;
+          frameArr[idx+2] = blendedB;
+          frameArr[idx+3] = blendedA;
+        }
       }
     }
   }
