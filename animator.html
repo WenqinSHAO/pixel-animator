@@ -493,7 +493,7 @@ let activeStrokeMap = null;
 
 // DOM
 const main = document.getElementById('main');
-const ctx = main.getContext('2d', { alpha:false, willReadFrequently:true });
+const ctx = main.getContext('2d', { alpha:true, willReadFrequently:true });
 ctx.imageSmoothingEnabled = false;
 
 const frameLabel = document.getElementById('frameLabel');
