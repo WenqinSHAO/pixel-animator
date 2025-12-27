@@ -146,7 +146,12 @@ Schema (concise):
 
 - Change `W`, `H` for the internal raster size, `DISPLAY` for on-screen/export resolution, and `FPS` for playback frame rate.
 - Notifications now use non-blocking in-page toasts (instead of blocking `alert()`), shown in the bottom-right.
-- **Color support**: Now implemented with RGBA arrays and full alpha channel support. Use R, G, B, and Alpha sliders to set colors.
+- **Color support**: Fully implemented with RGBA arrays and alpha channel support:
+  - **Color picker**: Click the color box to open native color picker
+  - **Recent colors**: 5 slots that auto-update with used colors (defaults to grayscale palette)
+  - **Alpha slider**: Control transparency (0-255)
+  - **Transparency**: Canvas shows checkered background pattern, eraser creates transparent pixels
+  - **Blending**: Proper alpha compositing when drawing overlapping strokes
 - To change brush shape (round vs square), adjust `drawDot()` behavior.
 - To add tools, add a UI control, set the new tool name in `setTool()`, and handle it in `applyStroke()`.
 - For autosave or cloud sync, hook into project changes and reuse `saveProject()`/`loadProject()` logic.
