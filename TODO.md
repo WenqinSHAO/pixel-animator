@@ -54,6 +54,17 @@
 ### Chunk Editor
 
 - [x] **Selection tool** - ✅ Fully implemented with copy/cut/paste, drag-and-drop, and floating selection
+- [ ] **Lasso selection copy/cut/paste** - Complete implementation of pixel extraction from arbitrary closed paths
+  - **Algorithm**: Point-in-polygon test (ray-casting algorithm)
+  - **Implementation steps**:
+    1. Convert lasso path to closed polygon (already done - path is auto-closed)
+    2. Compute bounding box of lasso path (min/max x,y coordinates)
+    3. Implement ray-casting algorithm to test if each pixel in bounding box is inside polygon
+    4. Extract only pixels inside the polygon to selectionData
+    5. Update cut operation to clear only pixels inside polygon
+    6. Update paste to composite only extracted pixels with alpha
+  - **Ray-casting algorithm**: Cast horizontal ray from point to infinity, count intersections with polygon edges. Odd count = inside, even = outside
+  - **Edge cases**: Handle horizontal edges, vertex intersections, degenerate polygons
 - [ ] **Drawing tools expansion** - Add line, rectangle, circle, fill tools
 
 ### General UX

@@ -199,9 +199,6 @@ input[type="range"]{width:160px}
             <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
             <button id="undoBtn" style="padding:6px 10px">Undo</button>
             <button id="redoBtn" style="padding:6px 10px">Redo</button>
-            <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
-            <button id="gridToggleBtn" style="padding:6px 10px">Grid Off</button>
-            <button id="canvasZoomResetBtn" style="padding:6px 10px" title="Reset canvas zoom (100%)">Zoom 100%</button>
           </div>
           <!-- Settings row -->
           <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11px">
@@ -217,6 +214,10 @@ input[type="range"]{width:160px}
               <input id="onion" type="range" min="0" max="8" value="5" style="width:100px"/>
               <span id="onionLabel" class="pill" style="padding:3px 6px;font-size:10px">5</span>
             </label>
+            <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
+            <button id="gridToggleBtn" style="padding:6px 10px">Grid Off</button>
+            <button id="canvasZoomResetBtn" style="padding:6px 10px" title="Reset canvas zoom (100%)">Zoom 100%</button>
+          </div>
           </div>
         </div>
       </div>
@@ -2227,8 +2228,9 @@ currentColorBox.addEventListener('click', ()=>{
   nativeColorPicker.click();
 });
 
-// Track color before picker opens
+// Track color before picker opens and previously saved color
 let colorBeforePicker = null;
+let lastSavedColor = {r: 0, g: 0, b: 0, a: 255}; // Track last color saved to recent history
 
 currentColorBox.addEventListener('mousedown', ()=>{
   // Save current color before opening picker
@@ -2243,14 +2245,21 @@ nativeColorPicker.addEventListener('input', ()=>{
   updateColorDisplay();
 });
 
-// Only add to recent colors when picker closes
+// Only add to recent colors when picker closes AND color is different from last saved
 nativeColorPicker.addEventListener('change', ()=>{
-  // Check if color actually changed
+  // Check if color actually changed from before picker opened
   if(colorBeforePicker && 
      (colorBeforePicker.r !== currentColor.r || 
       colorBeforePicker.g !== currentColor.g || 
       colorBeforePicker.b !== currentColor.b)){
-    addToRecentColors(currentColor);
+    // Also check if it's different from last saved color (avoid duplicates)
+    if(lastSavedColor.r !== currentColor.r ||
+       lastSavedColor.g !== currentColor.g ||
+       lastSavedColor.b !== currentColor.b ||
+       lastSavedColor.a !== currentColor.a){
+      addToRecentColors(currentColor);
+      lastSavedColor = {r: currentColor.r, g: currentColor.g, b: currentColor.b, a: currentColor.a};
+    }
   }
   colorBeforePicker = null;
 });
@@ -2290,19 +2299,32 @@ function updateRecentColorButtons(){
   });
 }
 
-// Click recent color button to apply
+// Click recent color button to apply - DON'T add to history
 recentColorButtons.forEach(btn => {
   if(btn){
     btn.addEventListener('click', ()=>{
       if(btn.dataset.gray !== undefined){
-        // Legacy grayscale button
+        // Legacy grayscale button - this IS a new color choice
         const grayValue = Number(btn.dataset.gray);
-        currentColor.r = grayValue;
-        currentColor.g = grayValue;
-        currentColor.b = grayValue;
-        currentColor.a = 255;
+        const newColor = {r: grayValue, g: grayValue, b: grayValue, a: 255};
+        
+        // Check if different from current and last saved
+        if(currentColor.r !== newColor.r || currentColor.g !== newColor.g || 
+           currentColor.b !== newColor.b || currentColor.a !== newColor.a){
+          // Only add if different from last saved color
+          if(lastSavedColor.r !== newColor.r || lastSavedColor.g !== newColor.g ||
+             lastSavedColor.b !== newColor.b || lastSavedColor.a !== newColor.a){
+            addToRecentColors(newColor);
+            lastSavedColor = {r: newColor.r, g: newColor.g, b: newColor.b, a: newColor.a};
+          }
+        }
+        
+        currentColor.r = newColor.r;
+        currentColor.g = newColor.g;
+        currentColor.b = newColor.b;
+        currentColor.a = newColor.a;
       }else{
-        // Recent color button
+        // Recent color button - just apply, don't add to history
         currentColor.r = Number(btn.dataset.r || 0);
         currentColor.g = Number(btn.dataset.g || 0);
         currentColor.b = Number(btn.dataset.b || 0);
