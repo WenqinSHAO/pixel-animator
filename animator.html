@@ -465,7 +465,16 @@ let current = 0;
 let isPlaying = false;
 let tool = 'pencil';
 let brush = 1;
-let currentColor = {r: 0, g: 0, b: 0, a: 255}; // Current RGBA color (replaces 'gray')
+let currentColor = {r: 0, g: 0, b: 0, a: 255}; // Current RGBA color for drawing - this is the ACTIVE color
+
+// Color management system:
+// - pickerColor: the color shown in the color picker
+// - activeColor: the currently selected color for drawing (same object as currentColor)
+// - activeColorSource: 'picker' or history index '0'-'4'
+// When picker changes to new color, old picker color is pushed to history
+// When selecting from history, it becomes active but doesn't change picker or history
+let pickerColor = {r: 0, g: 0, b: 0, a: 255};
+let activeColorSource = 'picker'; // Track which color is active
 let onionDepth = 5;
 let drawing = false;
 let lastPt = null;
@@ -2211,78 +2220,131 @@ brushSize.addEventListener('input', ()=>{
 
 // Color control listeners
 function updateColorDisplay(){
-  // Update the color box with checkered background for transparency
-  const colorStr = `rgba(${currentColor.r}, ${currentColor.g}, ${currentColor.b}, ${currentColor.a / 255})`;
+  // Update the color picker box with picker color
+  const colorStr = `rgba(${pickerColor.r}, ${pickerColor.g}, ${pickerColor.b}, ${pickerColor.a / 255})`;
   currentColorInner.style.background = colorStr;
+  currentColorBox.title = `Picker: RGB(${pickerColor.r},${pickerColor.g},${pickerColor.b}) A:${pickerColor.a}`;
   
   // Update native picker (hex only, no alpha)
-  const hex = '#' + [currentColor.r, currentColor.g, currentColor.b].map(x => {
+  const hex = '#' + [pickerColor.r, pickerColor.g, pickerColor.b].map(x => {
     const h = x.toString(16);
     return h.length === 1 ? '0' + h : h;
   }).join('');
   nativeColorPicker.value = hex;
+  
+  // Update active color highlight
+  updateActiveColorHighlight();
+}
+
+function updateActiveColorHighlight(){
+  // Highlight the picker box if active
+  if(activeColorSource === 'picker'){
+    currentColorBox.style.borderColor = '#5aa2ff';
+    currentColorBox.style.borderWidth = '3px';
+  }else{
+    currentColorBox.style.borderColor = 'var(--border)';
+    currentColorBox.style.borderWidth = '2px';
+  }
+  
+  // Highlight the active history color button
+  recentColorButtons.forEach((btn, idx) => {
+    if(btn){
+      if(activeColorSource === String(idx)){
+        btn.style.borderColor = '#5aa2ff';
+        btn.style.borderWidth = '3px';
+      }else{
+        btn.style.borderColor = 'var(--border)';
+        btn.style.borderWidth = '1px';
+      }
+    }
+  });
+}
+
+function setActiveColor(source, color){
+  // Set the active drawing color
+  activeColorSource = source;
+  currentColor.r = color.r;
+  currentColor.g = color.g;
+  currentColor.b = color.b;
+  currentColor.a = color.a;
+  
+  // Update alpha slider to match active color
+  colorASlider.value = String(color.a);
+  colorALabel.textContent = String(color.a);
+  
+  updateActiveColorHighlight();
 }
 
 // Native color picker
 currentColorBox.addEventListener('click', ()=>{
+  // Set picker as active before opening
+  setActiveColor('picker', pickerColor);
   nativeColorPicker.click();
 });
 
-// Track color before picker opens and previously saved color
-let colorBeforePicker = null;
-let lastSavedColor = {r: 0, g: 0, b: 0, a: 255}; // Track last color saved to recent history
+// Track color before picker opens
+let colorBeforePickerOpen = null;
 
 currentColorBox.addEventListener('mousedown', ()=>{
-  // Save current color before opening picker
-  colorBeforePicker = {r: currentColor.r, g: currentColor.g, b: currentColor.b, a: currentColor.a};
+  // Save picker color before opening
+  colorBeforePickerOpen = {r: pickerColor.r, g: pickerColor.g, b: pickerColor.b, a: pickerColor.a};
 });
 
 nativeColorPicker.addEventListener('input', ()=>{
   const hex = nativeColorPicker.value;
-  currentColor.r = parseInt(hex.substr(1,2), 16);
-  currentColor.g = parseInt(hex.substr(3,2), 16);
-  currentColor.b = parseInt(hex.substr(5,2), 16);
+  pickerColor.r = parseInt(hex.substr(1,2), 16);
+  pickerColor.g = parseInt(hex.substr(3,2), 16);
+  pickerColor.b = parseInt(hex.substr(5,2), 16);
+  
+  // Update active color if picker is active
+  if(activeColorSource === 'picker'){
+    currentColor.r = pickerColor.r;
+    currentColor.g = pickerColor.g;
+    currentColor.b = pickerColor.b;
+  }
+  
   updateColorDisplay();
 });
 
-// Only add to recent colors when picker closes AND color is different from last saved
+// When picker closes, push OLD picker color to history if it changed
 nativeColorPicker.addEventListener('change', ()=>{
-  // Check if color actually changed from before picker opened
-  if(colorBeforePicker && 
-     (colorBeforePicker.r !== currentColor.r || 
-      colorBeforePicker.g !== currentColor.g || 
-      colorBeforePicker.b !== currentColor.b)){
-    // Also check if it's different from last saved color (avoid duplicates)
-    if(lastSavedColor.r !== currentColor.r ||
-       lastSavedColor.g !== currentColor.g ||
-       lastSavedColor.b !== currentColor.b ||
-       lastSavedColor.a !== currentColor.a){
-      addToRecentColors(currentColor);
-      lastSavedColor = {r: currentColor.r, g: currentColor.g, b: currentColor.b, a: currentColor.a};
-    }
+  // Check if picker color changed from RGB perspective
+  if(colorBeforePickerOpen &&
+     (colorBeforePickerOpen.r !== pickerColor.r ||
+      colorBeforePickerOpen.g !== pickerColor.g ||
+      colorBeforePickerOpen.b !== pickerColor.b)){
+    // Push OLD picker color (before change) to history
+    pushToRecentColors(colorBeforePickerOpen);
   }
-  colorBeforePicker = null;
+  colorBeforePickerOpen = null;
 });
 
 colorASlider.addEventListener('input', ()=>{
-  currentColor.a = Number(colorASlider.value);
-  colorALabel.textContent = String(currentColor.a);
-  updateColorDisplay();
+  const newAlpha = Number(colorASlider.value);
+  colorALabel.textContent = String(newAlpha);
+  
+  // Update the active color's alpha
+  currentColor.a = newAlpha;
+  
+  // Also update picker color alpha if picker is active
+  if(activeColorSource === 'picker'){
+    pickerColor.a = newAlpha;
+    updateColorDisplay();
+  }
 });
 
 // Recent colors functionality
-function addToRecentColors(color){
-  // Check if color already exists in recent colors
-  const exists = recentColors.some(c => 
-    c.r === color.r && c.g === color.g && c.b === color.b && c.a === color.a
+function pushToRecentColors(color){
+  // Push a color to history (at the front), removing duplicates
+  // Remove if exists
+  recentColors = recentColors.filter(c => 
+    !(c.r === color.r && c.g === color.g && c.b === color.b && c.a === color.a)
   );
   
-  if(!exists){
-    // Add to front and keep only 5 most recent
-    recentColors.unshift({r: color.r, g: color.g, b: color.b, a: color.a});
-    recentColors = recentColors.slice(0, 5);
-    updateRecentColorButtons();
-  }
+  // Add to front and keep only 5
+  recentColors.unshift({r: color.r, g: color.g, b: color.b, a: color.a});
+  recentColors = recentColors.slice(0, 5);
+  updateRecentColorButtons();
 }
 
 function updateRecentColorButtons(){
@@ -2295,44 +2357,23 @@ function updateRecentColorButtons(){
       recentColorButtons[idx].dataset.b = color.b;
       recentColorButtons[idx].dataset.a = color.a;
       recentColorButtons[idx].title = `RGB(${color.r},${color.g},${color.b}) A:${color.a}`;
+      // Remove data-gray attribute as this is now a recent color
+      delete recentColorButtons[idx].dataset.gray;
     }
   });
 }
 
-// Click recent color button to apply - DON'T add to history
-recentColorButtons.forEach(btn => {
+// Click recent color button to use that color
+recentColorButtons.forEach((btn, idx) => {
   if(btn){
     btn.addEventListener('click', ()=>{
-      if(btn.dataset.gray !== undefined){
-        // Legacy grayscale button - this IS a new color choice
-        const grayValue = Number(btn.dataset.gray);
-        const newColor = {r: grayValue, g: grayValue, b: grayValue, a: 255};
-        
-        // Check if different from current and last saved
-        if(currentColor.r !== newColor.r || currentColor.g !== newColor.g || 
-           currentColor.b !== newColor.b || currentColor.a !== newColor.a){
-          // Only add if different from last saved color
-          if(lastSavedColor.r !== newColor.r || lastSavedColor.g !== newColor.g ||
-             lastSavedColor.b !== newColor.b || lastSavedColor.a !== newColor.a){
-            addToRecentColors(newColor);
-            lastSavedColor = {r: newColor.r, g: newColor.g, b: newColor.b, a: newColor.a};
-          }
-        }
-        
-        currentColor.r = newColor.r;
-        currentColor.g = newColor.g;
-        currentColor.b = newColor.b;
-        currentColor.a = newColor.a;
-      }else{
-        // Recent color button - just apply, don't add to history
-        currentColor.r = Number(btn.dataset.r || 0);
-        currentColor.g = Number(btn.dataset.g || 0);
-        currentColor.b = Number(btn.dataset.b || 0);
-        currentColor.a = Number(btn.dataset.a || 255);
-      }
-      colorASlider.value = String(currentColor.a);
-      colorALabel.textContent = String(currentColor.a);
-      updateColorDisplay();
+      const r = Number(btn.dataset.r || 0);
+      const g = Number(btn.dataset.g || 0);
+      const b = Number(btn.dataset.b || 0);
+      const a = Number(btn.dataset.a || 255);
+      
+      // Set this history color as active (doesn't change picker or history)
+      setActiveColor(String(idx), {r, g, b, a});
     });
   }
 });
@@ -4077,6 +4118,15 @@ function init(){
   setTool('pencil');
   brushSizeLabel.textContent = brushSize.value;
   colorALabel.textContent = colorASlider.value;
+  
+  // Initialize color system
+  pickerColor = {r: 0, g: 0, b: 0, a: 255};
+  currentColor.r = 0;
+  currentColor.g = 0;
+  currentColor.b = 0;
+  currentColor.a = 255;
+  activeColorSource = 'picker';
+  
   updateColorDisplay();
   updateRecentColorButtons();
   onionLabel.textContent = onionSlider.value;
