@@ -29,24 +29,24 @@ Schema (concise):
 
 ```json
 {
-  "version": "1.x",
+  "version": "2.0",
   "width": 128,
   "height": 128,
   "fps": 12,
   "frameCount": 32,
-  "timestamp": "2025-12-24T17:33:23.149Z",
-  "frames": [ "<base64-image>", "<base64-image>", ... ]
+  "timestamp": "2025-12-27T08:00:00.000Z",
+  "frames": [ "<base64-rgba-data>", "<base64-rgba-data>", ... ]
 }
 ```
 
-- `version`: project format version string.
+- `version`: project format version string. Version `2.0` uses RGBA format (4 bytes per pixel). Version `1.x` used grayscale (1 byte per pixel) and is automatically converted to RGBA on load.
 - `width`, `height`: canvas size in pixels.
 - `fps`: frames per second for playback/export.
 - `frameCount`: expected number of frames (should match `frames.length`).
 - `timestamp`: ISO timestamp when exported.
-- `frames`: ordered array of base64-encoded image payloads (one per frame).
+- `frames`: ordered array of base64-encoded RGBA image data (one per frame, W×H×4 bytes each).
 
-> Note: frames are stored as base64 image data (payload strings). The app expects the array order to be the playback order.
+> Note: frames are stored as base64-encoded raw pixel data (RGBA format). The app expects the array order to be the playback order. Legacy v1.x grayscale projects are automatically converted to RGBA when loaded.
 
 ## Montage (Film) Editor — Draft spec
 
@@ -133,20 +133,20 @@ Schema (concise):
 
 ## Implementation details — `animator.html`
 
-- **Data model**: `frames` is an Array of `Uint8Array` (length `W*H`), one byte per pixel (0 = black, 255 = white). New frames are created with `makeBlankFrame()`.
-- **Save / Load**: `saveProject()` serializes raw bytes as base64 (`btoa(String.fromCharCode(...))`); `loadProject()` decodes with `atob()` and validates `width`, `height`, and frame lengths.
-- **Rendering**: an offscreen canvas `off` (W×H) is composed via `composeWithOnionSkin()` (or `composeFrameOnly()`), then scaled and drawn to the visible `main` canvas by `renderMain()` (uses `DISPLAY` and device DPR).
-- **Drawing & tools**: `drawDot()` (square brush) and `drawLine()` (Bresenham) implement strokes. Pointer events on `main` drive `applyStroke()`; the current drawing mode is controlled by `setTool()` and the `tool` variable.
-- **Undo / Redo**: per-frame `undoStacks`/`redoStacks` hold stroke deltas recorded from `activeStrokeMap` and committed in `commitStroke()` as `{idxs, before, after}`; `undo()`/`redo()` apply deltas with `applyDelta()`.
+- **Data model**: `frames` is an Array of `Uint8ClampedArray` (length `W*H*4`), storing RGBA color data (4 bytes per pixel: R, G, B, A). New frames are created with `makeBlankFrame()`. Legacy v1.x grayscale projects are automatically converted to RGBA on load.
+- **Save / Load**: `saveProject()` serializes raw bytes as base64 (`btoa(String.fromCharCode(...))`); `loadProject()` decodes with `atob()` and validates `width`, `height`, and frame lengths. Version 2.0 projects use RGBA format; v1.x grayscale projects are auto-converted (R=G=B=gray, A=255).
+- **Rendering**: an offscreen canvas `off` (W×H) is composed via `composeWithOnionSkin()` (or `composeFrameOnly()`) with alpha blending, then scaled and drawn to the visible `main` canvas by `renderMain()` (uses `DISPLAY` and device DPR).
+- **Drawing & tools**: `drawDot()` (square brush) and `drawLine()` (Bresenham) implement strokes using RGBA color objects `{r, g, b, a}`. Pointer events on `main` drive `applyStroke()`; the current drawing mode is controlled by `setTool()` and the `tool` variable.
+- **Undo / Redo**: per-frame `undoStacks`/`redoStacks` hold stroke deltas recorded from `activeStrokeMap` and committed in `commitStroke()` as `{idxs, before, after}` (4 bytes per pixel); `undo()`/`redo()` apply deltas with `applyDelta()`.
 - **Timeline & thumbnails**: `insertFrame()`, `duplicateAfterCurrent()`, `deleteCurrentFrame()` modify `frames`; `initThumbs()` and `renderThumb()` maintain the thumbnail grid.
 - **Playback**: `setPlaying()` uses `setInterval` with `FPS` to step frames and disables editing while playing.
-- **GIF Export**: `saveGif()` composes frames at `DISPLAY` (512) onto a white background and uses `gif.js`; `getGifWorkerBlobUrl()` loads `./vendor/gif.worker.js` or falls back to CDN.
+- **GIF Export**: `saveGif()` composes frames at `DISPLAY` (512) onto a white background and uses `gif.js`; `getGifWorkerBlobUrl()` loads `./vendor/gif.worker.js` or falls back to CDN. RGBA frames are flattened to white background for GIF export.
 
 ## Configuration & maintenance tips
 
 - Change `W`, `H` for the internal raster size, `DISPLAY` for on-screen/export resolution, and `FPS` for playback frame rate.
 - Notifications now use non-blocking in-page toasts (instead of blocking `alert()`), shown in the bottom-right.
-- To support color, switch frames to RGBA arrays and update compose / draw functions accordingly.
+- **Color support**: Now implemented with RGBA arrays and full alpha channel support. Use R, G, B, and Alpha sliders to set colors.
 - To change brush shape (round vs square), adjust `drawDot()` behavior.
 - To add tools, add a UI control, set the new tool name in `setTool()`, and handle it in `applyStroke()`.
 - For autosave or cloud sync, hook into project changes and reuse `saveProject()`/`loadProject()` logic.
