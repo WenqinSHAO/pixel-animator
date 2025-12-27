@@ -185,6 +185,10 @@ input[type="range"]{width:160px}
             
             <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
             <button id="toolSelect" style="padding:6px 10px">Select</button>
+            <select id="selectionMode" style="padding:4px 6px;font-size:11px;background:var(--bg-secondary);color:var(--fg);border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Selection mode">
+              <option value="rect">Rectangular</option>
+              <option value="lasso">Free-form</option>
+            </select>
             <button id="undoBtn" style="padding:6px 10px">Undo</button>
             <button id="redoBtn" style="padding:6px 10px">Redo</button>
             <button id="gridToggleBtn" style="padding:6px 10px">Grid Off</button>
@@ -460,10 +464,12 @@ let canvasZoom = 1.0; // Canvas zoom level (1.0 = 100%)
 let cKeyPressed = false; // Track 'c' key state for canvas zoom
 
 // Selection tool state
-let selection = null; // {x1, y1, x2, y2}
+let selectionMode = 'rect'; // 'rect' or 'lasso'
+let selection = null; // {x1, y1, x2, y2} for rect, or {path: [{x,y}...]} for lasso
 let selectionData = null; // Uint8ClampedArray of selected RGBA pixels
 let selectionFloating = false; // true when selection can be dragged (after paste)
 let selectionDragging = false; // true during drag operation
+let lassoPath = []; // Array of {x, y} points for lasso selection
 
 // Active stroke diff recording
 let activeStrokeMap = null;
@@ -492,6 +498,7 @@ const toolPencil = document.getElementById('toolPencil');
 const toolEraser = document.getElementById('toolEraser');
 const toolSoft = document.getElementById('toolSoft');
 const toolSelect = document.getElementById('toolSelect');
+const selectionModeSelect = document.getElementById('selectionMode');
 
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
@@ -920,18 +927,33 @@ function renderMain(){
     ctx.restore();
   }
   
-  // Draw selection rectangle if active
+  // Draw selection rectangle or lasso path if active
   if(selection && tool === 'select'){
     const scale = main.width / W;
     ctx.save();
     ctx.strokeStyle = selectionFloating ? 'rgba(255, 162, 0, 0.9)' : 'rgba(90, 162, 255, 0.8)';
     ctx.setLineDash([5, 5]);
     ctx.lineWidth = 2;
-    const x1 = Math.min(selection.x1, selection.x2) * scale;
-    const y1 = Math.min(selection.y1, selection.y2) * scale;
-    const x2 = Math.max(selection.x1, selection.x2) * scale;
-    const y2 = Math.max(selection.y1, selection.y2) * scale;
-    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    
+    if(selection.path){
+      // Draw lasso path
+      if(lassoPath && lassoPath.length > 1){
+        ctx.beginPath();
+        ctx.moveTo(lassoPath[0].x * scale, lassoPath[0].y * scale);
+        for(let i = 1; i < lassoPath.length; i++){
+          ctx.lineTo(lassoPath[i].x * scale, lassoPath[i].y * scale);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+    }else{
+      // Draw rectangular selection
+      const x1 = Math.min(selection.x1, selection.x2) * scale;
+      const y1 = Math.min(selection.y1, selection.y2) * scale;
+      const x2 = Math.max(selection.x1, selection.x2) * scale;
+      const y2 = Math.max(selection.y1, selection.y2) * scale;
+      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    }
     ctx.restore();
   }
 }
@@ -1705,7 +1727,16 @@ main.addEventListener('pointerdown', ev=>{
     // Start new selection (clears floating selection visual but keeps clipboard)
     drawing = true;
     main.setPointerCapture(ev.pointerId);
-    selection = {x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y};
+    
+    if(selectionMode === 'lasso'){
+      // Start lasso path
+      lassoPath = [pt];
+      selection = {path: lassoPath};
+    }else{
+      // Rectangular selection
+      selection = {x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y};
+    }
+    
     // Keep selectionData (clipboard) but clear floating state
     selectionFloating = false;
     selectionDragging = false;
@@ -1740,9 +1771,19 @@ main.addEventListener('pointermove', ev=>{
       renderMain();
       return;
     } else {
-      // Update selection rectangle
-      selection.x2 = pt.x;
-      selection.y2 = pt.y;
+      // Update selection
+      if(selectionMode === 'lasso'){
+        // Add point to lasso path (only if moved enough to avoid too many points)
+        const lastPoint = lassoPath[lassoPath.length - 1];
+        const dist = Math.hypot(pt.x - lastPoint.x, pt.y - lastPoint.y);
+        if(dist >= 2){ // Minimum distance threshold
+          lassoPath.push(pt);
+        }
+      }else{
+        // Update rectangle
+        selection.x2 = pt.x;
+        selection.y2 = pt.y;
+      }
       renderMain();
       return;
     }
@@ -1912,6 +1953,19 @@ toolPencil.addEventListener('click', ()=>setTool('pencil'));
 toolEraser.addEventListener('click', ()=>setTool('eraser'));
 toolSoft.addEventListener('click', ()=>setTool('soft'));
 toolSelect.addEventListener('click', ()=>setTool('select'));
+
+// Selection mode dropdown
+if(selectionModeSelect){
+  selectionModeSelect.addEventListener('change', ()=>{
+    selectionMode = selectionModeSelect.value;
+    // Clear current selection when switching modes
+    if(selection && !selectionFloating){
+      selection = null;
+      lassoPath = [];
+      renderMain();
+    }
+  });
+}
 
 gridToggleBtn.addEventListener('click', ()=>{
   gridEnabled = !gridEnabled;
