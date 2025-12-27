@@ -160,7 +160,7 @@ input[type="range"]{width:160px}
       <!-- Drawing Ops -->
       <div id="drawingPanel" class="panelBlock" style="padding:8px">
         <div class="panelHeader" style="margin-bottom:6px">
-          <div class="panelTitle">Drawing Tools</div>
+
         </div>
         <div style="display:flex;flex-direction:column;gap:8px">
           <!-- Tools row with color picker -->
@@ -182,11 +182,11 @@ input[type="range"]{width:160px}
               
               <!-- Recent/preset colors -->
               <div style="display:flex;gap:3px">
-                <button id="recentColor0" data-gray="0" style="width:24px;height:24px;padding:0;background:#000;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Black"></button>
-                <button id="recentColor1" data-gray="64" style="width:24px;height:24px;padding:0;background:#404040;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Dark Gray"></button>
-                <button id="recentColor2" data-gray="128" style="width:24px;height:24px;padding:0;background:#808080;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Mid Gray"></button>
-                <button id="recentColor3" data-gray="192" style="width:24px;height:24px;padding:0;background:#c0c0c0;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Light Gray"></button>
-                <button id="recentColor4" data-gray="255" style="width:24px;height:24px;padding:0;background:#fff;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="White"></button>
+                <button id="recentColor0" data-gray="0" style="width:24px;height:24px;padding:0;background:linear-gradient(#000, #000), white;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Black"></button>
+                <button id="recentColor1" data-gray="64" style="width:24px;height:24px;padding:0;background:linear-gradient(#404040, #404040), white;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Dark Gray"></button>
+                <button id="recentColor2" data-gray="128" style="width:24px;height:24px;padding:0;background:linear-gradient(#808080, #808080), white;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Mid Gray"></button>
+                <button id="recentColor3" data-gray="192" style="width:24px;height:24px;padding:0;background:linear-gradient(#c0c0c0, #c0c0c0), white;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Light Gray"></button>
+                <button id="recentColor4" data-gray="255" style="width:24px;height:24px;padding:0;background:linear-gradient(#fff, #fff), white;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="White"></button>
               </div>
             </div>
             
@@ -288,7 +288,7 @@ input[type="range"]{width:160px}
 
     <!-- Frames + Frame Ops -->
     <div class="section">
-      <div class="panelTitle" style="margin-bottom:10px">Frames</div>
+
 
       <div class="frameControls">
         <span class="pill">Frame <span id="frameLabel">1</span> / <span id="frameTotal">12</span></span>
@@ -312,7 +312,7 @@ input[type="range"]{width:160px}
     <!-- Project Actions -->
     <div class="section">
       <div class="panelHeader">
-        <div class="panelTitle">Project Actions</div>
+
       </div>
       <div style="margin-top:8px;font-size:11px;color:var(--muted);line-height:1.4">
         <div>Length: <span id="lengthPill" style="color:var(--text)">1.00 sec</span> | FPS: 12 | Frames: <span id="framesPill" style="color:var(--text)">12</span> | Canvas: 128×128</div>
@@ -481,6 +481,7 @@ let lastPt = null;
 let gridEnabled = false;
 let canvasZoom = 1.0; // Canvas zoom level (1.0 = 100%)
 let cKeyPressed = false; // Track 'c' key state for canvas zoom
+let cursorPos = null; // Track cursor position on canvas for brush preview
 
 // Selection tool state
 let selectionMode = 'rect'; // 'rect' or 'lasso'
@@ -973,6 +974,22 @@ function renderMain(){
       const y2 = Math.max(selection.y1, selection.y2) * scale;
       ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
     }
+    ctx.restore();
+  }
+  
+  // Draw brush preview indicator (thin box showing impacted pixels)
+  if(cursorPos && (tool === 'pencil' || tool === 'soft' || tool === 'eraser') && currentMode === 'chunk'){
+    const scale = main.width / W;
+    const halfBrush = Math.floor(brush / 2);
+    const x1 = (cursorPos.x - halfBrush) * scale;
+    const y1 = (cursorPos.y - halfBrush) * scale;
+    const size = brush * scale;
+    
+    ctx.save();
+    ctx.strokeStyle = tool === 'eraser' ? 'rgba(255, 90, 90, 0.6)' : 'rgba(90, 162, 255, 0.6)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([]);
+    ctx.strokeRect(x1, y1, size, size);
     ctx.restore();
   }
 }
@@ -1908,6 +1925,21 @@ function endDraw(ev){
 main.addEventListener('pointerup', endDraw);
 main.addEventListener('pointercancel', endDraw);
 
+// Track cursor position for brush preview
+main.addEventListener('mousemove', ev=>{
+  if(currentMode !== 'chunk') return;
+  const rect = main.getBoundingClientRect();
+  const x = Math.floor((ev.clientX - rect.left) / rect.width * W);
+  const y = Math.floor((ev.clientY - rect.top) / rect.height * H);
+  cursorPos = {x, y};
+  if(!drawing) renderMain(); // Only re-render if not actively drawing
+});
+
+main.addEventListener('mouseleave', ()=>{
+  cursorPos = null;
+  if(!drawing) renderMain();
+});
+
 // Track 'c' key for canvas zoom
 window.addEventListener('keydown', (ev)=>{
   if(ev.key === 'c' || ev.code === 'KeyC') cKeyPressed = true;
@@ -2351,7 +2383,8 @@ function updateRecentColorButtons(){
   recentColors.forEach((color, idx) => {
     if(recentColorButtons[idx]){
       const colorStr = `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a / 255})`;
-      recentColorButtons[idx].style.background = colorStr;
+      // Use layered background: color over white to show alpha properly
+      recentColorButtons[idx].style.background = `linear-gradient(${colorStr}, ${colorStr}), white`;
       recentColorButtons[idx].dataset.r = color.r;
       recentColorButtons[idx].dataset.g = color.g;
       recentColorButtons[idx].dataset.b = color.b;
