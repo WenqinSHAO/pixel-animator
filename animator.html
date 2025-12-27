@@ -2042,7 +2042,7 @@ window.addEventListener('blur', ()=>{
 
 // Mouse wheel events for brush size and canvas zoom
 main.addEventListener('wheel', (ev)=>{
-  if(isPlaying) return;
+  if(isPlaying || currentMode !== 'chunk') return;
   
   // Canvas zoom with C + wheel (or Ctrl/Cmd + wheel)
   if(cKeyPressed || ev.ctrlKey || ev.metaKey){
@@ -2756,8 +2756,9 @@ window.addEventListener('keydown', e=>{
   
   // Do not run single-letter shortcuts when any modifier key is pressed — this avoids colliding
   // with browser or OS shortcuts like Ctrl/Cmd+S, Ctrl/Cmd+G, etc.
+  // Also only run these shortcuts in chunk mode to avoid interfering with montage mode
   const hasModifier = e.ctrlKey || e.metaKey || e.altKey || e.shiftKey;
-  if(!hasModifier){
+  if(!hasModifier && currentMode === 'chunk'){
     if(k === 's'){
       if(!isPlaying){ e.preventDefault(); saveProject(); }
     }else if(k === 'g'){
