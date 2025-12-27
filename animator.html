@@ -11,9 +11,9 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
 header h1{font-size:14px;margin:0;letter-spacing:.3px;color:var(--text);font-weight:600}
 header .hint{font-size:12px;color:var(--muted)}
-.wrap{display:grid;grid-template-columns:1fr 320px;gap:14px;padding:14px;max-width:1200px;margin:0 auto;align-items:start}
-.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35);height:fit-content;max-height:calc(100vh - 120px);overflow:auto}
-.stage{padding:12px;display:flex;flex-direction:column;gap:12px}
+.wrap{display:grid;grid-template-columns:1fr 320px;gap:14px;padding:14px;max-width:1200px;margin:0 auto;align-items:start;height:calc(100vh - 90px)}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35);height:100%;overflow:auto}
+.stage{padding:12px;display:flex;flex-direction:column;gap:12px;height:100%;overflow-y:auto}
 .canvasPanel{display:flex;flex-direction:column;gap:10px}
 .mainCanvasWrap{background:#060a12;border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;justify-content:center;align-items:center;position:relative;overflow:visible}
 canvas#main{width:512px;height:512px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:
@@ -60,7 +60,7 @@ input[type="range"]{width:160px}
   text-transform:uppercase;
 }
 
-.sidebar{padding:12px;display:flex;flex-direction:column;height:calc(100vh - 180px);overflow-y:auto}
+.sidebar{padding:12px;display:flex;flex-direction:column;height:100%;overflow-y:auto}
 .sidebar h2{display:none}
 .sidebar .section{padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(0,0,0,.18);margin-bottom:12px;flex-shrink:0}
 .sidebar .section:first-of-type{flex-shrink:1;display:flex;flex-direction:column;min-height:0}
@@ -3174,6 +3174,18 @@ function setMode(mode){
   currentMode = newMode;
   console.debug('setMode ->', currentMode);
   notify(`Switched to ${currentMode === 'montage' ? 'Montage Editor' : 'Chunk Editor'}`);
+
+  // Stop any active playback when switching modes (fixes canvas animation carry-over)
+  if(isPlaying) setPlaying(false);
+  if(montagePlaying) stopMontagePlayback();
+
+  // Reset canvas zoom/transform when switching to montage mode (fixes canvas misalignment)
+  if(isMontage){
+    canvasZoom = 1.0;
+    main.style.transform = '';
+    const btn = document.getElementById('canvasZoomResetBtn');
+    if(btn) btn.textContent = `Zoom 100%`;
+  }
 
   // Update header hint text based on mode
   const headerHint = document.getElementById('headerHint');

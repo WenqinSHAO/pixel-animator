@@ -176,6 +176,11 @@
   - [x] Free-form (lasso) selection tool (basic implementation)
   - [x] Improved UI layout (grid/zoom button grouping, panel alignment)
   - [x] Color picker behavior improvements
+- [x] Bug fixes (December 2025)
+  - [x] Fixed canvas zoom/transform persisting when switching from chunk to montage editor
+  - [x] Fixed playback state carrying over when switching between editors
+  - [x] Improved card stage and sidebar height alignment for better browser window fitting
+  - [x] Made UI responsive to browser window size changes
 
 ## Notes
 
