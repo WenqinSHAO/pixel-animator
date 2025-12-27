@@ -11,12 +11,19 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
 header h1{font-size:14px;margin:0;letter-spacing:.3px;color:var(--text);font-weight:600}
 header .hint{font-size:12px;color:var(--muted)}
-.wrap{display:grid;grid-template-columns:1fr 320px;gap:14px;padding:14px;max-width:1200px;margin:0 auto}
-.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.wrap{display:grid;grid-template-columns:1fr 320px;gap:14px;padding:14px;max-width:1200px;margin:0 auto;align-items:start}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35);height:fit-content;max-height:calc(100vh - 120px);overflow:auto}
 .stage{padding:12px;display:flex;flex-direction:column;gap:12px}
 .canvasPanel{display:flex;flex-direction:column;gap:10px}
-.mainCanvasWrap{background:#060a12;border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;justify-content:center;align-items:center}
-canvas#main{width:512px;height:512px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:#fff;image-rendering:pixelated;touch-action:none;cursor:crosshair}
+.mainCanvasWrap{background:#060a12;border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;justify-content:center;align-items:center;position:relative;overflow:visible}
+canvas#main{width:512px;height:512px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:
+  linear-gradient(45deg, #ccc 25%, transparent 25%),
+  linear-gradient(-45deg, #ccc 25%, transparent 25%),
+  linear-gradient(45deg, transparent 75%, #ccc 75%),
+  linear-gradient(-45deg, transparent 75%, #ccc 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+  background-color:#fff;image-rendering:pixelated;touch-action:none;cursor:crosshair;position:relative;z-index:10}
 
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
 .group{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -152,30 +159,43 @@ input[type="range"]{width:160px}
 
       <!-- Drawing Ops -->
       <div id="drawingPanel" class="panelBlock" style="padding:8px">
-        <div class="panelHeader" style="margin-bottom:6px">
-          <div class="panelTitle">Drawing Tools</div>
-        </div>
         <div style="display:flex;flex-direction:column;gap:8px">
-          <!-- Tools row with palette -->
+          <!-- Tools row with color picker -->
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
             <button id="toolPencil" class="primary" style="padding:6px 10px">Pencil</button>
-            <button id="toolEraser" style="padding:6px 10px">Eraser</button>
             <button id="toolSoft" style="padding:6px 10px">Soft</button>
-            <button id="toolSelect" style="padding:6px 10px">Select</button>
+            <button id="toolEraser" style="padding:6px 10px">Eraser</button>
             <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
-            <!-- Color palette inline -->
-            <div id="colorPalette" style="display:flex;gap:3px">
-              <button data-gray="0" style="width:24px;height:24px;padding:0;background:#000;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Black (0)"></button>
-              <button data-gray="64" style="width:24px;height:24px;padding:0;background:#404040;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Dark Gray (64)"></button>
-              <button data-gray="128" style="width:24px;height:24px;padding:0;background:#808080;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Mid Gray (128)"></button>
-              <button data-gray="192" style="width:24px;height:24px;padding:0;background:#c0c0c0;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Light Gray (192)"></button>
-              <button data-gray="255" style="width:24px;height:24px;padding:0;background:#fff;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="White (255)"></button>
+            
+            <!-- Color Picker Section -->
+            <div style="display:flex;gap:6px;align-items:center">
+              <!-- Current color display (clickable to open native picker) -->
+              <div style="display:flex;flex-direction:column;gap:2px;align-items:center">
+                <div id="currentColorBox" style="width:36px;height:36px;border:2px solid var(--border);border-radius:6px;cursor:pointer;position:relative;background:white" title="Click to pick color">
+                  <div id="currentColorInner" style="width:100%;height:100%;border-radius:4px;background:rgba(0,0,0,1)"></div>
+                </div>
+                <input type="color" id="nativeColorPicker" style="position:absolute;opacity:0;pointer-events:none" value="#000000"/>
+              </div>
+              
+              <!-- Recent/preset colors -->
+              <div style="display:flex;gap:3px">
+                <button id="recentColor0" data-gray="0" style="width:24px;height:24px;padding:0;background:linear-gradient(#000, #000), white;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Black"></button>
+                <button id="recentColor1" data-gray="64" style="width:24px;height:24px;padding:0;background:linear-gradient(#404040, #404040), white;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Dark Gray"></button>
+                <button id="recentColor2" data-gray="128" style="width:24px;height:24px;padding:0;background:linear-gradient(#808080, #808080), white;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Mid Gray"></button>
+                <button id="recentColor3" data-gray="192" style="width:24px;height:24px;padding:0;background:linear-gradient(#c0c0c0, #c0c0c0), white;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Light Gray"></button>
+                <button id="recentColor4" data-gray="255" style="width:24px;height:24px;padding:0;background:linear-gradient(#fff, #fff), white;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="White"></button>
+              </div>
             </div>
+            
+            <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
+            <button id="toolSelect" style="padding:6px 10px">Select</button>
+            <select id="selectionMode" style="padding:4px 6px;font-size:11px;background:var(--bg-secondary);color:var(--fg);border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Selection mode">
+              <option value="rect">Rectangular</option>
+              <option value="lasso">Free-form</option>
+            </select>
             <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
             <button id="undoBtn" style="padding:6px 10px">Undo</button>
             <button id="redoBtn" style="padding:6px 10px">Redo</button>
-            <button id="gridToggleBtn" style="padding:6px 10px">Grid Off</button>
-            <button id="canvasZoomResetBtn" style="padding:6px 10px;margin-left:auto" title="Reset canvas zoom (100%)">Zoom 100%</button>
           </div>
           <!-- Settings row -->
           <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11px">
@@ -183,20 +203,24 @@ input[type="range"]{width:160px}
               <input id="brushSize" type="range" min="1" max="8" value="1" style="width:100px"/>
               <span id="brushSizeLabel" class="pill" style="padding:3px 6px;font-size:10px">1</span>
             </label>
-            <label style="gap:6px">Gray
-              <input id="gray" type="range" min="0" max="255" value="0" style="width:100px"/>
-              <span id="grayLabel" class="pill" style="padding:3px 6px;font-size:10px">0</span>
+            <label style="gap:6px">Alpha
+              <input id="colorA" type="range" min="0" max="255" value="255" style="width:120px"/>
+              <span id="colorALabel" class="pill" style="padding:3px 6px;font-size:10px">255</span>
             </label>
             <label style="gap:6px">Onion
               <input id="onion" type="range" min="0" max="8" value="5" style="width:100px"/>
               <span id="onionLabel" class="pill" style="padding:3px 6px;font-size:10px">5</span>
             </label>
+            <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
+            <button id="gridToggleBtn" style="padding:6px 10px">Grid Off</button>
+            <button id="canvasZoomResetBtn" style="padding:6px 10px" title="Reset canvas zoom (100%)">Zoom 100%</button>
+          </div>
           </div>
         </div>
       </div>
 
       <div class="mainCanvasWrap">
-        <canvas id="main" width="512" height="512" role="img" aria-label="Drawing canvas (128×128 grayscale)" tabindex="0"></canvas>
+        <canvas id="main" width="512" height="512" role="img" aria-label="Drawing canvas (128×128 RGBA)" tabindex="0"></canvas>
       </div>
 
       <!-- Trim bar for montage chunk trimming (always visible; disabled until a chunk is selected) -->
@@ -261,7 +285,7 @@ input[type="range"]{width:160px}
 
     <!-- Frames + Frame Ops -->
     <div class="section">
-      <div class="panelTitle" style="margin-bottom:10px">Frames</div>
+
 
       <div class="frameControls">
         <span class="pill">Frame <span id="frameLabel">1</span> / <span id="frameTotal">12</span></span>
@@ -285,7 +309,7 @@ input[type="range"]{width:160px}
     <!-- Project Actions -->
     <div class="section">
       <div class="panelHeader">
-        <div class="panelTitle">Project Actions</div>
+
       </div>
       <div style="margin-top:8px;font-size:11px;color:var(--muted);line-height:1.4">
         <div>Length: <span id="lengthPill" style="color:var(--text)">1.00 sec</span> | FPS: 12 | Frames: <span id="framesPill" style="color:var(--text)">12</span> | Canvas: 128×128</div>
@@ -426,8 +450,9 @@ const BASE_MARKER_COUNT = 8;  // Base number of timeline markers
 const PREVIEW_HIDE_DELAY_MS = 150;  // Delay before hiding preview tooltip (matches CSS transition)
 
 // Frames + history (dynamic length)
-// NOTE: `frames` holds Uint8Array instances (W*H bytes each) representing grayscale pixels
-// (0 = black, 255 = white). `undoStacks` / `redoStacks` are per-frame arrays of stroke deltas.
+// NOTE: `frames` holds Uint8ClampedArray instances (W*H*4 bytes each) representing RGBA pixels
+// (R, G, B, A channels, each 0-255). v1.x grayscale projects are auto-converted on load.
+// `undoStacks` / `redoStacks` are per-frame arrays of stroke deltas.
 let frames = [];
 let undoStacks = [];
 let redoStacks = [];
@@ -437,19 +462,31 @@ let current = 0;
 let isPlaying = false;
 let tool = 'pencil';
 let brush = 1;
-let gray = 0;
+let currentColor = {r: 0, g: 0, b: 0, a: 255}; // Current RGBA color for drawing - this is the ACTIVE color
+
+// Color management system:
+// - pickerColor: the color shown in the color picker
+// - activeColor: the currently selected color for drawing (same object as currentColor)
+// - activeColorSource: 'picker' or history index '0'-'4'
+// When picker changes to new color, old picker color is pushed to history
+// When selecting from history, it becomes active but doesn't change picker or history
+let pickerColor = {r: 0, g: 0, b: 0, a: 255};
+let activeColorSource = 'picker'; // Track which color is active
 let onionDepth = 5;
 let drawing = false;
 let lastPt = null;
 let gridEnabled = false;
 let canvasZoom = 1.0; // Canvas zoom level (1.0 = 100%)
 let cKeyPressed = false; // Track 'c' key state for canvas zoom
+let cursorPos = null; // Track cursor position on canvas for brush preview
 
 // Selection tool state
-let selection = null; // {x1, y1, x2, y2}
-let selectionData = null; // Uint8Array of selected pixels
+let selectionMode = 'rect'; // 'rect' or 'lasso'
+let selection = null; // {x1, y1, x2, y2} for rect, or {path: [{x,y}...]} for lasso
+let selectionData = null; // Uint8ClampedArray of selected RGBA pixels
 let selectionFloating = false; // true when selection can be dragged (after paste)
 let selectionDragging = false; // true during drag operation
+let lassoPath = []; // Array of {x, y} points for lasso selection
 
 // Active stroke diff recording
 let activeStrokeMap = null;
@@ -478,6 +515,7 @@ const toolPencil = document.getElementById('toolPencil');
 const toolEraser = document.getElementById('toolEraser');
 const toolSoft = document.getElementById('toolSoft');
 const toolSelect = document.getElementById('toolSelect');
+const selectionModeSelect = document.getElementById('selectionMode');
 
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
@@ -485,8 +523,29 @@ const redoBtn = document.getElementById('redoBtn');
 const brushSize = document.getElementById('brushSize');
 const brushSizeLabel = document.getElementById('brushSizeLabel');
 
-const graySlider = document.getElementById('gray');
-const grayLabel = document.getElementById('grayLabel');
+const colorASlider = document.getElementById('colorA');
+const colorALabel = document.getElementById('colorALabel');
+const currentColorBox = document.getElementById('currentColorBox');
+const currentColorInner = document.getElementById('currentColorInner');
+const nativeColorPicker = document.getElementById('nativeColorPicker');
+
+// Recent color buttons
+const recentColorButtons = [
+  document.getElementById('recentColor0'),
+  document.getElementById('recentColor1'),
+  document.getElementById('recentColor2'),
+  document.getElementById('recentColor3'),
+  document.getElementById('recentColor4')
+];
+
+// Recent colors storage (defaults to grayscale)
+let recentColors = [
+  {r: 0, g: 0, b: 0, a: 255},      // Black
+  {r: 64, g: 64, b: 64, a: 255},   // Dark Gray
+  {r: 128, g: 128, b: 128, a: 255}, // Mid Gray
+  {r: 192, g: 192, b: 192, a: 255}, // Light Gray
+  {r: 255, g: 255, b: 255, a: 255}  // White
+];
 
 const onionSlider = document.getElementById('onion');
 const onionLabel = document.getElementById('onionLabel');
@@ -515,11 +574,10 @@ function roundTo(n, decimals=2){
 }
 
 function makeBlankFrame(){
-  // Creates a blank grayscale frame as a byte array (1 byte per pixel).
-  // To switch to color or RGBA frames, replace this with a Uint8ClampedArray(W*H*4)
-  // and update compose/draw functions accordingly.
-  const a = new Uint8Array(W*H);
-  a.fill(WHITE_FILL);
+  // Creates a blank RGBA frame as a Uint8ClampedArray (4 bytes per pixel: R, G, B, A).
+  // Default fill is transparent (0, 0, 0, 0).
+  const a = new Uint8ClampedArray(W*H*4);
+  // All values default to 0 (transparent black)
   return a;
 }
 
@@ -615,6 +673,8 @@ function getPointerXY(ev){
 // Brush implementation is intentionally simple (square). To make a round brush:
 // - replace this with a circular mask (distance check from center)
 // - or implement alpha blending for softer strokes.
+// value is now an object {r, g, b, a} for RGBA color
+// Uses alpha compositing for proper blending on overlapping areas
 function drawDot(frameArr, x, y, value, size){
   const s = Math.max(1, size|0);
   const start = -Math.floor(s/2);
@@ -623,12 +683,43 @@ function drawDot(frameArr, x, y, value, size){
     for(let dx = start; dx <= end; dx++){
       const xx = x + dx, yy = y + dy;
       if(xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
-      const idx = xyToIndex(xx, yy);
+      const idx = xyToIndex(xx, yy) * 4;
 
       if(activeStrokeMap && !activeStrokeMap.has(idx)){
-        activeStrokeMap.set(idx, frameArr[idx]);
+        activeStrokeMap.set(idx, [frameArr[idx], frameArr[idx+1], frameArr[idx+2], frameArr[idx+3]]);
       }
-      frameArr[idx] = value;
+      
+      // For eraser (alpha=0), directly set pixels to transparent
+      // For other tools, use alpha compositing
+      if(value.a === 0){
+        // Eraser: replace with transparent
+        frameArr[idx] = 0;
+        frameArr[idx+1] = 0;
+        frameArr[idx+2] = 0;
+        frameArr[idx+3] = 0;
+      }else{
+        // Alpha compositing when drawing over existing pixels
+        const prevR = frameArr[idx];
+        const prevG = frameArr[idx+1];
+        const prevB = frameArr[idx+2];
+        const prevA = frameArr[idx+3];
+        
+        const srcA = value.a / 255;
+        const dstA = prevA / 255;
+        const outA = srcA + dstA * (1 - srcA);
+        
+        if(outA > 0){
+          frameArr[idx] = Math.round((value.r * srcA + prevR * dstA * (1 - srcA)) / outA);
+          frameArr[idx+1] = Math.round((value.g * srcA + prevG * dstA * (1 - srcA)) / outA);
+          frameArr[idx+2] = Math.round((value.b * srcA + prevB * dstA * (1 - srcA)) / outA);
+          frameArr[idx+3] = Math.round(outA * 255);
+        }else{
+          frameArr[idx] = value.r;
+          frameArr[idx+1] = value.g;
+          frameArr[idx+2] = value.b;
+          frameArr[idx+3] = value.a;
+        }
+      }
     }
   }
 }
@@ -648,9 +739,10 @@ function drawLine(frameArr, x0, y0, x1, y1, value, size){
   }
 }
 
-// Soft (blended) brush: blends the target value into existing pixels with a radial falloff
+// Soft (blended) brush: applies softness via alpha channel (more transparent at edges)
 // to produce smoother, less pixelated edges. Deltas are recorded in `activeStrokeMap`
 // so undo/redo continues to work as expected.
+// value is now an object {r, g, b, a} for RGBA color
 function drawSoftDot(frameArr, x, y, value, size){
   const s = Math.max(1, size|0);
   const start = -Math.floor(s/2);
@@ -661,20 +753,58 @@ function drawSoftDot(frameArr, x, y, value, size){
     for(let dx = start; dx <= end; dx++){
       const xx = x + dx, yy = y + dy;
       if(xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
-      const idx = xyToIndex(xx, yy);
+      const idx = xyToIndex(xx, yy) * 4;
       const dist = Math.hypot(dx, dy);
-      let alpha = 1 - (dist / radius);
-      if(radius === 0) alpha = 1;
-      alpha = clamp(alpha, 0, 1);
-      // Slight gamma to soften edges
-      alpha = Math.pow(alpha, 1.2);
+      let edgeSoftness = 1 - (dist / radius);
+      if(radius === 0) edgeSoftness = 1;
+      edgeSoftness = clamp(edgeSoftness, 0, 1);
+      // Gamma curve for smoother falloff
+      edgeSoftness = Math.pow(edgeSoftness, 1.2);
 
-      const prev = frameArr[idx];
-      const blended = Math.round(prev * (1 - alpha) + value * alpha);
-      if(activeStrokeMap && !activeStrokeMap.has(idx)){
-        activeStrokeMap.set(idx, prev);
+      const prevR = frameArr[idx];
+      const prevG = frameArr[idx+1];
+      const prevB = frameArr[idx+2];
+      const prevA = frameArr[idx+3];
+      
+      // For eraser (alpha=0), directly set pixels to transparent with soft edges
+      // For other tools, use alpha compositing
+      if(value.a === 0){
+        // Soft eraser: erase with soft edges (reduce alpha based on distance)
+        const newAlpha = Math.round(prevA * (1 - edgeSoftness));
+        if(activeStrokeMap && !activeStrokeMap.has(idx)){
+          activeStrokeMap.set(idx, [prevR, prevG, prevB, prevA]);
+        }
+        frameArr[idx+3] = newAlpha;
+        // If fully transparent, clear color channels too
+        if(newAlpha === 0){
+          frameArr[idx] = 0;
+          frameArr[idx+1] = 0;
+          frameArr[idx+2] = 0;
+        }
+      }else{
+        // Apply softness through alpha channel - color at full intensity, alpha fades at edges
+        const brushAlpha = value.a * edgeSoftness / 255;
+        const prevAlpha = prevA / 255;
+        
+        // Alpha compositing: out_a = src_a + dst_a * (1 - src_a)
+        const outA = brushAlpha + prevAlpha * (1 - brushAlpha);
+        
+        if(outA > 0){
+          // Color blend with alpha compositing
+          const blendedR = Math.round((value.r * brushAlpha + prevR * prevAlpha * (1 - brushAlpha)) / outA);
+          const blendedG = Math.round((value.g * brushAlpha + prevG * prevAlpha * (1 - brushAlpha)) / outA);
+          const blendedB = Math.round((value.b * brushAlpha + prevB * prevAlpha * (1 - brushAlpha)) / outA);
+          const blendedA = Math.round(outA * 255);
+          
+          if(activeStrokeMap && !activeStrokeMap.has(idx)){
+            activeStrokeMap.set(idx, [prevR, prevG, prevB, prevA]);
+          }
+          frameArr[idx] = blendedR;
+          frameArr[idx+1] = blendedG;
+          frameArr[idx+2] = blendedB;
+          frameArr[idx+3] = blendedA;
+        }
       }
-      frameArr[idx] = blended;
     }
   }
 }
@@ -694,45 +824,70 @@ function drawLineSoft(frameArr, x0, y0, x1, y1, value, size){
   }
 }
 
-// Onion skin unchanged
-function ghostGrayForDistance(d){ return clamp(110 + (d-1)*30, 110, 235); }
+// Onion skin with alpha blending for RGBA frames
+function ghostAlphaForDistance(d){ return clamp(0.3 - (d-1)*0.05, 0.1, 0.3); }
 
 function composeWithOnionSkin(frameIndex, depth){
   const out = new Uint8ClampedArray(W*H*4);
-  const base = new Uint8Array(W*H);
-  base.fill(WHITE_FILL);
-
-  for(let d=1; d<=depth; d++){
+  
+  // Start with transparent background (all zeros)
+  // Note: Uint8ClampedArray already initializes to 0, so this is implicit
+  
+  // Composite onion skin layers with reduced alpha
+  for(let d=depth; d>=1; d--){
     const idx = frameIndex - d;
-    if(idx < 0) break;
-    const g = ghostGrayForDistance(d);
+    if(idx < 0) continue;
+    const alpha = ghostAlphaForDistance(d);
     const src = frames[idx];
-    for(let p=0; p<src.length; p++){
-      if(src[p] < 250){
-        if(g < base[p]) base[p] = g;
+    for(let i = 0; i < W*H; i++){
+      const sIdx = i*4;
+      const srcA = src[sIdx+3] / 255 * alpha;
+      if(srcA > 0.01){
+        const dstA = out[sIdx+3] / 255;
+        const outA = srcA + dstA * (1 - srcA);
+        if(outA > 0){
+          out[sIdx] = (src[sIdx] * srcA + out[sIdx] * dstA * (1 - srcA)) / outA;
+          out[sIdx+1] = (src[sIdx+1] * srcA + out[sIdx+1] * dstA * (1 - srcA)) / outA;
+          out[sIdx+2] = (src[sIdx+2] * srcA + out[sIdx+2] * dstA * (1 - srcA)) / outA;
+          out[sIdx+3] = outA * 255;
+        }
       }
     }
   }
-
+  
+  // Composite current frame on top
   const cur = frames[frameIndex];
-  for(let p=0; p<cur.length; p++){
-    if(cur[p] < base[p]) base[p] = cur[p];
+  for(let i = 0; i < W*H; i++){
+    const sIdx = i*4;
+    const srcA = cur[sIdx+3] / 255;
+    if(srcA > 0.01){
+      const dstA = out[sIdx+3] / 255;
+      const outA = srcA + dstA * (1 - srcA);
+      if(outA > 0){
+        out[sIdx] = (cur[sIdx] * srcA + out[sIdx] * dstA * (1 - srcA)) / outA;
+        out[sIdx+1] = (cur[sIdx+1] * srcA + out[sIdx+1] * dstA * (1 - srcA)) / outA;
+        out[sIdx+2] = (cur[sIdx+2] * srcA + out[sIdx+2] * dstA * (1 - srcA)) / outA;
+        out[sIdx+3] = outA * 255;
+      }
+    }
   }
-
-  for(let p=0,o=0; p<base.length; p++,o+=4){
-    const v = base[p];
-    out[o]=v; out[o+1]=v; out[o+2]=v; out[o+3]=255;
-  }
+  
   return new ImageData(out, W, H);
 }
 
 function composeFrameOnly(frameIndex){
   const out = new Uint8ClampedArray(W*H*4);
   const src = frames[frameIndex];
-  for(let p=0,o=0; p<src.length; p++,o+=4){
-    const v = src[p];
-    out[o]=v; out[o+1]=v; out[o+2]=v; out[o+3]=255;
+  
+  // Keep frame transparent (copy RGBA as-is)
+  for(let i = 0; i < W*H; i++){
+    const sIdx = i*4;
+    out[sIdx] = src[sIdx];
+    out[sIdx+1] = src[sIdx+1];
+    out[sIdx+2] = src[sIdx+2];
+    out[sIdx+3] = src[sIdx+3];
   }
+  
   return new ImageData(out, W, H);
 }
 
@@ -801,35 +956,58 @@ function renderMain(){
     tempCanvas.width = w;
     tempCanvas.height = h;
     const tempCtx = tempCanvas.getContext('2d');
-    const imgData = new Uint8ClampedArray(w * h * 4);
     
-    for(let i = 0; i < selectionData.length; i++){
-      const v = selectionData[i];
-      imgData[i * 4] = v;
-      imgData[i * 4 + 1] = v;
-      imgData[i * 4 + 2] = v;
-      imgData[i * 4 + 3] = 255;
-    }
-    
-    tempCtx.putImageData(new ImageData(imgData, w, h), 0, 0);
+    // selectionData is already RGBA format
+    tempCtx.putImageData(new ImageData(selectionData, w, h), 0, 0);
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(tempCanvas, x1 * scale, y1 * scale, w * scale, h * scale);
     ctx.restore();
   }
   
-  // Draw selection rectangle if active
+  // Draw selection rectangle or lasso path if active
   if(selection && tool === 'select'){
     const scale = main.width / W;
     ctx.save();
     ctx.strokeStyle = selectionFloating ? 'rgba(255, 162, 0, 0.9)' : 'rgba(90, 162, 255, 0.8)';
     ctx.setLineDash([5, 5]);
     ctx.lineWidth = 2;
-    const x1 = Math.min(selection.x1, selection.x2) * scale;
-    const y1 = Math.min(selection.y1, selection.y2) * scale;
-    const x2 = Math.max(selection.x1, selection.x2) * scale;
-    const y2 = Math.max(selection.y1, selection.y2) * scale;
-    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    
+    if(selection.path){
+      // Draw lasso path
+      if(lassoPath && lassoPath.length > 1){
+        ctx.beginPath();
+        ctx.moveTo(lassoPath[0].x * scale, lassoPath[0].y * scale);
+        for(let i = 1; i < lassoPath.length; i++){
+          ctx.lineTo(lassoPath[i].x * scale, lassoPath[i].y * scale);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+    }else{
+      // Draw rectangular selection
+      const x1 = Math.min(selection.x1, selection.x2) * scale;
+      const y1 = Math.min(selection.y1, selection.y2) * scale;
+      const x2 = Math.max(selection.x1, selection.x2) * scale;
+      const y2 = Math.max(selection.y1, selection.y2) * scale;
+      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    }
+    ctx.restore();
+  }
+  
+  // Draw brush preview indicator (thin box showing impacted pixels)
+  if(cursorPos && (tool === 'pencil' || tool === 'soft' || tool === 'eraser') && currentMode === 'chunk'){
+    const scale = main.width / W;
+    const halfBrush = Math.floor(brush / 2);
+    const x1 = (cursorPos.x - halfBrush) * scale;
+    const y1 = (cursorPos.y - halfBrush) * scale;
+    const size = brush * scale;
+    
+    ctx.save();
+    ctx.strokeStyle = tool === 'eraser' ? 'rgba(255, 90, 90, 0.6)' : 'rgba(90, 162, 255, 0.6)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([]);
+    ctx.strokeRect(x1, y1, size, size);
     ctx.restore();
   }
 }
@@ -893,15 +1071,23 @@ function commitStroke(){
   }
 
   const idxs = new Uint32Array(activeStrokeMap.size);
-  const before = new Uint8Array(activeStrokeMap.size);
-  const after = new Uint8Array(activeStrokeMap.size);
+  const before = new Uint8ClampedArray(activeStrokeMap.size * 4); // RGBA: 4 bytes per pixel
+  const after = new Uint8ClampedArray(activeStrokeMap.size * 4);
 
   let k = 0;
   const frameArr = frames[current];
   for(const [idx, prev] of activeStrokeMap.entries()){
     idxs[k] = idx;
-    before[k] = prev;
-    after[k] = frameArr[idx];
+    // prev is now [r, g, b, a]
+    before[k*4] = prev[0];
+    before[k*4+1] = prev[1];
+    before[k*4+2] = prev[2];
+    before[k*4+3] = prev[3];
+    // current values
+    after[k*4] = frameArr[idx];
+    after[k*4+1] = frameArr[idx+1];
+    after[k*4+2] = frameArr[idx+2];
+    after[k*4+3] = frameArr[idx+3];
     k++;
   }
 
@@ -917,7 +1103,11 @@ function commitStroke(){
 function applyDelta(frameIdx, idxs, values){
   const arr = frames[frameIdx];
   for(let i=0; i<idxs.length; i++){
-    arr[idxs[i]] = values[i];
+    const idx = idxs[i];
+    arr[idx] = values[i*4];
+    arr[idx+1] = values[i*4+1];
+    arr[idx+2] = values[i*4+2];
+    arr[idx+3] = values[i*4+3];
   }
 }
 
@@ -962,7 +1152,7 @@ function insertFrame(afterIndex, sourceFrameOrNull){
   const insertAt = clamp(afterIndex + 1, 0, frames.length);
 
   const newFrame = makeBlankFrame();
-  if(sourceFrameOrNull instanceof Uint8Array){
+  if(sourceFrameOrNull instanceof Uint8ClampedArray){
     newFrame.set(sourceFrameOrNull);
   }
 
@@ -1094,7 +1284,7 @@ function saveProject(){
   if(!filename) return; // User cancelled
   
   const project = {
-    version: '1.3',
+    version: '2.0', // RGBA format
     width: W,
     height: H,
     fps: FPS,
@@ -1162,15 +1352,40 @@ async function loadProject(file){
   redoStacks = [];
   ensureStacks(nextCount);
 
+  // Detect version and load accordingly
+  const isLegacyGrayscale = !project.version || project.version.startsWith('1.');
+  
   for(let i=0; i<nextCount; i++){
     if(i < project.frames.length){
       const base64 = project.frames[i];
       const binary = atob(base64);
-      const arr = new Uint8Array(binary.length);
+      const arr = new Uint8ClampedArray(binary.length);
       for(let j=0; j<binary.length; j++) arr[j] = binary.charCodeAt(j);
-      frames[i].set(arr);
+      
+      if(isLegacyGrayscale){
+        // Convert v1.x grayscale (1 byte per pixel) to v2.0 RGBA (4 bytes per pixel)
+        // Grayscale value becomes R=G=B=gray, A=255
+        const grayscaleData = arr;
+        for(let p=0; p<W*H; p++){
+          const grayValue = grayscaleData[p];
+          frames[i][p*4] = grayValue;     // R
+          frames[i][p*4+1] = grayValue;   // G
+          frames[i][p*4+2] = grayValue;   // B
+          frames[i][p*4+3] = 255;         // A (fully opaque)
+        }
+        if(i === 0) notify(`Converting legacy grayscale project (v${project.version || '1.x'}) to RGBA format...`);
+      }else{
+        // v2.0 RGBA format - direct copy
+        frames[i].set(arr);
+      }
     }else{
-      frames[i].fill(WHITE_FILL);
+      // Fill missing frames with white
+      for(let p=0; p<W*H; p++){
+        frames[i][p*4] = WHITE_FILL;
+        frames[i][p*4+1] = WHITE_FILL;
+        frames[i][p*4+2] = WHITE_FILL;
+        frames[i][p*4+3] = 255;
+      }
     }
   }
 
@@ -1182,7 +1397,7 @@ async function loadProject(file){
   
   // Store filename for future saves
   lastProjectPath = file.name;
-  notify(`Loaded ${file.name}`);
+  notify(`Loaded ${file.name}${isLegacyGrayscale ? ' (converted from grayscale)' : ''}`);
 }
 
 // -------------------- GIF Export (512×512, white background) --------------------
@@ -1233,7 +1448,8 @@ function setExporting(state){
   toolPencil.disabled = disable;
   toolEraser.disabled = disable;
   brushSize.disabled = disable;
-  graySlider.disabled = disable;
+  colorASlider.disabled = disable;
+  nativeColorPicker.disabled = disable;
   onionSlider.disabled = disable;
 
   // Undo/redo
@@ -1362,7 +1578,8 @@ function setPlaying(next){
   toolPencil.disabled = disable;
   toolEraser.disabled = disable;
   brushSize.disabled = disable;
-  graySlider.disabled = disable;
+  colorASlider.disabled = disable;
+  nativeColorPicker.disabled = disable;
   onionSlider.disabled = disable;
 
   // Undo/redo
@@ -1516,7 +1733,7 @@ function initThumbs(preserveIndex = true){
 
 function applyStroke(from, to){
   const frameArr = frames[current];
-  const value = (tool === 'eraser') ? WHITE_FILL : gray;
+  const value = (tool === 'eraser') ? {r: 0, g: 0, b: 0, a: 0} : currentColor; // Eraser makes transparent
 
   if(tool === 'soft'){
     if(!from){
@@ -1564,7 +1781,16 @@ main.addEventListener('pointerdown', ev=>{
     // Start new selection (clears floating selection visual but keeps clipboard)
     drawing = true;
     main.setPointerCapture(ev.pointerId);
-    selection = {x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y};
+    
+    if(selectionMode === 'lasso'){
+      // Start lasso path
+      lassoPath = [pt];
+      selection = {path: lassoPath};
+    }else{
+      // Rectangular selection
+      selection = {x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y};
+    }
+    
     // Keep selectionData (clipboard) but clear floating state
     selectionFloating = false;
     selectionDragging = false;
@@ -1599,9 +1825,19 @@ main.addEventListener('pointermove', ev=>{
       renderMain();
       return;
     } else {
-      // Update selection rectangle
-      selection.x2 = pt.x;
-      selection.y2 = pt.y;
+      // Update selection
+      if(selectionMode === 'lasso'){
+        // Add point to lasso path (only if moved enough to avoid too many points)
+        const lastPoint = lassoPath[lassoPath.length - 1];
+        const dist = Math.hypot(pt.x - lastPoint.x, pt.y - lastPoint.y);
+        if(dist >= 2){ // Minimum distance threshold
+          lassoPath.push(pt);
+        }
+      }else{
+        // Update rectangle
+        selection.x2 = pt.x;
+        selection.y2 = pt.y;
+      }
       renderMain();
       return;
     }
@@ -1628,17 +1864,40 @@ function endDraw(ev){
         const y2 = Math.max(selection.y1, selection.y2);
         const w = x2 - x1 + 1;
         
-        // Paste selection at new location
+        // Paste selection at new location with alpha compositing
         for(let y = y1; y <= y2; y++){
           for(let x = x1; x <= x2; x++){
             if(x >= 0 && x < W && y >= 0 && y < H){
-              const srcIdx = (y - y1) * w + (x - x1);
+              const srcIdx = ((y - y1) * w + (x - x1)) * 4;
               if(srcIdx < selectionData.length){
-                const destIdx = xyToIndex(x, y);
+                const destIdx = xyToIndex(x, y) * 4;
                 if(activeStrokeMap && !activeStrokeMap.has(destIdx)){
-                  activeStrokeMap.set(destIdx, frameArr[destIdx]);
+                  activeStrokeMap.set(destIdx, [frameArr[destIdx], frameArr[destIdx+1], frameArr[destIdx+2], frameArr[destIdx+3]]);
                 }
-                frameArr[destIdx] = selectionData[srcIdx];
+                
+                // Alpha compositing for paste
+                const srcR = selectionData[srcIdx];
+                const srcG = selectionData[srcIdx+1];
+                const srcB = selectionData[srcIdx+2];
+                const srcA = selectionData[srcIdx+3] / 255;
+                
+                const dstR = frameArr[destIdx];
+                const dstG = frameArr[destIdx+1];
+                const dstB = frameArr[destIdx+2];
+                const dstA = frameArr[destIdx+3] / 255;
+                
+                const outA = srcA + dstA * (1 - srcA);
+                if(outA > 0){
+                  frameArr[destIdx] = Math.round((srcR * srcA + dstR * dstA * (1 - srcA)) / outA);
+                  frameArr[destIdx+1] = Math.round((srcG * srcA + dstG * dstA * (1 - srcA)) / outA);
+                  frameArr[destIdx+2] = Math.round((srcB * srcA + dstB * dstA * (1 - srcA)) / outA);
+                  frameArr[destIdx+3] = Math.round(outA * 255);
+                }else{
+                  frameArr[destIdx] = srcR;
+                  frameArr[destIdx+1] = srcG;
+                  frameArr[destIdx+2] = srcB;
+                  frameArr[destIdx+3] = selectionData[srcIdx+3];
+                }
               }
             }
           }
@@ -1658,13 +1917,16 @@ function endDraw(ev){
       const h = y2 - y1 + 1;
       
       if(w > 0 && h > 0){
-        selectionData = new Uint8Array(w * h);
+        selectionData = new Uint8ClampedArray(w * h * 4); // RGBA: 4 bytes per pixel
         const frameArr = frames[current];
         for(let y = y1; y <= y2; y++){
           for(let x = x1; x <= x2; x++){
-            const srcIdx = xyToIndex(x, y);
-            const destIdx = (y - y1) * w + (x - x1);
+            const srcIdx = xyToIndex(x, y) * 4;
+            const destIdx = ((y - y1) * w + (x - x1)) * 4;
             selectionData[destIdx] = frameArr[srcIdx];
+            selectionData[destIdx+1] = frameArr[srcIdx+1];
+            selectionData[destIdx+2] = frameArr[srcIdx+2];
+            selectionData[destIdx+3] = frameArr[srcIdx+3];
           }
         }
         notify('Selection created. Drag to move, Ctrl+C to copy, Ctrl+X to cut, Ctrl+V to paste, or Delete to clear.');
@@ -1680,6 +1942,21 @@ function endDraw(ev){
 
 main.addEventListener('pointerup', endDraw);
 main.addEventListener('pointercancel', endDraw);
+
+// Track cursor position for brush preview
+main.addEventListener('mousemove', ev=>{
+  if(currentMode !== 'chunk') return;
+  const rect = main.getBoundingClientRect();
+  const x = Math.floor((ev.clientX - rect.left) / rect.width * W);
+  const y = Math.floor((ev.clientY - rect.top) / rect.height * H);
+  cursorPos = {x, y};
+  if(!drawing) renderMain(); // Only re-render if not actively drawing
+});
+
+main.addEventListener('mouseleave', ()=>{
+  cursorPos = null;
+  if(!drawing) renderMain();
+});
 
 // Track 'c' key for canvas zoom
 window.addEventListener('keydown', (ev)=>{
@@ -1745,6 +2022,19 @@ toolPencil.addEventListener('click', ()=>setTool('pencil'));
 toolEraser.addEventListener('click', ()=>setTool('eraser'));
 toolSoft.addEventListener('click', ()=>setTool('soft'));
 toolSelect.addEventListener('click', ()=>setTool('select'));
+
+// Selection mode dropdown
+if(selectionModeSelect){
+  selectionModeSelect.addEventListener('change', ()=>{
+    selectionMode = selectionModeSelect.value;
+    // Clear current selection when switching modes
+    if(selection && !selectionFloating){
+      selection = null;
+      lassoPath = [];
+      renderMain();
+    }
+  });
+}
 
 gridToggleBtn.addEventListener('click', ()=>{
   gridEnabled = !gridEnabled;
@@ -1824,7 +2114,9 @@ if(montageScrubber){
     }
 
     if(!found){
-      const blank = new Uint8Array(W*H); blank.fill(240); renderPreviewFrameBytes(blank);
+      const blank = new Uint8ClampedArray(W*H*4);
+      for(let i=0; i<W*H; i++){ blank[i*4]=240; blank[i*4+1]=240; blank[i*4+2]=240; blank[i*4+3]=255; }
+      renderPreviewFrameBytes(blank);
       const playPosEl = document.getElementById('montagePlayPos'); if(playPosEl) playPosEl.textContent = `0 / ${totalMontage}f`;
     }
   });
@@ -1860,18 +2152,9 @@ if(montageScrubber && timelinePreview && previewCanvas){
         if(ch._project){
           const frameInSource = ch.frameRange.start + frameIdx;
           if(frameInSource < (ch._project.frameCount || (ch._project.frames && ch._project.frames.length))){
-            const bytes = _decodeFrameFromProject(ch._project, frameInSource);
-            // Render to preview canvas using ImageData for better performance
-            const imgData = new ImageData(W, H);
-            for(let j=0; j<bytes.length; j++){
-              const v = bytes[j];
-              const idx = j * 4;
-              imgData.data[idx] = v;     // R
-              imgData.data[idx+1] = v;   // G
-              imgData.data[idx+2] = v;   // B
-              imgData.data[idx+3] = 255; // A
-            }
-            offCtx.putImageData(imgData, 0, 0);
+            const bytes = _decodeFrameFromProject(ch._project, frameInSource); // Already RGBA
+            // Render to preview canvas
+            offCtx.putImageData(new ImageData(bytes, W, H), 0, 0);
             previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
             previewCtx.drawImage(off, 0, 0, previewCanvas.width, previewCanvas.height);
             
@@ -1985,30 +2268,173 @@ brushSize.addEventListener('input', ()=>{
   brushSizeLabel.textContent = String(brush);
 });
 
-graySlider.addEventListener('input', ()=>{
-  gray = Number(graySlider.value);
-  grayLabel.textContent = String(gray);
+// Color control listeners
+function updateColorDisplay(){
+  // Update the color picker box with picker color
+  const colorStr = `rgba(${pickerColor.r}, ${pickerColor.g}, ${pickerColor.b}, ${pickerColor.a / 255})`;
+  currentColorInner.style.background = colorStr;
+  currentColorBox.title = `Picker: RGB(${pickerColor.r},${pickerColor.g},${pickerColor.b}) A:${pickerColor.a}`;
+  
+  // Update native picker (hex only, no alpha)
+  const hex = '#' + [pickerColor.r, pickerColor.g, pickerColor.b].map(x => {
+    const h = x.toString(16);
+    return h.length === 1 ? '0' + h : h;
+  }).join('');
+  nativeColorPicker.value = hex;
+  
+  // Update active color highlight
+  updateActiveColorHighlight();
+}
+
+function updateActiveColorHighlight(){
+  // Highlight the picker box if active
+  if(activeColorSource === 'picker'){
+    currentColorBox.style.borderColor = '#5aa2ff';
+    currentColorBox.style.borderWidth = '3px';
+  }else{
+    currentColorBox.style.borderColor = 'var(--border)';
+    currentColorBox.style.borderWidth = '2px';
+  }
+  
+  // Highlight the active history color button
+  recentColorButtons.forEach((btn, idx) => {
+    if(btn){
+      if(activeColorSource === String(idx)){
+        btn.style.borderColor = '#5aa2ff';
+        btn.style.borderWidth = '3px';
+      }else{
+        btn.style.borderColor = 'var(--border)';
+        btn.style.borderWidth = '1px';
+      }
+    }
+  });
+}
+
+function setActiveColor(source, color){
+  // Set the active drawing color
+  activeColorSource = source;
+  currentColor.r = color.r;
+  currentColor.g = color.g;
+  currentColor.b = color.b;
+  currentColor.a = color.a;
+  
+  // Update alpha slider to match active color
+  colorASlider.value = String(color.a);
+  colorALabel.textContent = String(color.a);
+  
+  updateActiveColorHighlight();
+}
+
+// Native color picker
+currentColorBox.addEventListener('click', ()=>{
+  // Set picker as active before opening
+  setActiveColor('picker', pickerColor);
+  nativeColorPicker.click();
 });
+
+// Track color before picker opens
+let colorBeforePickerOpen = null;
+
+currentColorBox.addEventListener('mousedown', ()=>{
+  // Save picker color before opening
+  colorBeforePickerOpen = {r: pickerColor.r, g: pickerColor.g, b: pickerColor.b, a: pickerColor.a};
+});
+
+nativeColorPicker.addEventListener('input', ()=>{
+  const hex = nativeColorPicker.value;
+  pickerColor.r = parseInt(hex.substr(1,2), 16);
+  pickerColor.g = parseInt(hex.substr(3,2), 16);
+  pickerColor.b = parseInt(hex.substr(5,2), 16);
+  
+  // Update active color if picker is active
+  if(activeColorSource === 'picker'){
+    currentColor.r = pickerColor.r;
+    currentColor.g = pickerColor.g;
+    currentColor.b = pickerColor.b;
+  }
+  
+  updateColorDisplay();
+});
+
+// When picker closes, push OLD picker color to history if it changed
+nativeColorPicker.addEventListener('change', ()=>{
+  // Check if picker color changed from RGB perspective
+  if(colorBeforePickerOpen &&
+     (colorBeforePickerOpen.r !== pickerColor.r ||
+      colorBeforePickerOpen.g !== pickerColor.g ||
+      colorBeforePickerOpen.b !== pickerColor.b)){
+    // Push OLD picker color (before change) to history
+    pushToRecentColors(colorBeforePickerOpen);
+  }
+  colorBeforePickerOpen = null;
+});
+
+colorASlider.addEventListener('input', ()=>{
+  const newAlpha = Number(colorASlider.value);
+  colorALabel.textContent = String(newAlpha);
+  
+  // Update the active color's alpha
+  currentColor.a = newAlpha;
+  
+  // Also update picker color alpha if picker is active
+  if(activeColorSource === 'picker'){
+    pickerColor.a = newAlpha;
+    updateColorDisplay();
+  }
+});
+
+// Recent colors functionality
+function pushToRecentColors(color){
+  // Push a color to history (at the front), removing duplicates
+  // Remove if exists
+  recentColors = recentColors.filter(c => 
+    !(c.r === color.r && c.g === color.g && c.b === color.b && c.a === color.a)
+  );
+  
+  // Add to front and keep only 5
+  recentColors.unshift({r: color.r, g: color.g, b: color.b, a: color.a});
+  recentColors = recentColors.slice(0, 5);
+  updateRecentColorButtons();
+}
+
+function updateRecentColorButtons(){
+  recentColors.forEach((color, idx) => {
+    if(recentColorButtons[idx]){
+      const colorStr = `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a / 255})`;
+      // Use layered background: color over white to show alpha properly
+      recentColorButtons[idx].style.background = `linear-gradient(${colorStr}, ${colorStr}), white`;
+      recentColorButtons[idx].dataset.r = color.r;
+      recentColorButtons[idx].dataset.g = color.g;
+      recentColorButtons[idx].dataset.b = color.b;
+      recentColorButtons[idx].dataset.a = color.a;
+      recentColorButtons[idx].title = `RGB(${color.r},${color.g},${color.b}) A:${color.a}`;
+      // Remove data-gray attribute as this is now a recent color
+      delete recentColorButtons[idx].dataset.gray;
+    }
+  });
+}
+
+// Click recent color button to use that color
+recentColorButtons.forEach((btn, idx) => {
+  if(btn){
+    btn.addEventListener('click', ()=>{
+      const r = Number(btn.dataset.r || 0);
+      const g = Number(btn.dataset.g || 0);
+      const b = Number(btn.dataset.b || 0);
+      const a = Number(btn.dataset.a || 255);
+      
+      // Set this history color as active (doesn't change picker or history)
+      setActiveColor(String(idx), {r, g, b, a});
+    });
+  }
+});
+
 
 onionSlider.addEventListener('input', ()=>{
   onionDepth = Number(onionSlider.value);
   onionLabel.textContent = String(onionDepth);
   if(!isPlaying) renderMain();
 });
-
-// Color palette quick access
-const colorPalette = document.getElementById('colorPalette');
-if(colorPalette){
-  colorPalette.addEventListener('click', (e)=>{
-    const btn = e.target.closest('button[data-gray]');
-    if(btn){
-      const grayValue = Number(btn.dataset.gray);
-      graySlider.value = String(grayValue);
-      gray = grayValue;
-      grayLabel.textContent = String(grayValue);
-    }
-  });
-}
 
 // Keyboard shortcuts
 window.addEventListener('keydown', e=>{
@@ -2069,11 +2495,14 @@ window.addEventListener('keydown', e=>{
       const y2 = Math.max(selection.y1, selection.y2);
       for(let y = y1; y <= y2; y++){
         for(let x = x1; x <= x2; x++){
-          const idx = xyToIndex(x, y);
+          const idx = xyToIndex(x, y) * 4;
           if(activeStrokeMap && !activeStrokeMap.has(idx)){
-            activeStrokeMap.set(idx, frameArr[idx]);
+            activeStrokeMap.set(idx, [frameArr[idx], frameArr[idx+1], frameArr[idx+2], frameArr[idx+3]]);
           }
-          frameArr[idx] = WHITE_FILL; // Fill with white
+          frameArr[idx] = 0; // R
+          frameArr[idx+1] = 0; // G
+          frameArr[idx+2] = 0; // B
+          frameArr[idx+3] = 0; // A (transparent)
         }
       }
       commitStroke();
@@ -2107,11 +2536,14 @@ window.addEventListener('keydown', e=>{
         const y2 = Math.max(selection.y1, selection.y2);
         for(let y = y1; y <= y2; y++){
           for(let x = x1; x <= x2; x++){
-            const idx = xyToIndex(x, y);
+            const idx = xyToIndex(x, y) * 4;
             if(activeStrokeMap && !activeStrokeMap.has(idx)){
-              activeStrokeMap.set(idx, frameArr[idx]);
+              activeStrokeMap.set(idx, [frameArr[idx], frameArr[idx+1], frameArr[idx+2], frameArr[idx+3]]);
             }
-            frameArr[idx] = WHITE_FILL;
+            frameArr[idx] = 0; // R
+            frameArr[idx+1] = 0; // G
+            frameArr[idx+2] = 0; // B
+            frameArr[idx+3] = 0; // A (transparent)
           }
         }
         commitStroke();
@@ -2465,7 +2897,9 @@ function selectMontageChunk(idx, renderPreview = true){
       if(renderPreview) renderMontagePreviewChunk(-1);
       else {
         // keep canvas showing neutral blank when caller requested skipping preview render
-        const blank = new Uint8Array(W*H); blank.fill(240); renderPreviewFrameBytes(blank);
+        const blank = new Uint8ClampedArray(W*H*4);
+        for(let i=0; i<W*H; i++){ blank[i*4]=240; blank[i*4+1]=240; blank[i*4+2]=240; blank[i*4+3]=255; }
+        renderPreviewFrameBytes(blank);
       }
     } else { renderMain(); }
     return;
@@ -2630,7 +3064,7 @@ function setMode(mode){
   const drawingPanel = document.getElementById('drawingPanel'); if(drawingPanel) drawingPanel.style.display = isMontage ? 'none' : '';
 
   // disable drawing/frame-edit controls while in montage mode
-  const drawingControls = [toolPencil, toolEraser, toolSoft, undoBtn, redoBtn, addFrameBtn, dupFrameBtn, delFrameBtn, brushSize, graySlider, onionSlider];
+  const drawingControls = [toolPencil, toolEraser, toolSoft, undoBtn, redoBtn, addFrameBtn, dupFrameBtn, delFrameBtn, brushSize, colorASlider, nativeColorPicker, onionSlider];
   drawingControls.forEach(el => { if(el) el.disabled = isMontage; });
 
   // select first chunk when entering montage mode
@@ -2721,13 +3155,30 @@ function editChunkInChunkEditor(chunkIdx){
   redoStacks = [];
   ensureStacks(frameCount);
   
+  // Detect version for backward compatibility
+  const isLegacyGrayscale = !project.version || project.version.startsWith('1.');
+  
   for(let i=0; i<frameCount; i++){
     if(i < project.frames.length){
       const base64 = project.frames[i];
       const binary = atob(base64);
-      const arr = new Uint8Array(binary.length);
+      const arr = new Uint8ClampedArray(binary.length);
       for(let j=0; j<binary.length; j++) arr[j] = binary.charCodeAt(j);
-      frames[i].set(arr);
+      
+      if(isLegacyGrayscale){
+        // Convert v1.x grayscale to v2.0 RGBA
+        const grayscaleData = arr;
+        for(let p=0; p<W*H; p++){
+          const grayValue = grayscaleData[p];
+          frames[i][p*4] = grayValue;
+          frames[i][p*4+1] = grayValue;
+          frames[i][p*4+2] = grayValue;
+          frames[i][p*4+3] = 255;
+        }
+      }else{
+        // v2.0 RGBA format
+        frames[i].set(arr);
+      }
     }
   }
   
@@ -2753,7 +3204,7 @@ function insertChunkToMontage(){
   
   // Create project from current frames
   const project = {
-    version: '1.3',
+    version: '2.0',
     width: W,
     height: H,
     fps: FPS,
@@ -2796,7 +3247,7 @@ function returnChunkToMontage(){
   
   // Create updated project from current frames
   const project = {
-    version: '1.3',
+    version: '2.0',
     width: W,
     height: H,
     fps: FPS,
@@ -3325,13 +3776,8 @@ if(exportMontageGifBtn){
       const delay = Math.round(1000 / FPS);
       
       for(let i=0; i<allFrames.length; i++){
-        const frameBytes = allFrames[i];
-        const imgData = new Uint8ClampedArray(W*H*4);
-        for(let p=0, o=0; p<frameBytes.length; p++, o+=4){
-          const v = frameBytes[p];
-          imgData[o]=v; imgData[o+1]=v; imgData[o+2]=v; imgData[o+3]=255;
-        }
-        offCtx.putImageData(new ImageData(imgData, W, H), 0, 0);
+        const frameBytes = allFrames[i]; // Already RGBA from _decodeFrameFromProject
+        offCtx.putImageData(new ImageData(frameBytes, W, H), 0, 0);
         
         ectx.setTransform(1,0,0,1,0,0);
         ectx.clearRect(0,0,DISPLAY,DISPLAY);
@@ -3518,11 +3964,9 @@ let _montageTimer = null;
 let _montagePos = { chunkIdx: 0, frameIdx: 0 };
 
 function renderPreviewFrameBytes(bytes, chunkInfo = null){
-  // bytes: Uint8Array of length W*H
+  // bytes: Uint8ClampedArray of length W*H*4 (RGBA)
   // chunkInfo: {name, alias, frameIdx, totalFrames} - optional chunk info for overlay
-  const out = new Uint8ClampedArray(W*H*4);
-  for(let p=0,o=0; p<bytes.length; p++,o+=4){ const v = bytes[p]; out[o]=v; out[o+1]=v; out[o+2]=v; out[o+3]=255; }
-  const id = new ImageData(out, W, H);
+  const id = new ImageData(bytes, W, H);
   const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
   const target = DISPLAY * dpr;
   if(main.width !== target || main.height !== target){ main.width = target; main.height = target; }
@@ -3558,8 +4002,23 @@ function renderPreviewFrameBytes(bytes, chunkInfo = null){
 function _decodeFrameFromProject(project, idx){
   const base64 = project.frames[idx];
   const binary = atob(base64);
-  const arr = new Uint8Array(binary.length);
+  const arr = new Uint8ClampedArray(binary.length);
   for(let j=0;j<binary.length;j++) arr[j] = binary.charCodeAt(j);
+  
+  // Convert legacy grayscale to RGBA if needed
+  const isLegacyGrayscale = !project.version || project.version.startsWith('1.');
+  if(isLegacyGrayscale){
+    const grayscaleData = arr;
+    const rgbaData = new Uint8ClampedArray(W*H*4);
+    for(let p=0; p<W*H; p++){
+      const grayValue = grayscaleData[p];
+      rgbaData[p*4] = grayValue;
+      rgbaData[p*4+1] = grayValue;
+      rgbaData[p*4+2] = grayValue;
+      rgbaData[p*4+3] = 255;
+    }
+    return rgbaData;
+  }
   return arr;
 }
 
@@ -3569,7 +4028,9 @@ function renderMontagePreviewChunk(idx){
   if(!ch){
     // no selection: show editor view when in chunk mode, otherwise clear preview
     if(currentMode === 'chunk'){ renderMain(); return; }
-    const blank = new Uint8Array(W*H); blank.fill(240); renderPreviewFrameBytes(blank); return;
+    const blank = new Uint8ClampedArray(W*H*4);
+    for(let i=0; i<W*H; i++){ blank[i*4]=240; blank[i*4+1]=240; blank[i*4+2]=240; blank[i*4+3]=255; }
+    renderPreviewFrameBytes(blank); return;
   }
 
   if(ch._project && Array.isArray(ch._project.frames) && ch.frameRange && ch.frameRange.start < ch._project.frames.length){
@@ -3587,7 +4048,9 @@ function renderMontagePreviewChunk(idx){
   }
 
   // fallback: neutral blank with message
-  const blank = new Uint8Array(W*H); blank.fill(240); renderPreviewFrameBytes(blank);
+  const blank = new Uint8ClampedArray(W*H*4);
+  for(let i=0; i<W*H; i++){ blank[i*4]=240; blank[i*4+1]=240; blank[i*4+2]=240; blank[i*4+3]=255; }
+  renderPreviewFrameBytes(blank);
   ctx.save();
   ctx.fillStyle = 'rgba(180,180,180,0.9)';
   ctx.font = '14px sans-serif';
@@ -3705,7 +4168,18 @@ function init(){
 
   setTool('pencil');
   brushSizeLabel.textContent = brushSize.value;
-  grayLabel.textContent = graySlider.value;
+  colorALabel.textContent = colorASlider.value;
+  
+  // Initialize color system
+  pickerColor = {r: 0, g: 0, b: 0, a: 255};
+  currentColor.r = 0;
+  currentColor.g = 0;
+  currentColor.b = 0;
+  currentColor.a = 255;
+  activeColorSource = 'picker';
+  
+  updateColorDisplay();
+  updateRecentColorButtons();
   onionLabel.textContent = onionSlider.value;
 
   initThumbs(false);
