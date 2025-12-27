@@ -11,11 +11,17 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
 header h1{font-size:14px;margin:0;letter-spacing:.3px;color:var(--text);font-weight:600}
 header .hint{font-size:12px;color:var(--muted)}
-.wrap{display:grid;grid-template-columns:1fr 320px;gap:14px;padding:14px;max-width:1200px;margin:0 auto;align-items:start}
-.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35);height:fit-content;max-height:calc(100vh - 120px);overflow:auto}
-.stage{padding:12px;display:flex;flex-direction:column;gap:12px}
+.wrap{display:grid;grid-template-columns:1fr 320px;gap:14px;padding:14px;max-width:1200px;margin:0 auto;align-items:start;height:calc(100vh - 90px)}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35);height:100%;overflow:hidden}
+.stage{padding:12px;display:flex;flex-direction:column;gap:12px;height:100%;overflow-y:auto}
 .canvasPanel{display:flex;flex-direction:column;gap:10px}
 .mainCanvasWrap{background:#060a12;border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;justify-content:center;align-items:center;position:relative;overflow:visible}
+
+/* Montage mode: more compact layout */
+body.montage-mode .stage{gap:8px;padding:10px}
+body.montage-mode .canvasPanel{gap:6px}
+body.montage-mode .mainCanvasWrap{padding:8px}
+body.montage-mode .panelBlock{padding:8px;gap:6px}
 canvas#main{width:512px;height:512px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:
   linear-gradient(45deg, #ccc 25%, transparent 25%),
   linear-gradient(-45deg, #ccc 25%, transparent 25%),
@@ -60,7 +66,7 @@ input[type="range"]{width:160px}
   text-transform:uppercase;
 }
 
-.sidebar{padding:12px;display:flex;flex-direction:column;height:calc(100vh - 180px);overflow-y:auto}
+.sidebar{padding:12px;display:flex;flex-direction:column;height:100%;overflow-y:auto}
 .sidebar h2{display:none}
 .sidebar .section{padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(0,0,0,.18);margin-bottom:12px;flex-shrink:0}
 .sidebar .section:first-of-type{flex-shrink:1;display:flex;flex-direction:column;min-height:0}
@@ -97,10 +103,68 @@ input[type="range"]{width:160px}
 .timeline-preview canvas{width:80px;height:80px;border-radius:6px;background:#fff;image-rendering:pixelated;border:1px solid rgba(255,255,255,.06);display:block}
 .timeline-preview .info{font-size:10px;color:var(--muted);margin-top:4px;text-align:center}
 
+/* Responsive layout for tablets and narrow displays */
 @media (max-width:980px){
-  .wrap{grid-template-columns:1fr}
+  .wrap{grid-template-columns:1fr;gap:10px;padding:10px;height:calc(100vh - 80px)}
   canvas#main{width:min(92vw,512px);height:min(92vw,512px)}
   .frames{grid-template-columns:repeat(4,1fr)}
+  header{flex-wrap:wrap;padding:10px 12px}
+  header .hint{display:none}
+  .card{overflow:hidden}
+  .stage{overflow-y:auto}
+}
+
+/* Mobile-friendly vertical layout for narrow screens */
+@media (max-width:768px){
+  .wrap{grid-template-columns:1fr;padding:8px;gap:8px;height:calc(100vh - 80px)}
+  /* Give chunk editor more vertical space for drawing tools + canvas */
+  body:not(.montage-mode) .wrap{height:calc(100vh - 60px)}
+  header{padding:8px 10px}
+  header h1{font-size:13px}
+  #editorToggle{width:100%;justify-content:center}
+  canvas#main{width:min(85vw,350px);height:min(85vw,350px)}
+  .stage{padding:6px;gap:4px;overflow-y:auto;display:flex;flex-direction:column;min-height:0}
+  .canvasPanel{flex-shrink:0}
+  .sidebar{padding:8px;overflow-y:auto;max-height:calc(100vh - 80px)}
+  .frames{grid-template-columns:repeat(3,1fr);gap:6px}
+  .framesWrap{overflow-y:auto;overflow-x:hidden;max-height:180px;flex:0 1 auto}
+  .card{border-radius:10px;overflow:hidden}
+  button{padding:5px 7px;font-size:11px}
+  .panelBlock{padding:6px;gap:4px}
+  body.montage-mode .stage{padding:6px;gap:4px;overflow-y:scroll}
+  body.montage-mode .canvasPanel{flex-shrink:1}
+  body.montage-mode .playControls{flex-shrink:0;margin-top:auto;position:sticky;bottom:0;background:var(--panel);padding-top:8px}
+  .canvasPanel{gap:4px}
+  .mainCanvasWrap{padding:6px}
+  .sidebar .section{margin-bottom:8px}
+  .sidebar .section:first-of-type{flex-shrink:0}
+}
+
+/* Extra small screens / mobile portrait */
+@media (max-width:480px){
+  .wrap{padding:6px;gap:6px;height:calc(100vh - 70px)}
+  /* Give chunk editor more vertical space for drawing tools + canvas */
+  body:not(.montage-mode) .wrap{height:calc(100vh - 50px)}
+  header{padding:6px 8px;gap:6px}
+  header h1{font-size:12px}
+  canvas#main{width:min(80vw,300px);height:min(80vw,300px)}
+  .frames{grid-template-columns:repeat(2,1fr);gap:6px}
+  .stage{padding:4px;gap:4px;overflow-y:auto;display:flex;flex-direction:column;min-height:0}
+  .canvasPanel{flex-shrink:0}
+  .sidebar{padding:6px;overflow-y:auto;max-height:calc(100vh - 70px)}
+  .framesWrap{overflow-y:auto;overflow-x:hidden;max-height:160px;flex:0 1 auto}
+  #montageChunks .chunk-item{padding:6px;gap:4px 6px}
+  #montageChunks .chunk-thumb{width:48px;height:48px}
+  .card{overflow:hidden}
+  body.montage-mode .canvasPanel{flex-shrink:1}
+  body.montage-mode .stage{overflow-y:scroll}
+  body.montage-mode .playControls{flex-shrink:0;margin-top:auto;position:sticky;bottom:0;background:var(--panel);padding-top:6px}
+  .canvasPanel{gap:4px}
+  .mainCanvasWrap{padding:4px}
+  .panelBlock{padding:6px;gap:4px}
+  button{padding:4px 6px;font-size:10px}
+  .sidebar .section{margin-bottom:6px}
+  .sidebar .section:first-of-type{flex-shrink:0}
 }
 
 /* Montage sidebar styles */
@@ -2024,6 +2088,7 @@ main.addEventListener('mousemove', ev=>{
 });
 
 main.addEventListener('mouseleave', ()=>{
+  if(currentMode !== 'chunk') return; // Only handle in chunk mode to prevent leakage
   cursorPos = null;
   if(!drawing) renderMain();
 });
@@ -2042,7 +2107,12 @@ window.addEventListener('blur', ()=>{
 
 // Mouse wheel events for brush size and canvas zoom
 main.addEventListener('wheel', (ev)=>{
-  if(isPlaying || currentMode !== 'chunk') return;
+  // Only process wheel events in chunk mode and when not playing
+  if(currentMode !== 'chunk' || isPlaying){
+    // Prevent any default behavior in montage mode to avoid canvas leakage
+    if(currentMode !== 'chunk') ev.preventDefault();
+    return;
+  }
   
   // Canvas zoom with C + wheel (or Ctrl/Cmd + wheel)
   if(cKeyPressed || ev.ctrlKey || ev.metaKey){
@@ -3174,6 +3244,23 @@ function setMode(mode){
   currentMode = newMode;
   console.debug('setMode ->', currentMode);
   notify(`Switched to ${currentMode === 'montage' ? 'Montage Editor' : 'Chunk Editor'}`);
+
+  // Stop any active playback when switching modes (fixes canvas animation carry-over)
+  if(isPlaying) setPlaying(false);
+  if(montagePlaying) stopMontagePlayback();
+
+  // Reset canvas zoom/transform when switching to montage mode (fixes canvas misalignment)
+  if(isMontage){
+    canvasZoom = 1.0;
+    main.style.transform = '';
+    const btn = document.getElementById('canvasZoomResetBtn');
+    if(btn) btn.textContent = `Zoom 100%`;
+    // Add body class for compact montage styling
+    document.body.classList.add('montage-mode');
+  }else{
+    // Remove montage mode class when switching to chunk editor
+    document.body.classList.remove('montage-mode');
+  }
 
   // Update header hint text based on mode
   const headerHint = document.getElementById('headerHint');
