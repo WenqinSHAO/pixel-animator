@@ -159,9 +159,6 @@ input[type="range"]{width:160px}
 
       <!-- Drawing Ops -->
       <div id="drawingPanel" class="panelBlock" style="padding:8px">
-        <div class="panelHeader" style="margin-bottom:6px">
-
-        </div>
         <div style="display:flex;flex-direction:column;gap:8px">
           <!-- Tools row with color picker -->
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
@@ -806,13 +803,8 @@ function ghostAlphaForDistance(d){ return clamp(0.3 - (d-1)*0.05, 0.1, 0.3); }
 function composeWithOnionSkin(frameIndex, depth){
   const out = new Uint8ClampedArray(W*H*4);
   
-  // Start with white background
-  for(let i = 0; i < W*H; i++){
-    out[i*4] = WHITE_FILL;
-    out[i*4+1] = WHITE_FILL;
-    out[i*4+2] = WHITE_FILL;
-    out[i*4+3] = 255;
-  }
+  // Start with transparent background (all zeros)
+  // Note: Uint8ClampedArray already initializes to 0, so this is implicit
   
   // Composite onion skin layers with reduced alpha
   for(let d=depth; d>=1; d--){
@@ -860,14 +852,13 @@ function composeFrameOnly(frameIndex){
   const out = new Uint8ClampedArray(W*H*4);
   const src = frames[frameIndex];
   
-  // Composite frame over white background
+  // Keep frame transparent (copy RGBA as-is)
   for(let i = 0; i < W*H; i++){
     const sIdx = i*4;
-    const srcA = src[sIdx+3] / 255;
-    out[sIdx] = src[sIdx] * srcA + WHITE_FILL * (1 - srcA);
-    out[sIdx+1] = src[sIdx+1] * srcA + WHITE_FILL * (1 - srcA);
-    out[sIdx+2] = src[sIdx+2] * srcA + WHITE_FILL * (1 - srcA);
-    out[sIdx+3] = 255;
+    out[sIdx] = src[sIdx];
+    out[sIdx+1] = src[sIdx+1];
+    out[sIdx+2] = src[sIdx+2];
+    out[sIdx+3] = src[sIdx+3];
   }
   
   return new ImageData(out, W, H);
