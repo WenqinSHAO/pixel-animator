@@ -120,17 +120,19 @@ input[type="range"]{width:160px}
   header{padding:8px 10px}
   header h1{font-size:13px}
   #editorToggle{width:100%;justify-content:center}
-  canvas#main{width:min(90vw,380px);height:min(90vw,380px)}
-  .stage{padding:8px;gap:6px;overflow-y:auto}
-  .sidebar{padding:8px;overflow-y:auto}
-  .frames{grid-template-columns:repeat(3,1fr);gap:8px}
-  .framesWrap{overflow-y:auto;overflow-x:hidden;min-height:200px}
+  canvas#main{width:min(70vw,300px);height:min(70vw,300px)}
+  .stage{padding:6px;gap:4px;overflow-y:auto}
+  .sidebar{padding:8px;overflow-y:auto;max-height:calc(100vh - 80px)}
+  .frames{grid-template-columns:repeat(3,1fr);gap:6px}
+  .framesWrap{overflow-y:auto;overflow-x:hidden;max-height:250px;flex:0 1 auto}
   .card{border-radius:10px;overflow:hidden}
-  button{padding:6px 8px;font-size:11px}
+  button{padding:5px 7px;font-size:11px}
   .panelBlock{padding:6px;gap:4px}
   body.montage-mode .stage{padding:6px;gap:4px}
-  .canvasPanel{gap:6px}
-  .mainCanvasWrap{padding:8px}
+  .canvasPanel{gap:4px}
+  .mainCanvasWrap{padding:6px}
+  .sidebar .section{margin-bottom:8px}
+  .sidebar .section:first-of-type{flex-shrink:0}
 }
 
 /* Extra small screens / mobile portrait */
@@ -138,17 +140,20 @@ input[type="range"]{width:160px}
   .wrap{padding:6px;gap:6px;height:calc(100vh - 70px)}
   header{padding:6px 8px;gap:6px}
   header h1{font-size:12px}
-  canvas#main{width:min(88vw,340px);height:min(88vw,340px)}
+  canvas#main{width:min(65vw,260px);height:min(65vw,260px)}
   .frames{grid-template-columns:repeat(2,1fr);gap:6px}
-  .stage{padding:6px;gap:4px;overflow-y:auto}
-  .sidebar{padding:6px;overflow-y:auto}
-  .framesWrap{overflow-y:auto;overflow-x:hidden;min-height:180px}
+  .stage{padding:4px;gap:4px;overflow-y:auto}
+  .sidebar{padding:6px;overflow-y:auto;max-height:calc(100vh - 70px)}
+  .framesWrap{overflow-y:auto;overflow-x:hidden;max-height:220px;flex:0 1 auto}
   #montageChunks .chunk-item{padding:6px;gap:4px 6px}
   #montageChunks .chunk-thumb{width:48px;height:48px}
   .card{overflow:hidden}
   .canvasPanel{gap:4px}
-  .mainCanvasWrap{padding:6px}
+  .mainCanvasWrap{padding:4px}
   .panelBlock{padding:6px;gap:4px}
+  button{padding:4px 6px;font-size:10px}
+  .sidebar .section{margin-bottom:6px}
+  .sidebar .section:first-of-type{flex-shrink:0}
 }
 
 /* Montage sidebar styles */
