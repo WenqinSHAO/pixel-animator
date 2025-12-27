@@ -156,22 +156,35 @@ input[type="range"]{width:160px}
           <div class="panelTitle">Drawing Tools</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px">
-          <!-- Tools row with palette -->
+          <!-- Tools row with color picker -->
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
             <button id="toolPencil" class="primary" style="padding:6px 10px">Pencil</button>
-            <button id="toolEraser" style="padding:6px 10px">Eraser</button>
             <button id="toolSoft" style="padding:6px 10px">Soft</button>
-            <button id="toolSelect" style="padding:6px 10px">Select</button>
+            <button id="toolEraser" style="padding:6px 10px">Eraser</button>
             <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
-            <!-- Color palette inline -->
-            <div id="colorPalette" style="display:flex;gap:3px">
-              <button data-gray="0" style="width:24px;height:24px;padding:0;background:#000;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Black (0)"></button>
-              <button data-gray="64" style="width:24px;height:24px;padding:0;background:#404040;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Dark Gray (64)"></button>
-              <button data-gray="128" style="width:24px;height:24px;padding:0;background:#808080;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Mid Gray (128)"></button>
-              <button data-gray="192" style="width:24px;height:24px;padding:0;background:#c0c0c0;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Light Gray (192)"></button>
-              <button data-gray="255" style="width:24px;height:24px;padding:0;background:#fff;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="White (255)"></button>
+            
+            <!-- Color Picker Section -->
+            <div style="display:flex;gap:6px;align-items:center">
+              <!-- Current color display (clickable to open native picker) -->
+              <div style="display:flex;flex-direction:column;gap:2px;align-items:center">
+                <div id="currentColorBox" style="width:36px;height:36px;border:2px solid var(--border);border-radius:6px;cursor:pointer;position:relative;background:white" title="Click to pick color">
+                  <div id="currentColorInner" style="width:100%;height:100%;border-radius:4px;background:rgba(0,0,0,1)"></div>
+                </div>
+                <input type="color" id="nativeColorPicker" style="position:absolute;opacity:0;pointer-events:none" value="#000000"/>
+              </div>
+              
+              <!-- Recent/preset colors -->
+              <div style="display:flex;gap:3px">
+                <button id="recentColor0" data-gray="0" style="width:24px;height:24px;padding:0;background:#000;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Black"></button>
+                <button id="recentColor1" data-gray="64" style="width:24px;height:24px;padding:0;background:#404040;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Dark Gray"></button>
+                <button id="recentColor2" data-gray="128" style="width:24px;height:24px;padding:0;background:#808080;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Mid Gray"></button>
+                <button id="recentColor3" data-gray="192" style="width:24px;height:24px;padding:0;background:#c0c0c0;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Light Gray"></button>
+                <button id="recentColor4" data-gray="255" style="width:24px;height:24px;padding:0;background:#fff;border:1px solid var(--border);border-radius:4px;cursor:pointer" title="White"></button>
+              </div>
             </div>
+            
             <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
+            <button id="toolSelect" style="padding:6px 10px">Select</button>
             <button id="undoBtn" style="padding:6px 10px">Undo</button>
             <button id="redoBtn" style="padding:6px 10px">Redo</button>
             <button id="gridToggleBtn" style="padding:6px 10px">Grid Off</button>
@@ -183,23 +196,10 @@ input[type="range"]{width:160px}
               <input id="brushSize" type="range" min="1" max="8" value="1" style="width:100px"/>
               <span id="brushSizeLabel" class="pill" style="padding:3px 6px;font-size:10px">1</span>
             </label>
-            <label style="gap:6px">R
-              <input id="colorR" type="range" min="0" max="255" value="0" style="width:80px"/>
-              <span id="colorRLabel" class="pill" style="padding:3px 6px;font-size:10px">0</span>
-            </label>
-            <label style="gap:6px">G
-              <input id="colorG" type="range" min="0" max="255" value="0" style="width:80px"/>
-              <span id="colorGLabel" class="pill" style="padding:3px 6px;font-size:10px">0</span>
-            </label>
-            <label style="gap:6px">B
-              <input id="colorB" type="range" min="0" max="255" value="0" style="width:80px"/>
-              <span id="colorBLabel" class="pill" style="padding:3px 6px;font-size:10px">0</span>
-            </label>
             <label style="gap:6px">Alpha
-              <input id="colorA" type="range" min="0" max="255" value="255" style="width:80px"/>
+              <input id="colorA" type="range" min="0" max="255" value="255" style="width:120px"/>
               <span id="colorALabel" class="pill" style="padding:3px 6px;font-size:10px">255</span>
             </label>
-            <div id="currentColorPreview" style="width:32px;height:24px;border:1px solid var(--border);border-radius:4px;background:rgb(0,0,0)" title="Current color"></div>
             <label style="gap:6px">Onion
               <input id="onion" type="range" min="0" max="8" value="5" style="width:100px"/>
               <span id="onionLabel" class="pill" style="padding:3px 6px;font-size:10px">5</span>
@@ -499,15 +499,29 @@ const redoBtn = document.getElementById('redoBtn');
 const brushSize = document.getElementById('brushSize');
 const brushSizeLabel = document.getElementById('brushSizeLabel');
 
-const colorRSlider = document.getElementById('colorR');
-const colorRLabel = document.getElementById('colorRLabel');
-const colorGSlider = document.getElementById('colorG');
-const colorGLabel = document.getElementById('colorGLabel');
-const colorBSlider = document.getElementById('colorB');
-const colorBLabel = document.getElementById('colorBLabel');
 const colorASlider = document.getElementById('colorA');
 const colorALabel = document.getElementById('colorALabel');
-const currentColorPreview = document.getElementById('currentColorPreview');
+const currentColorBox = document.getElementById('currentColorBox');
+const currentColorInner = document.getElementById('currentColorInner');
+const nativeColorPicker = document.getElementById('nativeColorPicker');
+
+// Recent color buttons
+const recentColorButtons = [
+  document.getElementById('recentColor0'),
+  document.getElementById('recentColor1'),
+  document.getElementById('recentColor2'),
+  document.getElementById('recentColor3'),
+  document.getElementById('recentColor4')
+];
+
+// Recent colors storage (defaults to grayscale)
+let recentColors = [
+  {r: 0, g: 0, b: 0, a: 255},      // Black
+  {r: 64, g: 64, b: 64, a: 255},   // Dark Gray
+  {r: 128, g: 128, b: 128, a: 255}, // Mid Gray
+  {r: 192, g: 192, b: 192, a: 255}, // Light Gray
+  {r: 255, g: 255, b: 255, a: 255}  // White
+];
 
 const onionSlider = document.getElementById('onion');
 const onionLabel = document.getElementById('onionLabel');
@@ -537,14 +551,9 @@ function roundTo(n, decimals=2){
 
 function makeBlankFrame(){
   // Creates a blank RGBA frame as a Uint8ClampedArray (4 bytes per pixel: R, G, B, A).
-  // Default fill is white (255, 255, 255, 255).
+  // Default fill is transparent (0, 0, 0, 0).
   const a = new Uint8ClampedArray(W*H*4);
-  for(let i = 0; i < W*H; i++){
-    a[i*4] = WHITE_FILL;     // R
-    a[i*4+1] = WHITE_FILL;   // G
-    a[i*4+2] = WHITE_FILL;   // B
-    a[i*4+3] = 255;          // A (fully opaque)
-  }
+  // All values default to 0 (transparent black)
   return a;
 }
 
@@ -641,6 +650,7 @@ function getPointerXY(ev){
 // - replace this with a circular mask (distance check from center)
 // - or implement alpha blending for softer strokes.
 // value is now an object {r, g, b, a} for RGBA color
+// Uses alpha compositing for proper blending on overlapping areas
 function drawDot(frameArr, x, y, value, size){
   const s = Math.max(1, size|0);
   const start = -Math.floor(s/2);
@@ -654,10 +664,28 @@ function drawDot(frameArr, x, y, value, size){
       if(activeStrokeMap && !activeStrokeMap.has(idx)){
         activeStrokeMap.set(idx, [frameArr[idx], frameArr[idx+1], frameArr[idx+2], frameArr[idx+3]]);
       }
-      frameArr[idx] = value.r;
-      frameArr[idx+1] = value.g;
-      frameArr[idx+2] = value.b;
-      frameArr[idx+3] = value.a;
+      
+      // Alpha compositing when drawing over existing pixels
+      const prevR = frameArr[idx];
+      const prevG = frameArr[idx+1];
+      const prevB = frameArr[idx+2];
+      const prevA = frameArr[idx+3];
+      
+      const srcA = value.a / 255;
+      const dstA = prevA / 255;
+      const outA = srcA + dstA * (1 - srcA);
+      
+      if(outA > 0){
+        frameArr[idx] = Math.round((value.r * srcA + prevR * dstA * (1 - srcA)) / outA);
+        frameArr[idx+1] = Math.round((value.g * srcA + prevG * dstA * (1 - srcA)) / outA);
+        frameArr[idx+2] = Math.round((value.b * srcA + prevB * dstA * (1 - srcA)) / outA);
+        frameArr[idx+3] = Math.round(outA * 255);
+      }else{
+        frameArr[idx] = value.r;
+        frameArr[idx+1] = value.g;
+        frameArr[idx+2] = value.b;
+        frameArr[idx+3] = value.a;
+      }
     }
   }
 }
@@ -677,7 +705,7 @@ function drawLine(frameArr, x0, y0, x1, y1, value, size){
   }
 }
 
-// Soft (blended) brush: blends the target value into existing pixels with a radial falloff
+// Soft (blended) brush: applies softness via alpha channel (more transparent at edges)
 // to produce smoother, less pixelated edges. Deltas are recorded in `activeStrokeMap`
 // so undo/redo continues to work as expected.
 // value is now an object {r, g, b, a} for RGBA color
@@ -693,29 +721,39 @@ function drawSoftDot(frameArr, x, y, value, size){
       if(xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
       const idx = xyToIndex(xx, yy) * 4;
       const dist = Math.hypot(dx, dy);
-      let alpha = 1 - (dist / radius);
-      if(radius === 0) alpha = 1;
-      alpha = clamp(alpha, 0, 1);
-      // Slight gamma to soften edges
-      alpha = Math.pow(alpha, 1.2);
+      let edgeSoftness = 1 - (dist / radius);
+      if(radius === 0) edgeSoftness = 1;
+      edgeSoftness = clamp(edgeSoftness, 0, 1);
+      // Gamma curve for smoother falloff
+      edgeSoftness = Math.pow(edgeSoftness, 1.2);
 
       const prevR = frameArr[idx];
       const prevG = frameArr[idx+1];
       const prevB = frameArr[idx+2];
       const prevA = frameArr[idx+3];
       
-      const blendedR = Math.round(prevR * (1 - alpha) + value.r * alpha);
-      const blendedG = Math.round(prevG * (1 - alpha) + value.g * alpha);
-      const blendedB = Math.round(prevB * (1 - alpha) + value.b * alpha);
-      const blendedA = Math.round(prevA * (1 - alpha) + value.a * alpha);
+      // Apply softness through alpha channel - color at full intensity, alpha fades at edges
+      const brushAlpha = value.a * edgeSoftness / 255;
+      const prevAlpha = prevA / 255;
       
-      if(activeStrokeMap && !activeStrokeMap.has(idx)){
-        activeStrokeMap.set(idx, [prevR, prevG, prevB, prevA]);
+      // Alpha compositing: out_a = src_a + dst_a * (1 - src_a)
+      const outA = brushAlpha + prevAlpha * (1 - brushAlpha);
+      
+      if(outA > 0){
+        // Color blend with alpha compositing
+        const blendedR = Math.round((value.r * brushAlpha + prevR * prevAlpha * (1 - brushAlpha)) / outA);
+        const blendedG = Math.round((value.g * brushAlpha + prevG * prevAlpha * (1 - brushAlpha)) / outA);
+        const blendedB = Math.round((value.b * brushAlpha + prevB * prevAlpha * (1 - brushAlpha)) / outA);
+        const blendedA = Math.round(outA * 255);
+        
+        if(activeStrokeMap && !activeStrokeMap.has(idx)){
+          activeStrokeMap.set(idx, [prevR, prevG, prevB, prevA]);
+        }
+        frameArr[idx] = blendedR;
+        frameArr[idx+1] = blendedG;
+        frameArr[idx+2] = blendedB;
+        frameArr[idx+3] = blendedA;
       }
-      frameArr[idx] = blendedR;
-      frameArr[idx+1] = blendedG;
-      frameArr[idx+2] = blendedB;
-      frameArr[idx+3] = blendedA;
     }
   }
 }
@@ -1334,10 +1372,8 @@ function setExporting(state){
   toolPencil.disabled = disable;
   toolEraser.disabled = disable;
   brushSize.disabled = disable;
-  colorRSlider.disabled = disable;
-  colorGSlider.disabled = disable;
-  colorBSlider.disabled = disable;
   colorASlider.disabled = disable;
+  nativeColorPicker.disabled = disable;
   onionSlider.disabled = disable;
 
   // Undo/redo
@@ -1466,10 +1502,8 @@ function setPlaying(next){
   toolPencil.disabled = disable;
   toolEraser.disabled = disable;
   brushSize.disabled = disable;
-  colorRSlider.disabled = disable;
-  colorGSlider.disabled = disable;
-  colorBSlider.disabled = disable;
   colorASlider.disabled = disable;
+  nativeColorPicker.disabled = disable;
   onionSlider.disabled = disable;
 
   // Undo/redo
@@ -1623,7 +1657,7 @@ function initThumbs(preserveIndex = true){
 
 function applyStroke(from, to){
   const frameArr = frames[current];
-  const value = (tool === 'eraser') ? {r: WHITE_FILL, g: WHITE_FILL, b: WHITE_FILL, a: 255} : currentColor;
+  const value = (tool === 'eraser') ? {r: 0, g: 0, b: 0, a: 0} : currentColor; // Eraser makes transparent
 
   if(tool === 'soft'){
     if(!from){
@@ -1735,7 +1769,7 @@ function endDraw(ev){
         const y2 = Math.max(selection.y1, selection.y2);
         const w = x2 - x1 + 1;
         
-        // Paste selection at new location
+        // Paste selection at new location with alpha compositing
         for(let y = y1; y <= y2; y++){
           for(let x = x1; x <= x2; x++){
             if(x >= 0 && x < W && y >= 0 && y < H){
@@ -1745,10 +1779,30 @@ function endDraw(ev){
                 if(activeStrokeMap && !activeStrokeMap.has(destIdx)){
                   activeStrokeMap.set(destIdx, [frameArr[destIdx], frameArr[destIdx+1], frameArr[destIdx+2], frameArr[destIdx+3]]);
                 }
-                frameArr[destIdx] = selectionData[srcIdx];
-                frameArr[destIdx+1] = selectionData[srcIdx+1];
-                frameArr[destIdx+2] = selectionData[srcIdx+2];
-                frameArr[destIdx+3] = selectionData[srcIdx+3];
+                
+                // Alpha compositing for paste
+                const srcR = selectionData[srcIdx];
+                const srcG = selectionData[srcIdx+1];
+                const srcB = selectionData[srcIdx+2];
+                const srcA = selectionData[srcIdx+3] / 255;
+                
+                const dstR = frameArr[destIdx];
+                const dstG = frameArr[destIdx+1];
+                const dstB = frameArr[destIdx+2];
+                const dstA = frameArr[destIdx+3] / 255;
+                
+                const outA = srcA + dstA * (1 - srcA);
+                if(outA > 0){
+                  frameArr[destIdx] = Math.round((srcR * srcA + dstR * dstA * (1 - srcA)) / outA);
+                  frameArr[destIdx+1] = Math.round((srcG * srcA + dstG * dstA * (1 - srcA)) / outA);
+                  frameArr[destIdx+2] = Math.round((srcB * srcA + dstB * dstA * (1 - srcA)) / outA);
+                  frameArr[destIdx+3] = Math.round(outA * 255);
+                }else{
+                  frameArr[destIdx] = srcR;
+                  frameArr[destIdx+1] = srcG;
+                  frameArr[destIdx+2] = srcB;
+                  frameArr[destIdx+3] = selectionData[srcIdx+3];
+                }
               }
             }
           }
@@ -2092,63 +2146,99 @@ brushSize.addEventListener('input', ()=>{
 });
 
 // Color control listeners
-function updateColorPreview(){
-  currentColorPreview.style.background = `rgba(${currentColor.r}, ${currentColor.g}, ${currentColor.b}, ${currentColor.a / 255})`;
+function updateColorDisplay(){
+  // Update the color box with checkered background for transparency
+  const colorStr = `rgba(${currentColor.r}, ${currentColor.g}, ${currentColor.b}, ${currentColor.a / 255})`;
+  currentColorInner.style.background = colorStr;
+  
+  // Update native picker (hex only, no alpha)
+  const hex = '#' + [currentColor.r, currentColor.g, currentColor.b].map(x => {
+    const h = x.toString(16);
+    return h.length === 1 ? '0' + h : h;
+  }).join('');
+  nativeColorPicker.value = hex;
 }
 
-colorRSlider.addEventListener('input', ()=>{
-  currentColor.r = Number(colorRSlider.value);
-  colorRLabel.textContent = String(currentColor.r);
-  updateColorPreview();
+// Native color picker
+currentColorBox.addEventListener('click', ()=>{
+  nativeColorPicker.click();
 });
 
-colorGSlider.addEventListener('input', ()=>{
-  currentColor.g = Number(colorGSlider.value);
-  colorGLabel.textContent = String(currentColor.g);
-  updateColorPreview();
-});
-
-colorBSlider.addEventListener('input', ()=>{
-  currentColor.b = Number(colorBSlider.value);
-  colorBLabel.textContent = String(currentColor.b);
-  updateColorPreview();
+nativeColorPicker.addEventListener('input', ()=>{
+  const hex = nativeColorPicker.value;
+  currentColor.r = parseInt(hex.substr(1,2), 16);
+  currentColor.g = parseInt(hex.substr(3,2), 16);
+  currentColor.b = parseInt(hex.substr(5,2), 16);
+  updateColorDisplay();
+  addToRecentColors(currentColor);
 });
 
 colorASlider.addEventListener('input', ()=>{
   currentColor.a = Number(colorASlider.value);
   colorALabel.textContent = String(currentColor.a);
-  updateColorPreview();
+  updateColorDisplay();
 });
+
+// Recent colors functionality
+function addToRecentColors(color){
+  // Check if color already exists in recent colors
+  const exists = recentColors.some(c => 
+    c.r === color.r && c.g === color.g && c.b === color.b && c.a === color.a
+  );
+  
+  if(!exists){
+    // Add to front and keep only 5 most recent
+    recentColors.unshift({r: color.r, g: color.g, b: color.b, a: color.a});
+    recentColors = recentColors.slice(0, 5);
+    updateRecentColorButtons();
+  }
+}
+
+function updateRecentColorButtons(){
+  recentColors.forEach((color, idx) => {
+    if(recentColorButtons[idx]){
+      const colorStr = `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a / 255})`;
+      recentColorButtons[idx].style.background = colorStr;
+      recentColorButtons[idx].dataset.r = color.r;
+      recentColorButtons[idx].dataset.g = color.g;
+      recentColorButtons[idx].dataset.b = color.b;
+      recentColorButtons[idx].dataset.a = color.a;
+      recentColorButtons[idx].title = `RGB(${color.r},${color.g},${color.b}) A:${color.a}`;
+    }
+  });
+}
+
+// Click recent color button to apply
+recentColorButtons.forEach(btn => {
+  if(btn){
+    btn.addEventListener('click', ()=>{
+      if(btn.dataset.gray !== undefined){
+        // Legacy grayscale button
+        const grayValue = Number(btn.dataset.gray);
+        currentColor.r = grayValue;
+        currentColor.g = grayValue;
+        currentColor.b = grayValue;
+        currentColor.a = 255;
+      }else{
+        // Recent color button
+        currentColor.r = Number(btn.dataset.r || 0);
+        currentColor.g = Number(btn.dataset.g || 0);
+        currentColor.b = Number(btn.dataset.b || 0);
+        currentColor.a = Number(btn.dataset.a || 255);
+      }
+      colorASlider.value = String(currentColor.a);
+      colorALabel.textContent = String(currentColor.a);
+      updateColorDisplay();
+    });
+  }
+});
+
 
 onionSlider.addEventListener('input', ()=>{
   onionDepth = Number(onionSlider.value);
   onionLabel.textContent = String(onionDepth);
   if(!isPlaying) renderMain();
 });
-
-// Color palette quick access (grayscale shortcuts)
-const colorPalette = document.getElementById('colorPalette');
-if(colorPalette){
-  colorPalette.addEventListener('click', (e)=>{
-    const btn = e.target.closest('button[data-gray]');
-    if(btn){
-      const grayValue = Number(btn.dataset.gray);
-      colorRSlider.value = String(grayValue);
-      colorGSlider.value = String(grayValue);
-      colorBSlider.value = String(grayValue);
-      colorASlider.value = '255';
-      currentColor.r = grayValue;
-      currentColor.g = grayValue;
-      currentColor.b = grayValue;
-      currentColor.a = 255;
-      colorRLabel.textContent = String(grayValue);
-      colorGLabel.textContent = String(grayValue);
-      colorBLabel.textContent = String(grayValue);
-      colorALabel.textContent = '255';
-      updateColorPreview();
-    }
-  });
-}
 
 // Keyboard shortcuts
 window.addEventListener('keydown', e=>{
@@ -2213,10 +2303,10 @@ window.addEventListener('keydown', e=>{
           if(activeStrokeMap && !activeStrokeMap.has(idx)){
             activeStrokeMap.set(idx, [frameArr[idx], frameArr[idx+1], frameArr[idx+2], frameArr[idx+3]]);
           }
-          frameArr[idx] = WHITE_FILL; // R
-          frameArr[idx+1] = WHITE_FILL; // G
-          frameArr[idx+2] = WHITE_FILL; // B
-          frameArr[idx+3] = 255; // A (fully opaque)
+          frameArr[idx] = 0; // R
+          frameArr[idx+1] = 0; // G
+          frameArr[idx+2] = 0; // B
+          frameArr[idx+3] = 0; // A (transparent)
         }
       }
       commitStroke();
@@ -2254,10 +2344,10 @@ window.addEventListener('keydown', e=>{
             if(activeStrokeMap && !activeStrokeMap.has(idx)){
               activeStrokeMap.set(idx, [frameArr[idx], frameArr[idx+1], frameArr[idx+2], frameArr[idx+3]]);
             }
-            frameArr[idx] = WHITE_FILL; // R
-            frameArr[idx+1] = WHITE_FILL; // G
-            frameArr[idx+2] = WHITE_FILL; // B
-            frameArr[idx+3] = 255; // A
+            frameArr[idx] = 0; // R
+            frameArr[idx+1] = 0; // G
+            frameArr[idx+2] = 0; // B
+            frameArr[idx+3] = 0; // A (transparent)
           }
         }
         commitStroke();
@@ -2778,7 +2868,7 @@ function setMode(mode){
   const drawingPanel = document.getElementById('drawingPanel'); if(drawingPanel) drawingPanel.style.display = isMontage ? 'none' : '';
 
   // disable drawing/frame-edit controls while in montage mode
-  const drawingControls = [toolPencil, toolEraser, toolSoft, undoBtn, redoBtn, addFrameBtn, dupFrameBtn, delFrameBtn, brushSize, colorRSlider, colorGSlider, colorBSlider, colorASlider, onionSlider];
+  const drawingControls = [toolPencil, toolEraser, toolSoft, undoBtn, redoBtn, addFrameBtn, dupFrameBtn, delFrameBtn, brushSize, colorASlider, nativeColorPicker, onionSlider];
   drawingControls.forEach(el => { if(el) el.disabled = isMontage; });
 
   // select first chunk when entering montage mode
@@ -3882,11 +3972,9 @@ function init(){
 
   setTool('pencil');
   brushSizeLabel.textContent = brushSize.value;
-  colorRLabel.textContent = colorRSlider.value;
-  colorGLabel.textContent = colorGSlider.value;
-  colorBLabel.textContent = colorBSlider.value;
   colorALabel.textContent = colorASlider.value;
-  updateColorPreview();
+  updateColorDisplay();
+  updateRecentColorButtons();
   onionLabel.textContent = onionSlider.value;
 
   initThumbs(false);
