@@ -16,6 +16,12 @@ header .hint{font-size:12px;color:var(--muted)}
 .stage{padding:12px;display:flex;flex-direction:column;gap:12px;height:100%;overflow-y:auto}
 .canvasPanel{display:flex;flex-direction:column;gap:10px}
 .mainCanvasWrap{background:#060a12;border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;justify-content:center;align-items:center;position:relative;overflow:visible}
+
+/* Montage mode: more compact layout */
+body.montage-mode .stage{gap:8px;padding:10px}
+body.montage-mode .canvasPanel{gap:6px}
+body.montage-mode .mainCanvasWrap{padding:8px}
+body.montage-mode .panelBlock{padding:8px;gap:6px}
 canvas#main{width:512px;height:512px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:
   linear-gradient(45deg, #ccc 25%, transparent 25%),
   linear-gradient(-45deg, #ccc 25%, transparent 25%),
@@ -97,10 +103,42 @@ input[type="range"]{width:160px}
 .timeline-preview canvas{width:80px;height:80px;border-radius:6px;background:#fff;image-rendering:pixelated;border:1px solid rgba(255,255,255,.06);display:block}
 .timeline-preview .info{font-size:10px;color:var(--muted);margin-top:4px;text-align:center}
 
+/* Responsive layout for tablets and narrow displays */
 @media (max-width:980px){
-  .wrap{grid-template-columns:1fr}
+  .wrap{grid-template-columns:1fr;gap:10px;padding:10px}
   canvas#main{width:min(92vw,512px);height:min(92vw,512px)}
   .frames{grid-template-columns:repeat(4,1fr)}
+  header{flex-wrap:wrap;padding:10px 12px}
+  header .hint{display:none}
+}
+
+/* Mobile-friendly vertical layout for narrow screens */
+@media (max-width:768px){
+  .wrap{grid-template-columns:1fr;padding:8px;gap:8px;height:calc(100vh - 80px)}
+  header{padding:8px 10px}
+  header h1{font-size:13px}
+  #editorToggle{width:100%;justify-content:center}
+  canvas#main{width:min(95vw,400px);height:min(95vw,400px)}
+  .stage{padding:8px;gap:8px}
+  .sidebar{padding:8px}
+  .frames{grid-template-columns:repeat(3,1fr);gap:8px}
+  .card{border-radius:10px}
+  button{padding:6px 8px;font-size:11px}
+  .panelBlock{padding:8px;gap:6px}
+  body.montage-mode .stage{padding:6px;gap:6px}
+}
+
+/* Extra small screens / mobile portrait */
+@media (max-width:480px){
+  .wrap{padding:6px;gap:6px;height:calc(100vh - 70px)}
+  header{padding:6px 8px;gap:6px}
+  header h1{font-size:12px}
+  canvas#main{width:min(96vw,360px);height:min(96vw,360px)}
+  .frames{grid-template-columns:repeat(2,1fr);gap:6px}
+  .stage{padding:6px;gap:6px}
+  .sidebar{padding:6px}
+  #montageChunks .chunk-item{padding:6px;gap:4px 6px}
+  #montageChunks .chunk-thumb{width:48px;height:48px}
 }
 
 /* Montage sidebar styles */
@@ -2042,7 +2080,12 @@ window.addEventListener('blur', ()=>{
 
 // Mouse wheel events for brush size and canvas zoom
 main.addEventListener('wheel', (ev)=>{
-  if(isPlaying || currentMode !== 'chunk') return;
+  // Only process wheel events in chunk mode and when not playing
+  if(currentMode !== 'chunk' || isPlaying){
+    // Prevent any default behavior in montage mode to avoid canvas leakage
+    if(currentMode !== 'chunk') ev.preventDefault();
+    return;
+  }
   
   // Canvas zoom with C + wheel (or Ctrl/Cmd + wheel)
   if(cKeyPressed || ev.ctrlKey || ev.metaKey){
@@ -3185,6 +3228,11 @@ function setMode(mode){
     main.style.transform = '';
     const btn = document.getElementById('canvasZoomResetBtn');
     if(btn) btn.textContent = `Zoom 100%`;
+    // Add body class for compact montage styling
+    document.body.classList.add('montage-mode');
+  }else{
+    // Remove montage mode class when switching to chunk editor
+    document.body.classList.remove('montage-mode');
   }
 
   // Update header hint text based on mode
