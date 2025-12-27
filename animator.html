@@ -12,7 +12,7 @@ header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;alig
 header h1{font-size:14px;margin:0;letter-spacing:.3px;color:var(--text);font-weight:600}
 header .hint{font-size:12px;color:var(--muted)}
 .wrap{display:grid;grid-template-columns:1fr 320px;gap:14px;padding:14px;max-width:1200px;margin:0 auto;align-items:start;height:calc(100vh - 90px)}
-.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35);height:100%;overflow:auto}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35);height:100%;overflow:hidden}
 .stage{padding:12px;display:flex;flex-direction:column;gap:12px;height:100%;overflow-y:auto}
 .canvasPanel{display:flex;flex-direction:column;gap:10px}
 .mainCanvasWrap{background:#060a12;border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;justify-content:center;align-items:center;position:relative;overflow:visible}
@@ -105,11 +105,13 @@ input[type="range"]{width:160px}
 
 /* Responsive layout for tablets and narrow displays */
 @media (max-width:980px){
-  .wrap{grid-template-columns:1fr;gap:10px;padding:10px}
+  .wrap{grid-template-columns:1fr;gap:10px;padding:10px;height:calc(100vh - 80px)}
   canvas#main{width:min(92vw,512px);height:min(92vw,512px)}
   .frames{grid-template-columns:repeat(4,1fr)}
   header{flex-wrap:wrap;padding:10px 12px}
   header .hint{display:none}
+  .card{overflow:hidden}
+  .stage{overflow-y:auto}
 }
 
 /* Mobile-friendly vertical layout for narrow screens */
@@ -119,10 +121,11 @@ input[type="range"]{width:160px}
   header h1{font-size:13px}
   #editorToggle{width:100%;justify-content:center}
   canvas#main{width:min(95vw,400px);height:min(95vw,400px)}
-  .stage{padding:8px;gap:8px}
-  .sidebar{padding:8px}
+  .stage{padding:8px;gap:8px;overflow-y:auto}
+  .sidebar{padding:8px;overflow-y:auto}
   .frames{grid-template-columns:repeat(3,1fr);gap:8px}
-  .card{border-radius:10px}
+  .framesWrap{overflow-y:auto;overflow-x:hidden}
+  .card{border-radius:10px;overflow:hidden}
   button{padding:6px 8px;font-size:11px}
   .panelBlock{padding:8px;gap:6px}
   body.montage-mode .stage{padding:6px;gap:6px}
@@ -135,10 +138,12 @@ input[type="range"]{width:160px}
   header h1{font-size:12px}
   canvas#main{width:min(96vw,360px);height:min(96vw,360px)}
   .frames{grid-template-columns:repeat(2,1fr);gap:6px}
-  .stage{padding:6px;gap:6px}
-  .sidebar{padding:6px}
+  .stage{padding:6px;gap:6px;overflow-y:auto}
+  .sidebar{padding:6px;overflow-y:auto}
+  .framesWrap{overflow-y:auto;overflow-x:hidden}
   #montageChunks .chunk-item{padding:6px;gap:4px 6px}
   #montageChunks .chunk-thumb{width:48px;height:48px}
+  .card{overflow:hidden}
 }
 
 /* Montage sidebar styles */
@@ -2062,6 +2067,7 @@ main.addEventListener('mousemove', ev=>{
 });
 
 main.addEventListener('mouseleave', ()=>{
+  if(currentMode !== 'chunk') return; // Only handle in chunk mode to prevent leakage
   cursorPos = null;
   if(!drawing) renderMain();
 });
