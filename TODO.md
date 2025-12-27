@@ -54,6 +54,17 @@
 ### Chunk Editor
 
 - [x] **Selection tool** - ✅ Fully implemented with copy/cut/paste, drag-and-drop, and floating selection
+- [ ] **Lasso selection copy/cut/paste** - Complete implementation of pixel extraction from arbitrary closed paths
+  - **Algorithm**: Point-in-polygon test (ray-casting algorithm)
+  - **Implementation steps**:
+    1. Convert lasso path to closed polygon (already done - path is auto-closed)
+    2. Compute bounding box of lasso path (min/max x,y coordinates)
+    3. Implement ray-casting algorithm to test if each pixel in bounding box is inside polygon
+    4. Extract only pixels inside the polygon to selectionData
+    5. Update cut operation to clear only pixels inside polygon
+    6. Update paste to composite only extracted pixels with alpha
+  - **Ray-casting algorithm**: Cast horizontal ray from point to infinity, count intersections with polygon edges. Odd count = inside, even = outside
+  - **Edge cases**: Handle horizontal edges, vertex intersections, degenerate polygons
 - [ ] **Drawing tools expansion** - Add line, rectangle, circle, fill tools
 
 ### General UX
@@ -66,30 +77,27 @@
 
 ### Color and Transparency Support
 
-- [ ] **Add RGBA color support to chunk editor** - Major feature that will disruptively change file format
-  - **Breaking change**: Will require migration of existing projects from grayscale (1 byte per pixel) to RGBA (4 bytes per pixel)
-  - **UI changes needed**:
-    - Add color picker to drawing tools (replace Gray slider with RGB/HSV controls)
-    - Add alpha/transparency slider (0-255 or 0-100%)
-    - Update brush preview to show current color/alpha
-    - Add color palette for quick color selection
-  - **File format impact**:
-    - Chunk project files: Change frame data from Uint8Array to Uint8ClampedArray (RGBA)
-    - Montage project files: Must handle both legacy grayscale and new RGBA chunks
-    - Version bump required (e.g., v1.x → v2.0)
-    - Implement backward compatibility reader for legacy grayscale projects
-  - **Rendering changes**:
-    - Update all canvas operations to handle RGBA
-    - Implement alpha blending for paste operations (additive/multiplicative/replace modes)
-    - Update onion skinning to respect alpha channels
-    - Update GIF export to handle alpha (flatten or use transparency index)
-  - **Implementation plan**:
-    1. Design file format v2.0 with RGBA support
-    2. Implement backward-compatible loader for v1.x projects
-    3. Update UI with color/alpha controls
-    4. Refactor all drawing operations for RGBA
-    5. Test extensively with both new and legacy projects
-    6. Update documentation and migration guide
+- [x] **RGBA color support** - ✅ Fully implemented in December 2025
+  - **File format v2.0**: Migrated from grayscale (Uint8Array, 1 byte/pixel) to RGBA (Uint8ClampedArray, 4 bytes/pixel)
+  - **Backward compatibility**: Auto-detects v1.x projects and converts grayscale to RGBA on load
+  - **UI changes**:
+    - ✅ Clickable color box with native HTML5 color picker
+    - ✅ Alpha/transparency slider (0-255)
+    - ✅ 5 recent color slots (auto-updating with grayscale defaults)
+    - ✅ Checkered background pattern for transparent areas
+  - **Drawing improvements**:
+    - ✅ Eraser creates transparent pixels (not white)
+    - ✅ Soft brush applies softness via alpha channel
+    - ✅ Proper alpha compositing for overlapping strokes
+    - ✅ Canvas defaults to transparent (alpha=0)
+  - **Selection tools**:
+    - ✅ Rectangular selection with cut/copy/paste
+    - ✅ Free-form (lasso) selection mode
+    - ⚠️ Lasso cut/copy/paste partially implemented (visual only)
+  - **Rendering**:
+    - ✅ Alpha blending for onion skinning
+    - ✅ GIF export flattens transparency to white background
+    - ✅ Montage editor handles mixed v1.x/v2.0 chunks
 
 ## Performance Optimizations
 
@@ -160,6 +168,14 @@
   - [x] Insert to Montage button visibility fix
   - [x] Enhanced selection tool hints (Ctrl+C/V)
   - [x] Incremental thumbnail rendering for performance
+- [x] RGBA color and transparency support (December 2025)
+  - [x] File format v2.0 with backward compatibility
+  - [x] Native color picker with recent color slots
+  - [x] Alpha slider and checkered background for transparency
+  - [x] Proper alpha compositing throughout drawing system
+  - [x] Free-form (lasso) selection tool (basic implementation)
+  - [x] Improved UI layout (grid/zoom button grouping, panel alignment)
+  - [x] Color picker behavior improvements
 
 ## Notes
 
