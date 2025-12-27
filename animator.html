@@ -488,6 +488,22 @@ let selectionFloating = false; // true when selection can be dragged (after past
 let selectionDragging = false; // true during drag operation
 let lassoPath = []; // Array of {x, y} points for lasso selection
 
+// Ray-casting point-in-polygon test for lasso selection
+function isPointInPolygon(x, y, polygonPoints){
+  if(!polygonPoints || polygonPoints.length < 3) return false;
+  let inside = false;
+  for(let i = 0, j = polygonPoints.length - 1; i < polygonPoints.length; j = i++){
+    const xi = polygonPoints[i].x, yi = polygonPoints[i].y;
+    const xj = polygonPoints[j].x, yj = polygonPoints[j].y;
+    
+    const intersect = ((yi > y) !== (yj > y)) &&
+      (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    
+    if(intersect) inside = !inside;
+  }
+  return inside;
+}
+
 // Active stroke diff recording
 let activeStrokeMap = null;
 
@@ -1014,7 +1030,7 @@ function renderMain(){
 
 function renderThumb(i){
   const c = thumbCanvases[i];
-  const tctx = c.getContext('2d', { alpha:false });
+  const tctx = c.getContext('2d', { alpha:true });
   tctx.imageSmoothingEnabled = false;
 
   offCtx.putImageData(composeFrameOnly(i), 0, 0);
@@ -1633,7 +1649,7 @@ function initThumbs(preserveIndex = true){
     const c = document.createElement('canvas');
     c.width = 64;
     c.height = 64;
-    c.getContext('2d', { alpha:false }).imageSmoothingEnabled = false;
+    c.getContext('2d', { alpha:true }).imageSmoothingEnabled = false;
     
     // Add arrow buttons for frame reordering
     const arrows = document.createElement('div');
@@ -1909,27 +1925,74 @@ function endDraw(ev){
       }
     } else {
       // Finalize selection - copy selected pixels
-      const x1 = Math.min(selection.x1, selection.x2);
-      const y1 = Math.min(selection.y1, selection.y2);
-      const x2 = Math.max(selection.x1, selection.x2);
-      const y2 = Math.max(selection.y1, selection.y2);
-      const w = x2 - x1 + 1;
-      const h = y2 - y1 + 1;
-      
-      if(w > 0 && h > 0){
-        selectionData = new Uint8ClampedArray(w * h * 4); // RGBA: 4 bytes per pixel
-        const frameArr = frames[current];
-        for(let y = y1; y <= y2; y++){
-          for(let x = x1; x <= x2; x++){
-            const srcIdx = xyToIndex(x, y) * 4;
-            const destIdx = ((y - y1) * w + (x - x1)) * 4;
-            selectionData[destIdx] = frameArr[srcIdx];
-            selectionData[destIdx+1] = frameArr[srcIdx+1];
-            selectionData[destIdx+2] = frameArr[srcIdx+2];
-            selectionData[destIdx+3] = frameArr[srcIdx+3];
-          }
+      if(selectionMode === 'lasso' && selection.path && selection.path.length >= 3){
+        // Lasso selection: use point-in-polygon test
+        const path = selection.path;
+        
+        // Compute bounding box
+        let minX = path[0].x, maxX = path[0].x;
+        let minY = path[0].y, maxY = path[0].y;
+        for(let i = 1; i < path.length; i++){
+          minX = Math.min(minX, path[i].x);
+          maxX = Math.max(maxX, path[i].x);
+          minY = Math.min(minY, path[i].y);
+          maxY = Math.max(maxY, path[i].y);
         }
-        notify('Selection created. Drag to move, Ctrl+C to copy, Ctrl+X to cut, Ctrl+V to paste, or Delete to clear.');
+        
+        const w = maxX - minX + 1;
+        const h = maxY - minY + 1;
+        
+        if(w > 0 && h > 0){
+          selectionData = new Uint8ClampedArray(w * h * 4); // RGBA: 4 bytes per pixel
+          const frameArr = frames[current];
+          
+          // Extract only pixels inside the polygon
+          for(let y = minY; y <= maxY; y++){
+            for(let x = minX; x <= maxX; x++){
+              if(isPointInPolygon(x, y, path)){
+                const srcIdx = xyToIndex(x, y) * 4;
+                const destIdx = ((y - minY) * w + (x - minX)) * 4;
+                selectionData[destIdx] = frameArr[srcIdx];
+                selectionData[destIdx+1] = frameArr[srcIdx+1];
+                selectionData[destIdx+2] = frameArr[srcIdx+2];
+                selectionData[destIdx+3] = frameArr[srcIdx+3];
+              }
+              // Pixels outside polygon stay transparent (already 0 in new array)
+            }
+          }
+          
+          // Update selection to bounding box for drag/paste operations
+          selection.x1 = minX;
+          selection.y1 = minY;
+          selection.x2 = maxX;
+          selection.y2 = maxY;
+          
+          notify('Lasso selection created. Drag to move, Ctrl+C to copy, Ctrl+X to cut, Ctrl+V to paste, or Delete to clear.');
+        }
+      } else {
+        // Rectangular selection
+        const x1 = Math.min(selection.x1, selection.x2);
+        const y1 = Math.min(selection.y1, selection.y2);
+        const x2 = Math.max(selection.x1, selection.x2);
+        const y2 = Math.max(selection.y1, selection.y2);
+        const w = x2 - x1 + 1;
+        const h = y2 - y1 + 1;
+        
+        if(w > 0 && h > 0){
+          selectionData = new Uint8ClampedArray(w * h * 4); // RGBA: 4 bytes per pixel
+          const frameArr = frames[current];
+          for(let y = y1; y <= y2; y++){
+            for(let x = x1; x <= x2; x++){
+              const srcIdx = xyToIndex(x, y) * 4;
+              const destIdx = ((y - y1) * w + (x - x1)) * 4;
+              selectionData[destIdx] = frameArr[srcIdx];
+              selectionData[destIdx+1] = frameArr[srcIdx+1];
+              selectionData[destIdx+2] = frameArr[srcIdx+2];
+              selectionData[destIdx+3] = frameArr[srcIdx+3];
+            }
+          }
+          notify('Selection created. Drag to move, Ctrl+C to copy, Ctrl+X to cut, Ctrl+V to paste, or Delete to clear.');
+        }
       }
     }
   }else{
@@ -2128,7 +2191,7 @@ const previewCanvas = timelinePreview ? timelinePreview.querySelector('canvas') 
 const previewInfo = document.getElementById('previewInfo');
 
 if(montageScrubber && timelinePreview && previewCanvas){
-  const previewCtx = previewCanvas.getContext('2d', { alpha: false });
+  const previewCtx = previewCanvas.getContext('2d', { alpha: true });
   previewCtx.imageSmoothingEnabled = false;
   
   montageScrubber.addEventListener('mousemove', (e)=>{
@@ -2489,20 +2552,46 @@ window.addEventListener('keydown', e=>{
     if(tool === 'select' && selection){
       beginStroke();
       const frameArr = frames[current];
-      const x1 = Math.min(selection.x1, selection.x2);
-      const y1 = Math.min(selection.y1, selection.y2);
-      const x2 = Math.max(selection.x1, selection.x2);
-      const y2 = Math.max(selection.y1, selection.y2);
-      for(let y = y1; y <= y2; y++){
-        for(let x = x1; x <= x2; x++){
-          const idx = xyToIndex(x, y) * 4;
-          if(activeStrokeMap && !activeStrokeMap.has(idx)){
-            activeStrokeMap.set(idx, [frameArr[idx], frameArr[idx+1], frameArr[idx+2], frameArr[idx+3]]);
+      
+      if(selection.path && selection.path.length >= 3){
+        // Lasso selection: clear only pixels inside polygon
+        const path = selection.path;
+        const x1 = Math.min(selection.x1, selection.x2);
+        const y1 = Math.min(selection.y1, selection.y2);
+        const x2 = Math.max(selection.x1, selection.x2);
+        const y2 = Math.max(selection.y1, selection.y2);
+        
+        for(let y = y1; y <= y2; y++){
+          for(let x = x1; x <= x2; x++){
+            if(isPointInPolygon(x, y, path)){
+              const idx = xyToIndex(x, y) * 4;
+              if(activeStrokeMap && !activeStrokeMap.has(idx)){
+                activeStrokeMap.set(idx, [frameArr[idx], frameArr[idx+1], frameArr[idx+2], frameArr[idx+3]]);
+              }
+              frameArr[idx] = 0; // R
+              frameArr[idx+1] = 0; // G
+              frameArr[idx+2] = 0; // B
+              frameArr[idx+3] = 0; // A (transparent)
+            }
           }
-          frameArr[idx] = 0; // R
-          frameArr[idx+1] = 0; // G
-          frameArr[idx+2] = 0; // B
-          frameArr[idx+3] = 0; // A (transparent)
+        }
+      } else {
+        // Rectangular selection
+        const x1 = Math.min(selection.x1, selection.x2);
+        const y1 = Math.min(selection.y1, selection.y2);
+        const x2 = Math.max(selection.x1, selection.x2);
+        const y2 = Math.max(selection.y1, selection.y2);
+        for(let y = y1; y <= y2; y++){
+          for(let x = x1; x <= x2; x++){
+            const idx = xyToIndex(x, y) * 4;
+            if(activeStrokeMap && !activeStrokeMap.has(idx)){
+              activeStrokeMap.set(idx, [frameArr[idx], frameArr[idx+1], frameArr[idx+2], frameArr[idx+3]]);
+            }
+            frameArr[idx] = 0; // R
+            frameArr[idx+1] = 0; // G
+            frameArr[idx+2] = 0; // B
+            frameArr[idx+3] = 0; // A (transparent)
+          }
         }
       }
       commitStroke();
@@ -2534,16 +2623,37 @@ window.addEventListener('keydown', e=>{
         const y1 = Math.min(selection.y1, selection.y2);
         const x2 = Math.max(selection.x1, selection.x2);
         const y2 = Math.max(selection.y1, selection.y2);
-        for(let y = y1; y <= y2; y++){
-          for(let x = x1; x <= x2; x++){
-            const idx = xyToIndex(x, y) * 4;
-            if(activeStrokeMap && !activeStrokeMap.has(idx)){
-              activeStrokeMap.set(idx, [frameArr[idx], frameArr[idx+1], frameArr[idx+2], frameArr[idx+3]]);
+        
+        if(selection.path && selection.path.length >= 3){
+          // Lasso selection: clear only pixels inside polygon
+          const path = selection.path;
+          for(let y = y1; y <= y2; y++){
+            for(let x = x1; x <= x2; x++){
+              if(isPointInPolygon(x, y, path)){
+                const idx = xyToIndex(x, y) * 4;
+                if(activeStrokeMap && !activeStrokeMap.has(idx)){
+                  activeStrokeMap.set(idx, [frameArr[idx], frameArr[idx+1], frameArr[idx+2], frameArr[idx+3]]);
+                }
+                frameArr[idx] = 0; // R
+                frameArr[idx+1] = 0; // G
+                frameArr[idx+2] = 0; // B
+                frameArr[idx+3] = 0; // A (transparent)
+              }
             }
-            frameArr[idx] = 0; // R
-            frameArr[idx+1] = 0; // G
-            frameArr[idx+2] = 0; // B
-            frameArr[idx+3] = 0; // A (transparent)
+          }
+        } else {
+          // Rectangular selection
+          for(let y = y1; y <= y2; y++){
+            for(let x = x1; x <= x2; x++){
+              const idx = xyToIndex(x, y) * 4;
+              if(activeStrokeMap && !activeStrokeMap.has(idx)){
+                activeStrokeMap.set(idx, [frameArr[idx], frameArr[idx+1], frameArr[idx+2], frameArr[idx+3]]);
+              }
+              frameArr[idx] = 0; // R
+              frameArr[idx+1] = 0; // G
+              frameArr[idx+2] = 0; // B
+              frameArr[idx+3] = 0; // A (transparent)
+            }
           }
         }
         commitStroke();
@@ -3414,7 +3524,7 @@ function renderMontageChunks(){
         const h = ch._project.height || H;
         thumbCanvas.width = 48;
         thumbCanvas.height = 48;
-        const thumbCtx = thumbCanvas.getContext('2d', { alpha:false });
+        const thumbCtx = thumbCanvas.getContext('2d', { alpha:true });
         thumbCtx.imageSmoothingEnabled = false;
         
         // Decode frame bytes and render to thumbnail
