@@ -33,13 +33,20 @@
 - [x] **Flattened selection UI** - ✅ Dedicated Rect/Lasso buttons replace dropdown
 - [x] **Compact UI layout** - ✅ Zoom lock on first row, reduced spacing for more canvas space
 
-### Known Issues (Deferred to Future PR)
+### Known Issues (December 2025 - RESOLVED)
 
-- [ ] **Narrow mode scrolling** - Cannot scroll to reveal hidden content without triggering pull-to-refresh
-  - **Root cause**: `overflow:hidden` on body prevents scrolling to avoid accidental refresh
-  - **Required fix**: Implement scrollable app container that doesn't trigger pull-to-refresh
-- [ ] **Selection UI consolidation** - Select button could be removed, leaving only Rect/Lasso buttons
+- [x] **Narrow mode scrolling** - ✅ Fixed: Changed body to `overflow:auto` with fixed positioning to allow scrolling without triggering pull-to-refresh
+  - **Solution**: Body now uses `overflow:auto` with `position:fixed` and proper min-heights for flexible content
+  - **Impact**: Users can now scroll on narrow screens (tablets/phones) without triggering browser pull-to-refresh
+- [x] **Zoom lock improvements** - ✅ Fixed: Zoom lock now prevents all pinch gestures including during fast drawing
+  - **Solution**: Added zoom lock checks in both touchstart and touchmove handlers, disabled double-tap zoom reset when locked
+  - **Impact**: Drawing tools work reliably without accidental zoom interference
+- [x] **Canvas scaling optimization** - ✅ Fixed: Canvas now properly scales to maximize window space and show entire canvas by default
+  - **Solution**: Updated responsive breakpoints to use `calc(100vw - Xpx)` for better space utilization, increased max canvas sizes
+  - **Impact**: Canvas uses available screen space more efficiently across all device sizes
+- [x] **Selection UI consolidation** - ✅ Fixed: Removed redundant Select button, keeping only Rect/Lasso buttons
   - **Reason**: Select tool is primarily a mode switcher; Rect/Lasso directly set selection mode
+  - **Impact**: Simplified UI, more direct access to selection tools
 
 ## Medium Priority
 
