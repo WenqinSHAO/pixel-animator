@@ -45,10 +45,11 @@ header .hint{font-size:12px;color:var(--muted)}
 .mainCanvasWrap{background:#060a12;border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;justify-content:center;align-items:center;position:relative;overflow:visible}
 
 /* Montage mode: more compact layout */
-body.montage-mode .stage{gap:8px;padding:10px}
-body.montage-mode .canvasPanel{gap:6px}
-body.montage-mode .mainCanvasWrap{padding:8px}
+body.montage-mode .stage{gap:6px;padding:10px}
+body.montage-mode .canvasPanel{gap:4px}
+body.montage-mode .mainCanvasWrap{padding:6px}
 body.montage-mode .panelBlock{padding:8px;gap:6px}
+body.montage-mode #trimBar{margin-top:6px}
 canvas#main{width:512px;height:512px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:
   linear-gradient(45deg, #ccc 25%, transparent 25%),
   linear-gradient(-45deg, #ccc 25%, transparent 25%),
@@ -152,6 +153,8 @@ input[type="range"]{width:160px}
   .sidebar{height:100%;max-height:100%;overflow-y:auto}
   .canvasPanel{flex-shrink:0}
   .framesWrap,.sidebar .section{overflow-y:auto}
+  /* Montage mode specific: reduce canvas size slightly to ensure scrubber is visible */
+  body.montage-mode canvas#main{width:480px;height:480px}
 }
 
 /* Narrow screens (tablets/phones): Single-column layout, width-constrained, scrollable */
@@ -271,7 +274,7 @@ input[type="range"]{width:160px}
 <header>
   <h1 id="title">Frame-by-Frame Animator</h1>
   <div id="headerHint" class="hint">
-    Chunk mode: Space play/pause · ←/→ frame nav · A add · D duplicate · S save · Ctrl/Cmd+Z undo | Montage mode: ←/→ frame nav · ↑/↓ chunk nav
+    Chunk mode: Space play/pause · ←/→ frame nav · A add · D duplicate · S save · Ctrl/Cmd+Z undo
   </div>
   <div style="display:flex;gap:8px;align-items:center">
     <button id="themeToggleBtn" title="Toggle theme (optimized for e-ink displays)" style="padding:8px 12px">☀️ Light</button>
@@ -352,7 +355,7 @@ input[type="range"]{width:160px}
       </div>
 
       <!-- Trim bar for montage chunk trimming (always visible; disabled until a chunk is selected) -->
-      <div id="trimBar" style="margin-top:10px;">
+      <div id="trimBar" style="margin-top:6px;">
         <div class="panelBlock">
           <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px;">
             <div style="font-size:12px;font-weight:600;color:var(--text)">Trim Range:</div>
