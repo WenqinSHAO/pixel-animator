@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
 <title>Frame-by-Frame Animator</title>
 <style>
 /* Dark theme (default) */
@@ -31,7 +33,7 @@ body.light-theme #montageChunks .chunk-alias{background:#ffffff;border-color:#cc
 body.light-theme .pill{background:#fafafa;border-color:#cccccc}
 
 *{box-sizing:border-box}
-body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:linear-gradient(180deg,#081019,#070b12 55%,#05070c)}
+body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:linear-gradient(180deg,#081019,#070b12 55%,#05070c);overscroll-behavior:none;overflow:hidden}
 header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
 header h1{font-size:14px;margin:0;letter-spacing:.3px;color:var(--text);font-weight:600}
 header .hint{font-size:12px;color:var(--muted)}
@@ -53,10 +55,10 @@ canvas#main{width:512px;height:512px;border-radius:10px;border:1px solid rgba(25
   linear-gradient(-45deg, transparent 75%, #ccc 75%);
   background-size: 16px 16px;
   background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
-  background-color:#fff;image-rendering:pixelated;touch-action:none;cursor:crosshair;position:relative;z-index:1;-webkit-user-select:none;user-select:none}
+  background-color:#fff;image-rendering:pixelated;touch-action:none;cursor:crosshair;position:relative;z-index:1;-webkit-user-select:none;user-select:none;transform-origin:center center}
 
-/* Canvas zoomed state - make it appear above everything */
-canvas#main.zoomed{position:fixed;z-index:10000;top:50%;left:50%;transform-origin:center center}
+/* Canvas zoomed state - always on top when zoomed >100% */
+canvas#main.zoomed{position:fixed;z-index:10000;top:50%;left:50%;transform-origin:center center;pointer-events:auto}
 
 /* Touch-friendly enhancements */
 @media (pointer: coarse){
@@ -156,11 +158,11 @@ input[type="range"]{width:160px}
   .frames{grid-template-columns:repeat(4,1fr)}
   header{flex-wrap:wrap;padding:10px 12px}
   header .hint{display:none}
-  .card{overflow:visible;height:auto}
-  .stage{overflow-y:visible;height:auto;-webkit-overflow-scrolling:touch}
-  .sidebar{max-height:none;height:auto;overflow-y:visible;-webkit-overflow-scrolling:touch}
+  .card{overflow:visible;height:auto;width:100%}
+  .stage{overflow-y:visible;height:auto;-webkit-overflow-scrolling:touch;width:100%}
+  .sidebar{max-height:none;height:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;width:100%}
   /* Stack stage above sidebar - maximize canvas width */
-  .wrap{display:flex;flex-direction:column}
+  .wrap{display:flex;flex-direction:column;width:100%}
 }
 
 /* Tablet landscape optimization (768-1100px): Larger canvas */
@@ -1897,6 +1899,8 @@ main.addEventListener('pointerdown', ev=>{
   if(isPlaying) return;
   if(currentMode !== 'chunk') return; // disable drawing in montage mode
   if(isPinching) return; // prevent drawing during pinch gesture
+  // Also check if this is a touch pointer type and we have multiple touches
+  if(ev.pointerType === 'touch' && activeTouchIds.size > 1) return;
   
   const pt = getPointerXY(ev);
   
@@ -4477,15 +4481,20 @@ let touchStartZoom = 1.0;
 let lastTouchTime = 0;
 let lastTouchCount = 0;
 let isPinching = false; // Flag to prevent drawing during pinch
+let activeTouchIds = new Set(); // Track active touch IDs
 
 // Get mainCanvasWrap element for zoom support
 const mainCanvasWrap = document.querySelector('.mainCanvasWrap');
 
 // Combined touchstart handler for both pinch and drawing
 function handleTouchStart(e){
+  // Only process if in chunk mode
+  if(currentMode !== 'chunk') return;
+  
   if(e.touches.length === 2){
     // Two-finger pinch detected
     e.preventDefault();
+    e.stopPropagation();
     isPinching = true;
     const touch1 = e.touches[0];
     const touch2 = e.touches[1];
@@ -4495,17 +4504,23 @@ function handleTouchStart(e){
     );
     touchStartZoom = canvasZoom;
     lastTouchCount = 2;
-  } else if(e.touches.length === 1 && tool !== 'select' && !isPinching){
-    // Single finger drawing - prevent scrolling only if not after pinch
-    e.preventDefault();
+    activeTouchIds.clear();
+    activeTouchIds.add(touch1.identifier);
+    activeTouchIds.add(touch2.identifier);
+  } else if(e.touches.length === 1 && !isPinching){
+    // Single finger - allow drawing
     lastTouchCount = 1;
   }
 }
 
 function handleTouchMove(e){
+  // Only process if in chunk mode
+  if(currentMode !== 'chunk') return;
+  
   if(e.touches.length === 2 && touchStartDistance > 0){
     // Calculate pinch zoom
     e.preventDefault();
+    e.stopPropagation();
     isPinching = true;
     const touch1 = e.touches[0];
     const touch2 = e.touches[1];
@@ -4520,16 +4535,13 @@ function handleTouchMove(e){
     if(Math.abs(newZoom - canvasZoom) > 0.01){
       canvasZoom = newZoom;
       
-      // Apply zoom with centering
-      if(canvasZoom > 1.5){
-        // High zoom - use fixed positioning to center and allow drawing anywhere
+      // Always use fixed positioning when zoomed for smooth experience
+      if(canvasZoom > 1.0){
         main.classList.add('zoomed');
         main.style.transform = `translate(-50%, -50%) scale(${canvasZoom})`;
       } else {
-        // Normal zoom - stay in flow
         main.classList.remove('zoomed');
-        main.style.transform = `scale(${canvasZoom})`;
-        main.style.transformOrigin = 'center center';
+        main.style.transform = `scale(1.0)`;
       }
       
       // Update zoom button text
@@ -4542,15 +4554,21 @@ function handleTouchMove(e){
 }
 
 function handleTouchEnd(e){
+  // Only process if in chunk mode
+  if(currentMode !== 'chunk') return;
+  
   if(e.touches.length < 2){
     touchStartDistance = 0;
-    // Clear pinch flag after a short delay to prevent accidental drawing
-    setTimeout(() => { isPinching = false; }, 100);
+    // Clear pinch flag after a delay to prevent accidental drawing
+    setTimeout(() => { 
+      isPinching = false;
+      activeTouchIds.clear();
+    }, 200);
   }
   
   // Double-tap to reset zoom (only for single touch releases)
   const now = Date.now();
-  if(e.touches.length === 0 && lastTouchCount === 1 && now - lastTouchTime < 300){
+  if(e.touches.length === 0 && lastTouchCount === 1 && now - lastTouchTime < 300 && !isPinching){
     canvasZoom = 1.0;
     main.classList.remove('zoomed');
     main.style.transform = 'scale(1.0)';
@@ -4561,18 +4579,18 @@ function handleTouchEnd(e){
     notify('Canvas zoom reset');
   }
   lastTouchTime = now;
-  lastTouchCount = 0;
+  if(e.touches.length === 0) lastTouchCount = 0;
 }
 
 // Attach handlers to both canvas and mainCanvasWrap
 main.addEventListener('touchstart', handleTouchStart, {passive: false});
 main.addEventListener('touchmove', handleTouchMove, {passive: false});
-main.addEventListener('touchend', handleTouchEnd);
+main.addEventListener('touchend', handleTouchEnd, {passive: false});
 
 if(mainCanvasWrap){
   mainCanvasWrap.addEventListener('touchstart', handleTouchStart, {passive: false});
   mainCanvasWrap.addEventListener('touchmove', handleTouchMove, {passive: false});
-  mainCanvasWrap.addEventListener('touchend', handleTouchEnd);
+  mainCanvasWrap.addEventListener('touchend', handleTouchEnd, {passive: false});
 }
 
 // -------------------- Init --------------------
