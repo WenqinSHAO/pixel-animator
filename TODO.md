@@ -4,68 +4,20 @@
 
 ### Montage Editor
 
-- [ ] **Unsaved changes indicator** - Warn before closing/navigating with unsaved work (High importance for data loss prevention)
-- [x] **Chunk preview thumbnails** - ✅ Implemented with 56px thumbnails spanning two rows
-- [x] **Drag and drop for chunk reordering** - ✅ Implemented with visual feedback
-- [ ] **Keyboard shortcuts for chunks** - Arrow keys to navigate, Delete to remove, Enter to edit
-- [x] **Timeline zoom and preview on hover** - ✅ Preview on hover implemented; zoom removed (ruler density change not helpful enough)
+- [ ] **Keyboard shortcuts for chunks** - left, right arrow keys for per frame navigation, up down arrow key for chunk navigation. remember to update hint.
+
 
 ### Chunk Editor
 
-- [ ] **Unsaved changes indicator** - Warn before switching modes or loading new project
-
+- [ ] **hot key simplification** - remove Del for detele frame hotkey, remove G for export GIF, L for load, N for new hotkeys. remember to update hint.
 
 ### General UX
 
-- [ ] **Tooltips enhancement** - Add helpful tooltips on all buttons and controls for better discoverability
-- [ ] **Keyboard shortcuts reference** - Show cheat sheet accessible via "?" key
+- [ ] **Unsaved changes indicator** - Warn before switching modes or loading new project
+- [ ] **safeguard on pull refresh** - when page refreshed trigger by pull down, trigger unsave change indicator, applies to both montage and chunk editor
 
-### E-ink Tablet Support (December 2025)
-
-- [x] **Light theme for e-ink displays** - ✅ High contrast black-on-white theme with toggle
-- [x] **Touch-friendly scrollbars** - ✅ 16px width with custom styling
-- [x] **Canvas rendering isolation** - ✅ Mode checks prevent chunk/montage canvas leakage
-- [x] **Touch gesture support** - ✅ Pinch-to-zoom with multi-touch detection
-- [x] **Canvas zoom positioning** - ✅ Floats on top when zoomed >100%
-- [x] **Drawing tool deselection** - ✅ Click active tool to deselect, prevents drawing when no tool selected
-- [x] **Zoom lock button** - ✅ Lock/unlock zoom (🔒/🔓) to prevent accidental pinch gestures
-- [x] **Automatic zoom-lock** - ✅ Selecting drawing tool auto-locks zoom, deselecting auto-unlocks
-- [x] **Flattened selection UI** - ✅ Dedicated Rect/Lasso buttons replace dropdown
-- [x] **Compact UI layout** - ✅ Zoom lock on first row, reduced spacing for more canvas space
-
-### Known Issues (December 2025 - RESOLVED)
-
-- [x] **Narrow mode scrolling** - ✅ Fixed: Changed body to `overflow:auto` with fixed positioning to allow scrolling without triggering pull-to-refresh
-  - **Solution**: Body now uses `overflow:auto` with `position:fixed` and proper min-heights for flexible content
-  - **Impact**: Users can now scroll on narrow screens (tablets/phones) without triggering browser pull-to-refresh
-- [x] **Zoom lock improvements** - ✅ Fixed: Zoom lock now prevents all pinch gestures including during fast drawing
-  - **Solution**: Added zoom lock checks in both touchstart and touchmove handlers, disabled double-tap zoom reset when locked
-  - **Impact**: Drawing tools work reliably without accidental zoom interference
-- [x] **Canvas scaling optimization** - ✅ Fixed: Canvas now properly scales to maximize window space and show entire canvas by default
-  - **Solution**: Updated responsive breakpoints to use `calc(100vw - Xpx)` for better space utilization, increased max canvas sizes
-  - **Impact**: Canvas uses available screen space more efficiently across all device sizes
-- [x] **Selection UI consolidation** - ✅ Fixed: Removed redundant Select button, keeping only Rect/Lasso buttons
-  - **Reason**: Select tool is primarily a mode switcher; Rect/Lasso directly set selection mode
-  - **Impact**: Simplified UI, more direct access to selection tools
 
 ## Medium Priority
-
-### Montage Editor
-
-- [x] **Chunk color coding** - ✅ Implemented with 12-color pre-allocated palette
-- [x] **Playhead positioning on chunk selection** - ✅ Implemented, positions to chunk start
-- [x] **Optimized chunk layout** - ✅ Two-row design with duration (Xf format), color, alias, and controls
-- [x] **Alias overflow handling** - ✅ Ellipsis with hover tooltip for long names
-- [x] **Time display** - ✅ Fixed to update correctly during scrubbing and playback
-
-### Chunk Editor
-
-- [x] **Grid overlay option** - ✅ Implemented as layout guides (rule of thirds)
-- [x] **Optimized layout** - ✅ 4-column thumbnails, compact tools, project info in actions
-- [x] **Color palette** - ✅ Quick-access grayscale palette (0, 64, 128, 192, 255 values) inline with tools
-- [x] **Mouse wheel support** - ✅ Scroll to adjust brush size, C+wheel or Ctrl/Cmd+wheel to zoom canvas
-- [x] **Canvas zoom** - ✅ Canvas zoom with reset button (50%-300%)
-- [ ] **Insert-between frames** - Drag thumbnail and drop between frames for real insert (complex, needs drop zone UI)
 
 ### General UX
 
@@ -81,27 +33,10 @@
 
 ### Chunk Editor
 
-- [x] **Selection tool** - ✅ Fully implemented with copy/cut/paste, drag-and-drop, and floating selection
-- [ ] **Lasso selection copy/cut/paste** - Complete implementation of pixel extraction from arbitrary closed paths
-  - **Algorithm**: Point-in-polygon test (ray-casting algorithm)
-  - **Implementation steps**:
-    1. Convert lasso path to closed polygon (already done - path is auto-closed)
-    2. Compute bounding box of lasso path (min/max x,y coordinates)
-    3. Implement ray-casting algorithm to test if each pixel in bounding box is inside polygon
-    4. Extract only pixels inside the polygon to selectionData
-    5. Update cut operation to clear only pixels inside polygon
-    6. Update paste to composite only extracted pixels with alpha
-  - **Ray-casting algorithm**: Cast horizontal ray from point to infinity, count intersections with polygon edges. Odd count = inside, even = outside
-  - **Edge cases**: Handle horizontal edges, vertex intersections, degenerate polygons
 - [ ] **Drawing tools expansion** - Add line, rectangle, circle, fill tools
 
-### General UX
 
-- [ ] **Mobile/tablet support** - Touch-friendly controls and responsive layout
-- [ ] **Accessibility improvements** - Better ARIA labels, keyboard navigation, screen reader support
-- [ ] **Internationalization** - Support for multiple languages
-
-## Future Major Features (Requires Separate PR)
+## Adavanced features
 
 ### Color and Transparency Support
 
@@ -127,34 +62,22 @@
     - ✅ GIF export flattens transparency to white background
     - ✅ Montage editor handles mixed v1.x/v2.0 chunks
 
-## Performance Optimizations
+### E-ink Tablet Support (December 2025)
 
-- [ ] **Lazy loading** - Load chunk frames on-demand rather than all at once
-- [ ] **Web Workers** - Move GIF encoding/decoding to background threads
-- [ ] **Virtual scrolling** - For long frame lists and chunk lists (100+ items)
-- [ ] **Canvas optimization** - Use OffscreenCanvas where supported for better performance
-- [ ] **Incremental thumbnail rendering** - Don't block UI while generating all thumbnails
-
-## Documentation
-
-- [ ] **Interactive tutorial** - First-time user walkthrough with guided steps
-- [ ] **Video tutorial** - Screen recording demonstrating key features
-- [ ] **Best practices guide** - Tips for creating smooth animations, optimal frame counts, etc.
-- [ ] **Export format guide** - Explain GIF vs MP4, when to use each, quality settings
-- [ ] **Keyboard shortcuts documentation** - Comprehensive list in README
-
-## Advanced Features (May break monolithic design)
-
-### Collaboration
-
-- [ ] **Share via URL** - Export project as data URL for easy sharing
-- [ ] **Portable HTML viewer** - Self-contained HTML file that can play animation without editor
-- [ ] **Cloud sync** - Optional cloud storage integration (requires backend)
+- [x] **Light theme for e-ink displays** - ✅ High contrast black-on-white theme with toggle
+- [x] **Touch-friendly scrollbars** - ✅ 16px width with custom styling
+- [x] **Canvas rendering isolation** - ✅ Mode checks prevent chunk/montage canvas leakage
+- [x] **Touch gesture support** - ✅ Pinch-to-zoom with multi-touch detection
+- [x] **Canvas zoom positioning** - ✅ Floats on top when zoomed >100%
+- [x] **Drawing tool deselection** - ✅ Click active tool to deselect, prevents drawing when no tool selected
+- [x] **Zoom lock button** - ✅ Lock/unlock zoom (🔒/🔓) to prevent accidental pinch gestures
+- [x] **Automatic zoom-lock** - ✅ Selecting drawing tool auto-locks zoom, deselecting auto-unlocks
+- [x] **Flattened selection UI** - ✅ Dedicated Rect/Lasso buttons replace dropdown
+- [x] **Compact UI layout** - ✅ Zoom lock on first row, reduced spacing for more canvas space
 
 ### Extensibility
 
-- [ ] **Plugin system** - Allow custom tools/exporters via JavaScript plugins
-- [ ] **Custom export formats** - WebP, APNG, sprite sheets, etc.
+- [ ] **Import from GIF** - Convert GIF to frame sequences
 - [ ] **Import from video** - Convert video files to frame sequences (requires ffmpeg.wasm)
 
 ### Effects & Filters
@@ -163,6 +86,15 @@
 - [ ] **Blur/sharpen filters** - Applied to frames or ranges
 - [ ] **Color adjustments** - Grayscale curve editor
 - [ ] **Interpolation** - Auto-generate in-between frames (tweening)
+
+## Performance Optimizations
+
+- [ ] **Lazy loading** - Load chunk frames on-demand rather than all at once
+- [ ] **Web Workers** - Move GIF encoding/decoding to background threads
+- [ ] **Virtual scrolling** - For long frame lists and chunk lists (100+ items)
+- [ ] **Canvas optimization** - Use OffscreenCanvas where supported for better performance
+- [ ] **Incremental thumbnail rendering** - Don't block UI while generating all thumbnails
+
 
 ## Completed ✅
 
@@ -211,10 +143,36 @@
   - [x] Made UI responsive to browser window size changes
   - [x] Fixed montage playback chunk sync - chunk panel selection now stays in sync during playback
   - [x] Fixed montage scrubber position sync - scrubber position now updates when selecting a chunk
+- [x] **Narrow mode scrolling** - ✅ Fixed: Changed body to `overflow:auto` with fixed positioning to allow scrolling without triggering pull-to-refresh
+  - **Solution**: Body now uses `overflow:auto` with `position:fixed` and proper min-heights for flexible content
+  - **Impact**: Users can now scroll on narrow screens (tablets/phones) without triggering browser pull-to-refresh
+- [x] **Zoom lock improvements** - ✅ Fixed: Zoom lock now prevents all pinch gestures including during fast drawing
+  - **Solution**: Added zoom lock checks in both touchstart and touchmove handlers, disabled double-tap zoom reset when locked
+  - **Impact**: Drawing tools work reliably without accidental zoom interference
+- [x] **Canvas scaling optimization** - ✅ Fixed: Canvas now properly scales to maximize window space and show entire canvas by default
+  - **Solution**: Updated responsive breakpoints to use `calc(100vw - Xpx)` for better space utilization, increased max canvas sizes
+  - **Impact**: Canvas uses available screen space more efficiently across all device sizes
+- [x] **Selection UI consolidation** - ✅ Fixed: Removed redundant Select button, keeping only Rect/Lasso buttons
+  - **Reason**: Select tool is primarily a mode switcher; Rect/Lasso directly set selection mode
+  - **Impact**: Simplified UI, more direct access to selection tools
+- [x] **Chunk color coding** - ✅ Implemented with 12-color pre-allocated palette
+- [x] **Playhead positioning on chunk selection** - ✅ Implemented, positions to chunk start
+- [x] **Optimized chunk layout** - ✅ Two-row design with duration (Xf format), color, alias, and controls
+- [x] **Alias overflow handling** - ✅ Ellipsis with hover tooltip for long names
+- [x] **Time display** - ✅ Fixed to update correctly during scrubbing and playback
+- [x] **Chunk preview thumbnails** - ✅ Implemented with 56px thumbnails spanning two rows
+- [x] **Drag and drop for chunk reordering** - ✅ Implemented with visual feedback
+- [x] **Timeline zoom and preview on hover** - ✅ Preview on hover implemented; zoom removed (ruler density change not helpful enough)
+- [x] **Grid overlay option** - ✅ Implemented as layout guides (rule of thirds)
+- [x] **Optimized layout** - ✅ 4-column thumbnails, compact tools, project info in actions
+- [x] **Color palette** - ✅ Quick-access grayscale palette (0, 64, 128, 192, 255 values) inline with tools
+- [x] **Mouse wheel support** - ✅ Scroll to adjust brush size, C+wheel or Ctrl/Cmd+wheel to zoom canvas
+- [x] **Canvas zoom** - ✅ Canvas zoom with reset button (50%-300%)
 
 ## Notes
 
 **Design Principles:**
+
 - Maintain monolithic, self-sufficient architecture
 - Single HTML file with embedded CSS/JS
 - No external dependencies beyond gif.js (and MP4 encoder if implemented)
@@ -223,6 +181,7 @@
 - No server-side processing required
 
 **Priority Definitions:**
+
 - **High**: Critical for usability, frequently requested, or prevents data loss
 - **Medium**: Improves workflow efficiency, nice-to-have features
 - **Low**: Polish, alternative workflows, or specialized use cases
