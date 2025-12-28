@@ -13,11 +13,11 @@ A minimal browser-based frame-by-frame animator and GIF exporter, optimized for 
 - **Chunk Editor**: Draw frame-by-frame animations with pencil, soft brush, and eraser tools
 - **Montage Editor**: Assemble animations from multiple chunks with timeline editing
 - **RGBA Color Support**: Full color with transparency/alpha channel
-- **Touch Support**: Pinch-to-zoom, touch-friendly buttons (44px), and momentum scrolling
+- **Touch Support**: Pinch-to-zoom, touch-friendly buttons (44px), and smooth scrolling without pull-to-refresh interference
 - **Tool Deselection**: Click active tool again to deselect and prevent drawing
-- **Zoom Lock**: Lock/unlock zoom (🔒/🔓) to prevent accidental pinch gestures while drawing
+- **Zoom Lock**: Lock/unlock zoom (🔒/🔓) to prevent all accidental pinch gestures while drawing, including during fast strokes
 - **E-ink Optimized**: High-contrast light theme perfect for e-ink displays (reMarkable, Boox, Kindle)
-- **Responsive Layout**: Works on desktop, tablet, and mobile devices
+- **Responsive Layout**: Works on desktop, tablet, and mobile devices with optimized canvas scaling for maximum workspace
 - **Offline Capable**: No server required, works completely offline
 
 GUI Screenshot
