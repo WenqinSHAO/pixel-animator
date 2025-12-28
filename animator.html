@@ -271,7 +271,7 @@ input[type="range"]{width:160px}
 <header>
   <h1 id="title">Frame-by-Frame Animator</h1>
   <div id="headerHint" class="hint">
-    Chunk mode: Space play · ←/→ frame nav · A add · D duplicate · S save · Ctrl/Cmd+Z undo | Montage mode: ←/→ frame nav · ↑/↓ chunk nav
+    Chunk mode: Space play/pause · ←/→ frame nav · A add · D duplicate · S save · Ctrl/Cmd+Z undo | Montage mode: ←/→ frame nav · ↑/↓ chunk nav
   </div>
   <div style="display:flex;gap:8px;align-items:center">
     <button id="themeToggleBtn" title="Toggle theme (optimized for e-ink displays)" style="padding:8px 12px">☀️ Light</button>
@@ -3500,7 +3500,7 @@ function setMode(mode){
     if(isMontage){
       headerHint.textContent = 'Montage mode: ←/→ frame nav · ↑/↓ chunk nav · Space play/pause · Click chunk to select · Drag trim handles';
     }else{
-      headerHint.textContent = 'Chunk mode: Space play · ←/→ frame nav · A add · D duplicate · S save · Ctrl/Cmd+Z undo';
+      headerHint.textContent = 'Chunk mode: Space play/pause · ←/→ frame nav · A add · D duplicate · S save · Ctrl/Cmd+Z undo';
     }
   }
 
