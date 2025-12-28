@@ -35,11 +35,6 @@
 
 ### Known Issues (Deferred to Future PR)
 
-- [x] **Montage playback chunk sync** - ✅ FIXED: Chunk panel selection now stays in sync during playback
-  - **Root cause**: `selectMontageChunk()` was resetting `_montagePos.frameIdx` to 0 during playback
-  - **Fix applied**: Only update `_montagePos` when `renderPreview=true` (not during playback)
-- [x] **Montage scrubber position sync** - ✅ FIXED: Scrubber position now updates when selecting a chunk
-  - **Fix applied**: Call `updateMontageScrubberUI()` in `selectMontageChunk()` to sync scrubber position
 - [ ] **Narrow mode scrolling** - Cannot scroll to reveal hidden content without triggering pull-to-refresh
   - **Root cause**: `overflow:hidden` on body prevents scrolling to avoid accidental refresh
   - **Required fix**: Implement scrollable app container that doesn't trigger pull-to-refresh
@@ -207,6 +202,8 @@
   - [x] Fixed playback state carrying over when switching between editors
   - [x] Improved card stage and sidebar height alignment for better browser window fitting
   - [x] Made UI responsive to browser window size changes
+  - [x] Fixed montage playback chunk sync - chunk panel selection now stays in sync during playback
+  - [x] Fixed montage scrubber position sync - scrubber position now updates when selecting a chunk
 
 ## Notes
 
