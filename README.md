@@ -1,11 +1,22 @@
 # Frame-by-frame Pixel Animator
 
-A minimal browser-based frame-by-frame animator and GIF exporter.
+A minimal browser-based frame-by-frame animator and GIF exporter, optimized for e-ink tablets.
 
 ## What it is for
 
 - Create simple animations in the browser and export them as a project JSON or a GIF/webm.
 - Small, dependency-light implementation using `animator.html` and `vendor/gif.js`.
+- **NEW**: Optimized for e-ink tablets (reMarkable, Boox, Kindle) with light theme and touch gestures.
+
+## Features
+
+- **Chunk Editor**: Draw frame-by-frame animations with pencil, soft brush, and eraser tools
+- **Montage Editor**: Assemble animations from multiple chunks with timeline editing
+- **RGBA Color Support**: Full color with transparency/alpha channel
+- **Touch Support**: Pinch-to-zoom, touch-friendly buttons, and momentum scrolling
+- **E-ink Optimized**: High-contrast light theme perfect for e-ink displays
+- **Responsive Layout**: Works on desktop, tablet, and mobile devices
+- **Offline Capable**: No server required, works completely offline
 
 GUI Screenshot
 

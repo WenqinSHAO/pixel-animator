@@ -20,6 +20,19 @@
 - [ ] **Tooltips enhancement** - Add helpful tooltips on all buttons and controls for better discoverability
 - [ ] **Keyboard shortcuts reference** - Show cheat sheet accessible via "?" key
 
+### E-ink Tablet Support (December 2025)
+
+- [x] **Light theme for e-ink displays** - ✅ High contrast black-on-white theme with toggle
+- [x] **Touch-friendly scrollbars** - ✅ 16px width with custom styling
+- [x] **Scrollable layout without page refresh** - ✅ App-container wrapper prevents pull-to-refresh
+- [x] **Canvas rendering isolation** - ✅ Mode checks prevent chunk/montage canvas leakage
+- [x] **Responsive layout fixes** - ✅ Sidebar visible in both wide and narrow modes
+- [x] **Touch gesture support** - ✅ Pinch-to-zoom with multi-touch detection
+- [x] **Canvas zoom positioning** - ✅ Floats on top when zoomed >100%
+- [ ] **Drawing tool deselection** - Allow manual tool deselection to prevent drawing during zoom
+- [ ] **Zoom lock button** - Lock/unlock zoom to separate from drawing interactions
+- [ ] **Montage playback sync** - Fix chunk panel focus sync during playback (Known issue)
+
 ## Medium Priority
 
 ### Montage Editor
