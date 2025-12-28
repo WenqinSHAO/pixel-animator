@@ -33,7 +33,7 @@ body.light-theme #montageChunks .chunk-alias{background:#ffffff;border-color:#cc
 body.light-theme .pill{background:#fafafa;border-color:#cccccc}
 
 *{box-sizing:border-box}
-body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:linear-gradient(180deg,#081019,#070b12 55%,#05070c);overscroll-behavior:none;overflow:auto;position:fixed;width:100%;height:100%}
+body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:linear-gradient(180deg,#081019,#070b12 55%,#05070c);overscroll-behavior:none;overflow:auto;min-height:100vh}
 header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
 header h1{font-size:14px;margin:0;letter-spacing:.3px;color:var(--text);font-weight:600}
 header .hint{font-size:12px;color:var(--muted)}
@@ -3384,6 +3384,7 @@ function setMode(mode){
   // Reset canvas zoom/transform when switching to montage mode (fixes canvas misalignment)
   if(isMontage){
     canvasZoom = 1.0;
+    main.classList.remove('zoomed'); // Remove zoomed class to prevent canvas leak
     main.style.transform = '';
     const btn = document.getElementById('canvasZoomResetBtn');
     if(btn) btn.textContent = `Zoom 100%`;
@@ -4614,13 +4615,14 @@ function handleTouchMove(e){
     if(Math.abs(newZoom - canvasZoom) > 0.01){
       canvasZoom = newZoom;
       
-      // Always use fixed positioning when zoomed for smooth experience
-      if(canvasZoom > 1.0){
+      // Apply zoom transform for all zoom levels
+      // Use fixed positioning when zoomed for smooth experience
+      if(canvasZoom !== 1.0){
         main.classList.add('zoomed');
         main.style.transform = `translate(-50%, -50%) scale(${canvasZoom})`;
       } else {
         main.classList.remove('zoomed');
-        main.style.transform = `scale(1.0)`;
+        main.style.transform = 'scale(1.0)';
       }
       
       // Update zoom button text
