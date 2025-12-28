@@ -161,6 +161,123 @@ Schema (concise):
 - **Playback**: `setPlaying()` uses `setInterval` with `FPS` to step frames and disables editing while playing.
 - **GIF Export**: `saveGif()` composes frames at `DISPLAY` (512) onto a white background and uses `gif.js`; `getGifWorkerBlobUrl()` loads `./vendor/gif.worker.js` or falls back to CDN. RGBA frames are flattened to white background for GIF export.
 
+## Editor Mode Architecture
+
+The application supports two editor modes: **Chunk Editor** (frame-by-frame drawing) and **Montage Editor** (timeline assembly). These modes have distinct purposes, UIs, and rendering strategies to prevent canvas/state leakage.
+
+### Mode Switching
+
+- **Mode state**: Tracked by global `currentMode` variable (`'chunk'` or `'montage'`)
+- **Mode transition**: Handled by `setMode(mode)` function which:
+  - Checks for unsaved changes and prompts user
+  - Stops active playback in either mode
+  - Clears chunk-editor-specific state (selection, cursor, zoom)
+  - Shows/hides mode-specific UI panels
+  - Disables controls not relevant to target mode
+  - Renders appropriate canvas content for target mode
+
+### UI Element Ownership
+
+| UI Element | Chunk Editor | Montage Editor | Shared |
+|------------|--------------|----------------|--------|
+| Main canvas (#main) | ✓ Editable, with tools | ✓ Read-only preview | Both (different rendering) |
+| Drawing panel (#drawingPanel) | ✓ Visible | ✗ Hidden | - |
+| Frames sidebar (.sidebar) | ✓ Visible | ✗ Hidden | - |
+| Montage sidebar (#montageSidebar) | ✗ Hidden | ✓ Visible | - |
+| Trim bar (#trimBar) | ✗ Hidden | ✓ Visible | - |
+| Play button | ✓ (#playBtn) | ✓ (#montagePlayBtn) | Separate buttons |
+| Scrubber | ✓ Frame navigation | ✓ Global frame nav | Reused element, different logic |
+| Project actions | ✓ Save/Load/New/GIF | ✗ Disabled | Chunk-only |
+| Theme toggle | ✓ | ✓ | Shared |
+| Editor mode toggle | ✓ | ✓ | Shared |
+
+### Workspace and State Isolation
+
+#### Chunk Editor State (isolated)
+- `frames[]` — Frame data (Uint8ClampedArray)
+- `current` — Current frame index
+- `tool` — Active drawing tool
+- `selection`, `selectionData` — Selection tool state
+- `gridEnabled` — Grid overlay toggle
+- `cursorPos` — Brush preview position
+- `undoStacks[]`, `redoStacks[]` — Per-frame undo/redo history
+- `chunkEditorDirty` — Unsaved changes flag
+
+**Cleanup on mode exit**: Selection state, cursor position, and canvas zoom are cleared when switching to montage mode
+
+#### Montage Editor State (isolated)
+- `montageChunks[]` — Array of chunk objects with embedded projects
+- `selectedChunkIdx` — Currently selected chunk
+- `_montagePos` — Playback position {chunkIdx, frameIdx}
+- `montagePlaying` — Playback state
+- `montageEditorDirty` — Unsaved changes flag
+
+**Cleanup on mode exit**: None required (montage state persists)
+
+#### Shared State
+- `currentMode` — Editor mode ('chunk' or 'montage')
+- `W`, `H`, `FPS`, `DISPLAY` — Canvas dimensions and frame rate
+- `main`, `ctx`, `off`, `offCtx` — Canvas elements (shared, but rendered differently)
+- `lastProjectPath`, `lastMontagePath` — Save/load filename memory
+
+### Canvas Rendering Strategy
+
+The application uses **mode-specific rendering functions** to prevent canvas leakage between modes:
+
+#### `renderCanvas()` — Mode-aware routing (public API)
+- **Purpose**: Universal canvas renderer that routes to mode-specific functions
+- **Usage**: Called on window resize, global events, mode-agnostic contexts
+- **Behavior**: Checks `currentMode` and delegates to `renderMain()` or `renderMontagePreviewChunk()`
+
+#### `renderMain()` — Chunk editor rendering (mode-specific)
+- **Purpose**: Renders current frame with editing tools (onion skin, grid, selection, brush preview)
+- **Usage**: Called only in chunk mode contexts (frame edits, tool changes, playback)
+- **Safety**: Mode guard at function entry warns if called in montage mode
+- **Renders**:
+  - Current frame with onion skinning (previous frames ghosted)
+  - Grid overlay (rule of thirds) if enabled
+  - Selection rectangle/lasso and floating selection
+  - Brush preview indicator at cursor position
+
+#### `renderPreviewFrameBytes()` / `renderMontagePreviewChunk()` — Montage editor rendering (mode-specific)
+- **Purpose**: Renders read-only chunk preview with metadata overlay
+- **Usage**: Called only in montage mode contexts (chunk selection, playback, scrubbing)
+- **Safety**: Mode guard at function entry warns if called in chunk mode
+- **Renders**:
+  - Single frame from selected chunk
+  - Chunk info overlay (name, frame number)
+  - No editing tools or overlays
+
+### Function Separation Guidelines
+
+| Function Category | Chunk Editor | Montage Editor | Shared |
+|-------------------|--------------|----------------|--------|
+| **Canvas Rendering** | `renderMain()` | `renderPreviewFrameBytes()`, `renderMontagePreviewChunk()` | `renderCanvas()` |
+| **Playback** | `setPlaying()` | `startMontagePlayback()`, `stopMontagePlayback()` | - |
+| **Frame Operations** | `insertFrame()`, `deleteCurrentFrame()`, `duplicateAfterCurrent()` | - | - |
+| **Chunk Operations** | - | `addMontageChunk()`, `renderMontageChunks()`, `selectMontageChunk()` | - |
+| **Project Save/Load** | `saveProject()`, `loadProject()` | `saveMontageBtn`, `montageLoadBtn` | Separate flows |
+| **Mode Interaction** | `insertChunkToMontage()` | `editChunkInChunkEditor()`, `returnChunkToMontage()` | Bidirectional |
+| **UI Updates** | `updateUI()`, `updateProjectMetaUI()` | `updateMontageMetaUI()`, `updateMontageScrubberUI()` | - |
+
+### Event Handler Mode Checks
+
+Key event handlers include mode checks to prevent unintended interactions:
+
+- **Mouse/touch drawing**: Only active when `currentMode === 'chunk'`
+- **Keyboard shortcuts**: Mode-specific (e.g., A/D/S in chunk mode, arrow keys in montage mode)
+- **Wheel events**: Brush size (chunk), no-op (montage, prevents zoom leakage)
+- **Window resize**: Uses `renderCanvas()` to route to correct renderer
+
+### Best Practices for Future Development
+
+1. **Always use `renderCanvas()` for mode-agnostic contexts** (e.g., window resize, generic refresh)
+2. **Use mode-specific renderers only in mode-specific contexts** (e.g., `renderMain()` after drawing)
+3. **Add mode guards to new mode-specific functions** to catch misuse early
+4. **Clear editor state when exiting a mode** to prevent leakage to other mode
+5. **Document mode ownership** when adding new UI elements or state variables
+6. **Test mode transitions** when modifying canvas rendering or state management
+
 ## Configuration & maintenance tips
 
 - Change `W`, `H` for the internal raster size, `DISPLAY` for on-screen/export resolution, and `FPS` for playback frame rate.
