@@ -3440,19 +3440,17 @@ window.addEventListener('DOMContentLoaded', ()=>{
 });
 
 // Helper function to check for unsaved changes and confirm action
-function checkUnsavedChanges(actionName = 'proceed'){
-  // For mode switching, only check current mode
-  // For other actions, check both editors to prevent any data loss
-  const checkBoth = !actionName.includes('switch');
-  const isDirty = checkBoth 
-    ? (chunkEditorDirty || montageEditorDirty)
-    : (currentMode === 'chunk' && chunkEditorDirty) || (currentMode === 'montage' && montageEditorDirty);
+// checkCurrentOnly: if true, only check current editor; if false, check both editors
+function checkUnsavedChanges(actionName = 'proceed', checkCurrentOnly = false){
+  const isDirty = checkCurrentOnly 
+    ? (currentMode === 'chunk' && chunkEditorDirty) || (currentMode === 'montage' && montageEditorDirty)
+    : (chunkEditorDirty || montageEditorDirty);
   
   if(!isDirty) return true;
   
-  if(checkBoth && chunkEditorDirty && montageEditorDirty){
+  if(!checkCurrentOnly && chunkEditorDirty && montageEditorDirty){
     return confirm(`You have unsaved changes in both chunk and montage editors. Are you sure you want to ${actionName}? All unsaved changes will be lost.`);
-  } else if(checkBoth){
+  } else if(!checkCurrentOnly){
     const mode = chunkEditorDirty ? 'chunk editor' : 'montage editor';
     return confirm(`You have unsaved changes in the ${mode}. Are you sure you want to ${actionName}? Unsaved changes will be lost.`);
   } else {
@@ -3466,8 +3464,8 @@ function setMode(mode){
   const newMode = isMontage ? 'montage' : 'chunk';
   if(currentMode === newMode){ console.debug('setMode: already', currentMode); return; }
   
-  // Check for unsaved changes before switching
-  if(!checkUnsavedChanges('switch editors')){
+  // Check for unsaved changes before switching (only check current editor)
+  if(!checkUnsavedChanges('switch editors', true)){
     return; // User cancelled, don't switch
   }
   
