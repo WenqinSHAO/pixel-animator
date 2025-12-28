@@ -340,6 +340,7 @@ input[type="range"]{width:160px}
             <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
             <button id="gridToggleBtn" style="padding:6px 10px">Grid Off</button>
             <button id="canvasZoomResetBtn" style="padding:6px 10px" title="Reset canvas zoom (100%)">Zoom 100%</button>
+            <button id="zoomLockBtn" style="padding:6px 10px" title="Lock/unlock canvas zoom">🔓 Zoom Unlocked</button>
           </div>
           </div>
         </div>
@@ -603,6 +604,7 @@ let drawing = false;
 let lastPt = null;
 let gridEnabled = false;
 let canvasZoom = 1.0; // Canvas zoom level (1.0 = 100%)
+let zoomLocked = false; // Lock zoom to prevent accidental pinch-zoom
 let cKeyPressed = false; // Track 'c' key state for canvas zoom
 let cursorPos = null; // Track cursor position on canvas for brush preview
 
@@ -761,7 +763,13 @@ function updateUI(){
 }
 
 function setTool(next){
-  tool = next;
+  // Allow deselecting tools by clicking the active tool again
+  if(tool === next){
+    tool = null; // No tool selected
+  } else {
+    tool = next;
+  }
+  
   toolPencil.classList.toggle('primary', tool === 'pencil');
   toolEraser.classList.toggle('primary', tool === 'eraser');
   toolSoft.classList.toggle('primary', tool === 'soft');
@@ -779,6 +787,8 @@ function setTool(next){
     main.style.cursor = 'crosshair';
   } else if(currentMode === 'montage'){
     main.style.cursor = 'default';
+  } else if(tool === null){
+    main.style.cursor = 'default'; // No tool selected
   } else {
     main.style.cursor = 'crosshair';
   }
@@ -1900,7 +1910,8 @@ main.addEventListener('pointerdown', ev=>{
   if(currentMode !== 'chunk') return; // disable drawing in montage mode
   if(isPinching) return; // prevent drawing during pinch gesture
   // Also check if this is a touch pointer type and we have multiple touches
-  if(ev.pointerType === 'touch' && activeTouchIds.size > 1) return;
+  if(ev.pointerType === 'touch' && (activeTouchIds.size > 1 || touchStartDistance > 0)) return;
+  if(tool === null) return; // No tool selected - don't draw
   
   const pt = getPointerXY(ev);
   
@@ -2218,6 +2229,21 @@ if(canvasZoomResetBtn){
   canvasZoomResetBtn.addEventListener('click', ()=>{
     canvasZoom = 1.0;
     updateCanvasZoom();
+  });
+}
+
+// Zoom lock button
+const zoomLockBtn = document.getElementById('zoomLockBtn');
+if(zoomLockBtn){
+  zoomLockBtn.addEventListener('click', ()=>{
+    zoomLocked = !zoomLocked;
+    zoomLockBtn.textContent = zoomLocked ? '🔒 Zoom Locked' : '🔓 Zoom Unlocked';
+    zoomLockBtn.classList.toggle('primary', zoomLocked);
+    if(zoomLocked){
+      notify('Zoom locked - pinch gestures disabled');
+    } else {
+      notify('Zoom unlocked - pinch gestures enabled');
+    }
   });
 }
 
@@ -3190,17 +3216,18 @@ function selectMontageChunk(idx, renderPreview = true){
   if(trimReset) trimReset.disabled = !hasProject;
 
   updateTrimBar();
+  
+  // Position playhead to start of selected chunk (always update position for sync)
+  let framesBefore = 0;
+  for(let i = 0; i < selectedChunkIdx; i++){
+    const c = montageChunks[i];
+    framesBefore += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
+  }
+  _montagePos = { chunkIdx: selectedChunkIdx, frameIdx: 0 };
+  
   // update canvas preview when in montage mode unless caller asked to skip render
   if(currentMode === 'montage' && renderPreview){ 
     renderMontagePreviewChunk(selectedChunkIdx); 
-    
-    // Position playhead to start of selected chunk
-    let framesBefore = 0;
-    for(let i = 0; i < selectedChunkIdx; i++){
-      const c = montageChunks[i];
-      framesBefore += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
-    }
-    _montagePos = { chunkIdx: selectedChunkIdx, frameIdx: 0 };
     updateMontageMetaUI();
   }
 }
@@ -4491,7 +4518,13 @@ function handleTouchStart(e){
   // Only process if in chunk mode
   if(currentMode !== 'chunk') return;
   
-  if(e.touches.length === 2){
+  // Check if zoom is locked - if so, ignore pinch gestures
+  if(zoomLocked && e.touches.length >= 2){
+    e.preventDefault();
+    return; // Don't process pinch when locked
+  }
+  
+  if(e.touches.length >= 2){
     // Two-finger pinch detected
     e.preventDefault();
     e.stopPropagation();
