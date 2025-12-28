@@ -3252,13 +3252,21 @@ function selectMontageChunk(idx, renderPreview = true){
 
   updateTrimBar();
   
-  // Position playhead to start of selected chunk (always update position for sync)
-  let framesBefore = 0;
-  for(let i = 0; i < selectedChunkIdx; i++){
-    const c = montageChunks[i];
-    framesBefore += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
+  // Position playhead to start of selected chunk (only when not during playback)
+  // During playback, _montagePos is managed by the playback loop
+  if(renderPreview){
+    let framesBefore = 0;
+    for(let i = 0; i < selectedChunkIdx; i++){
+      const c = montageChunks[i];
+      framesBefore += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
+    }
+    _montagePos = { chunkIdx: selectedChunkIdx, frameIdx: 0 };
+    
+    // Update scrubber position to match selected chunk's start frame
+    if(currentMode === 'montage'){
+      updateMontageScrubberUI();
+    }
   }
-  _montagePos = { chunkIdx: selectedChunkIdx, frameIdx: 0 };
   
   // update canvas preview when in montage mode unless caller asked to skip render
   if(currentMode === 'montage' && renderPreview){ 
