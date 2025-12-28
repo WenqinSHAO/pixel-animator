@@ -38,8 +38,9 @@ header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;alig
 header h1{font-size:14px;margin:0;letter-spacing:.3px;color:var(--text);font-weight:600}
 header .hint{font-size:12px;color:var(--muted)}
 .wrap{display:grid;grid-template-columns:1fr 320px;gap:14px;padding:14px;max-width:1200px;margin:0 auto;align-items:start;min-height:calc(100vh - 90px)}
-.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35);min-height:100%;overflow:hidden}
-.stage{padding:12px;display:flex;flex-direction:column;gap:12px;min-height:100%;overflow-y:auto}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35);min-height:100%;overflow:hidden;display:flex;flex-direction:column}
+.stage{padding:12px;display:flex;flex-direction:column;gap:12px;flex:1;min-height:0;overflow-y:auto}
+.sidebar{display:flex;flex-direction:column;flex:1;min-height:0;overflow-y:auto}
 .canvasPanel{display:flex;flex-direction:column;gap:10px}
 .mainCanvasWrap{background:#060a12;border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;justify-content:center;align-items:center;position:relative;overflow:visible}
 
@@ -145,10 +146,12 @@ input[type="range"]{width:160px}
 /* Responsive layout - optimized for tablets and e-ink devices */
 /* Wide screens (laptops/desktops): Two-column layout, height-constrained */
 @media (min-width:981px){
-  .wrap{display:grid;grid-template-columns:1fr 320px;gap:14px;padding:14px;max-width:1200px;margin:0 auto;align-items:start;min-height:calc(100vh - 90px)}
-  .card{min-height:100%}
-  .stage{min-height:100%;overflow-y:hidden}
-  .sidebar{min-height:100%;overflow-y:auto}
+  .wrap{display:grid;grid-template-columns:1fr 320px;gap:14px;padding:14px;max-width:1200px;margin:0 auto;align-items:start;height:calc(100vh - 90px);max-height:calc(100vh - 90px)}
+  .card{height:100%;max-height:100%;overflow:hidden}
+  .stage{height:100%;max-height:100%;overflow-y:hidden;display:flex;flex-direction:column}
+  .sidebar{height:100%;max-height:100%;overflow-y:auto}
+  .canvasPanel{flex-shrink:0}
+  .framesWrap,.sidebar .section{overflow-y:auto}
 }
 
 /* Narrow screens (tablets/phones): Single-column layout, width-constrained, scrollable */
@@ -3495,9 +3498,9 @@ function setMode(mode){
   const headerHint = document.getElementById('headerHint');
   if(headerHint){
     if(isMontage){
-      headerHint.textContent = 'Space play/pause · Click chunk to select · Drag trim handles to adjust range · Import chunks to assemble montage';
+      headerHint.textContent = 'Montage mode: ←/→ frame nav · ↑/↓ chunk nav · Space play/pause · Click chunk to select · Drag trim handles';
     }else{
-      headerHint.textContent = 'Space play/pause · [ / ] or ←/→ prev/next · A add frame · D duplicate · Del delete frame · Ctrl/Cmd+Z undo · Ctrl/Cmd+Y redo · S save · G GIF · L load · N new';
+      headerHint.textContent = 'Chunk mode: Space play · ←/→ frame nav · A add · D duplicate · S save · Ctrl/Cmd+Z undo';
     }
   }
 
