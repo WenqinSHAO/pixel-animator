@@ -13,8 +13,10 @@ A minimal browser-based frame-by-frame animator and GIF exporter, optimized for 
 - **Chunk Editor**: Draw frame-by-frame animations with pencil, soft brush, and eraser tools
 - **Montage Editor**: Assemble animations from multiple chunks with timeline editing
 - **RGBA Color Support**: Full color with transparency/alpha channel
-- **Touch Support**: Pinch-to-zoom, touch-friendly buttons, and momentum scrolling
-- **E-ink Optimized**: High-contrast light theme perfect for e-ink displays
+- **Touch Support**: Pinch-to-zoom, touch-friendly buttons (44px), and momentum scrolling
+- **Tool Deselection**: Click active tool again to deselect and prevent drawing
+- **Zoom Lock**: Lock/unlock zoom (🔒/🔓) to prevent accidental pinch gestures while drawing
+- **E-ink Optimized**: High-contrast light theme perfect for e-ink displays (reMarkable, Boox, Kindle)
 - **Responsive Layout**: Works on desktop, tablet, and mobile devices
 - **Offline Capable**: No server required, works completely offline
 
@@ -119,11 +121,17 @@ Schema (concise):
 ### Chunk Editor Mode
 
 - **Drawing tools**: Pencil, Eraser, Soft brush, and Selection tool
+  - **Tool deselection**: Click active tool button again to deselect - prevents drawing when no tool is selected
+- **Zoom lock button**: Lock/unlock zoom (🔒/🔓 icons) to prevent accidental pinch gestures while drawing
 - **Color palette**: Quick-access grayscale buttons (0, 64, 128, 192, 255) for fast color selection
 - **Mouse controls**: 
   - Scroll wheel to adjust brush size
   - C + wheel or Ctrl/Cmd + wheel to zoom canvas (50%-300%)
   - Canvas zoom reset button (Zoom 100%)
+- **Touch controls**:
+  - Pinch-to-zoom with two fingers (50%-300%)
+  - Double-tap to reset zoom to 100%
+  - Zoom lock prevents accidental pinch while drawing
 - **Grid overlay**: Toggle pixel grid for precise alignment (Grid On/Off button)
 - **Selection tool**: Click and drag to select an area, Ctrl+C to copy, Ctrl+V to paste, Ctrl+X to cut, Delete to clear
 - **Frame management**: 

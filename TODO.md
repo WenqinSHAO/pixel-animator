@@ -29,9 +29,9 @@
 - [x] **Responsive layout fixes** - ✅ Sidebar visible in both wide and narrow modes
 - [x] **Touch gesture support** - ✅ Pinch-to-zoom with multi-touch detection
 - [x] **Canvas zoom positioning** - ✅ Floats on top when zoomed >100%
-- [ ] **Drawing tool deselection** - Allow manual tool deselection to prevent drawing during zoom
-- [ ] **Zoom lock button** - Lock/unlock zoom to separate from drawing interactions
-- [ ] **Montage playback sync** - Fix chunk panel focus sync during playback (Known issue)
+- [x] **Drawing tool deselection** - ✅ Click active tool to deselect, prevents drawing when no tool selected
+- [x] **Zoom lock button** - ✅ Lock/unlock zoom (🔒/🔓) to prevent accidental pinch gestures
+- [x] **Montage playback sync** - ✅ Fixed chunk panel selection sync during playback
 
 ## Medium Priority
 
