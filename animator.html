@@ -268,7 +268,7 @@ input[type="range"]{width:160px}
 <header>
   <h1 id="title">Frame-by-Frame Animator</h1>
   <div id="headerHint" class="hint">
-    Chunk: Space play/pause · [ / ] or ←/→ prev/next · A add · D duplicate · S save · Ctrl/Cmd+Z undo · Montage: ←/→ frame nav · ↑/↓ chunk nav
+    Chunk mode: Space play · ←/→ frame nav · A add · D duplicate · S save · Ctrl/Cmd+Z undo | Montage mode: ←/→ frame nav · ↑/↓ chunk nav
   </div>
   <div style="display:flex;gap:8px;align-items:center">
     <button id="themeToggleBtn" title="Toggle theme (optimized for e-ink displays)" style="padding:8px 12px">☀️ Light</button>
@@ -3424,7 +3424,7 @@ function _globalTrimPointerMove(ev){
     }
   }
 }
-function _globalTrimPointerUp(ev){ if(!_trimDragging) return; _trimDragging = null; renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); notify('Chunk trimmed (non-destructive).'); }
+function _globalTrimPointerUp(ev){ if(!_trimDragging) return; _trimDragging = null; renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); notify('Chunk trimmed (non-destructive).'); montageEditorDirty = true; }
 window.addEventListener('pointermove', _globalTrimPointerMove);
 window.addEventListener('pointerup', _globalTrimPointerUp);
 
@@ -3441,11 +3441,24 @@ window.addEventListener('DOMContentLoaded', ()=>{
 
 // Helper function to check for unsaved changes and confirm action
 function checkUnsavedChanges(actionName = 'proceed'){
-  const isDirty = (currentMode === 'chunk' && chunkEditorDirty) || (currentMode === 'montage' && montageEditorDirty);
+  // For mode switching, only check current mode
+  // For other actions, check both editors to prevent any data loss
+  const checkBoth = !actionName.includes('switch');
+  const isDirty = checkBoth 
+    ? (chunkEditorDirty || montageEditorDirty)
+    : (currentMode === 'chunk' && chunkEditorDirty) || (currentMode === 'montage' && montageEditorDirty);
+  
   if(!isDirty) return true;
   
-  const mode = currentMode === 'chunk' ? 'chunk editor' : 'montage editor';
-  return confirm(`You have unsaved changes in the ${mode}. Are you sure you want to ${actionName}? Unsaved changes will be lost.`);
+  if(checkBoth && chunkEditorDirty && montageEditorDirty){
+    return confirm(`You have unsaved changes in both chunk and montage editors. Are you sure you want to ${actionName}? All unsaved changes will be lost.`);
+  } else if(checkBoth){
+    const mode = chunkEditorDirty ? 'chunk editor' : 'montage editor';
+    return confirm(`You have unsaved changes in the ${mode}. Are you sure you want to ${actionName}? Unsaved changes will be lost.`);
+  } else {
+    const mode = currentMode === 'chunk' ? 'chunk editor' : 'montage editor';
+    return confirm(`You have unsaved changes in the ${mode}. Are you sure you want to ${actionName}? Unsaved changes will be lost.`);
+  }
 }
 
 function setMode(mode){
