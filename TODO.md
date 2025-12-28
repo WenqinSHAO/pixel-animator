@@ -4,17 +4,17 @@
 
 ### Montage Editor
 
-- [ ] **Keyboard shortcuts for chunks** - left, right arrow keys for per frame navigation, up down arrow key for chunk navigation. remember to update hint.
+- [ ] **Keyboard shortcuts** - left, right arrow keys for per frame navigation; up down arrow key for chunk navigation. remember to update hint.
 
 
 ### Chunk Editor
 
-- [ ] **hot key simplification** - remove Del for detele frame hotkey, remove G for export GIF, L for load, N for new hotkeys. remember to update hint.
+- [ ] **hot key simplification** - remove Del for detele frame, G for export GIF, L for load, N for new hotkeys. remember to update hint.
 
 ### General UX
 
-- [ ] **Unsaved changes indicator** - Warn before switching modes or loading new project
-- [ ] **safeguard on pull refresh** - when page refreshed trigger by pull down, trigger unsave change indicator, applies to both montage and chunk editor
+- [ ] **Unsaved changes indicator** - Warn before switching modes or loading new project, ask user whether continue
+- [ ] **safeguard on pull refresh** - when page refresh triggered by page pull down, trigger unsave change indicator, applies to both montage and chunk editor
 
 
 ## Medium Priority
