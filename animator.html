@@ -285,7 +285,7 @@ input[type="range"]{width:160px}
 
       <!-- Drawing Ops -->
       <div id="drawingPanel" class="panelBlock" style="padding:8px">
-        <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:6px">
           <!-- Tools row with color picker -->
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
             <button id="toolPencil" class="primary" style="padding:6px 10px">Pencil</button>
@@ -315,16 +315,16 @@ input[type="range"]{width:160px}
             
             <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
             <button id="toolSelect" style="padding:6px 10px">Select</button>
-            <select id="selectionMode" style="padding:4px 6px;font-size:11px;background:var(--bg-secondary);color:var(--fg);border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Selection mode">
-              <option value="rect">Rectangular</option>
-              <option value="lasso">Free-form</option>
-            </select>
+            <button id="selRectBtn" class="primary" style="padding:6px 10px">Rect</button>
+            <button id="selLassoBtn" style="padding:6px 10px">Lasso</button>
             <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
             <button id="undoBtn" style="padding:6px 10px">Undo</button>
             <button id="redoBtn" style="padding:6px 10px">Redo</button>
+            <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
+            <button id="zoomLockBtn" style="padding:6px 10px" title="Lock/unlock canvas zoom">🔓 Zoom Unlocked</button>
           </div>
           <!-- Settings row -->
-          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11px">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:11px">
             <label style="gap:6px">Brush
               <input id="brushSize" type="range" min="1" max="8" value="1" style="width:100px"/>
               <span id="brushSizeLabel" class="pill" style="padding:3px 6px;font-size:10px">1</span>
@@ -340,7 +340,6 @@ input[type="range"]{width:160px}
             <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
             <button id="gridToggleBtn" style="padding:6px 10px">Grid Off</button>
             <button id="canvasZoomResetBtn" style="padding:6px 10px" title="Reset canvas zoom (100%)">Zoom 100%</button>
-            <button id="zoomLockBtn" style="padding:6px 10px" title="Lock/unlock canvas zoom">🔓 Zoom Unlocked</button>
           </div>
           </div>
         </div>
@@ -659,7 +658,6 @@ const toolPencil = document.getElementById('toolPencil');
 const toolEraser = document.getElementById('toolEraser');
 const toolSoft = document.getElementById('toolSoft');
 const toolSelect = document.getElementById('toolSelect');
-const selectionModeSelect = document.getElementById('selectionMode');
 
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
@@ -763,11 +761,31 @@ function updateUI(){
 }
 
 function setTool(next){
+  const prevTool = tool;
+  
   // Allow deselecting tools by clicking the active tool again
   if(tool === next){
     tool = null; // No tool selected
   } else {
     tool = next;
+  }
+  
+  // Auto zoom lock: lock when drawing tool selected, unlock when deselected
+  const zoomLockBtn = document.getElementById('zoomLockBtn');
+  if(tool !== null && tool !== 'select' && (prevTool === null || prevTool === 'select')){
+    // Just selected a drawing tool (pencil, soft, eraser) - lock zoom
+    zoomLocked = true;
+    if(zoomLockBtn){
+      zoomLockBtn.textContent = '🔒 Zoom Locked';
+      zoomLockBtn.classList.add('primary');
+    }
+  } else if(tool === null && prevTool !== null && prevTool !== 'select'){
+    // Just deselected a drawing tool - unlock zoom
+    zoomLocked = false;
+    if(zoomLockBtn){
+      zoomLockBtn.textContent = '🔓 Zoom Unlocked';
+      zoomLockBtn.classList.remove('primary');
+    }
   }
   
   toolPencil.classList.toggle('primary', tool === 'pencil');
@@ -2254,10 +2272,27 @@ toolEraser.addEventListener('click', ()=>setTool('eraser'));
 toolSoft.addEventListener('click', ()=>setTool('soft'));
 toolSelect.addEventListener('click', ()=>setTool('select'));
 
-// Selection mode dropdown
-if(selectionModeSelect){
-  selectionModeSelect.addEventListener('change', ()=>{
-    selectionMode = selectionModeSelect.value;
+// Selection mode buttons (replacing dropdown)
+const selRectBtn = document.getElementById('selRectBtn');
+const selLassoBtn = document.getElementById('selLassoBtn');
+
+if(selRectBtn && selLassoBtn){
+  selRectBtn.addEventListener('click', ()=>{
+    selectionMode = 'rect';
+    selRectBtn.classList.add('primary');
+    selLassoBtn.classList.remove('primary');
+    // Clear current selection when switching modes
+    if(selection && !selectionFloating){
+      selection = null;
+      lassoPath = [];
+      renderMain();
+    }
+  });
+  
+  selLassoBtn.addEventListener('click', ()=>{
+    selectionMode = 'lasso';
+    selLassoBtn.classList.add('primary');
+    selRectBtn.classList.remove('primary');
     // Clear current selection when switching modes
     if(selection && !selectionFloating){
       selection = null;
@@ -4410,11 +4445,10 @@ function startMontagePlayback(){
     };
     renderPreviewFrameBytes(bytes, chunkInfo);
 
-    // only update the selected chunk when we actually moved to a new chunk
-    if(lastChunkIdx !== _montagePos.chunkIdx){
-      // update selection highlight but do not force a chunk-start preview render
+    // Update chunk selection EVERY frame to ensure proper sync
+    // This ensures the highlighted chunk matches the currently playing frame
+    if(selectedChunkIdx !== _montagePos.chunkIdx){
       selectMontageChunk(_montagePos.chunkIdx, false);
-      lastChunkIdx = _montagePos.chunkIdx;
     }
 
       // update playback position UI (global frame index)
