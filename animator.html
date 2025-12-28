@@ -38,16 +38,18 @@ header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;alig
 header h1{font-size:14px;margin:0;letter-spacing:.3px;color:var(--text);font-weight:600}
 header .hint{font-size:12px;color:var(--muted)}
 .wrap{display:grid;grid-template-columns:1fr 320px;gap:14px;padding:14px;max-width:1200px;margin:0 auto;align-items:start;min-height:calc(100vh - 90px)}
-.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35);min-height:100%;overflow:hidden}
-.stage{padding:12px;display:flex;flex-direction:column;gap:12px;min-height:100%;overflow-y:auto}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35);min-height:100%;overflow:hidden;display:flex;flex-direction:column}
+.stage{padding:12px;display:flex;flex-direction:column;gap:12px;flex:1;min-height:0;overflow-y:auto}
+.sidebar{display:flex;flex-direction:column;flex:1;min-height:0;overflow-y:auto}
 .canvasPanel{display:flex;flex-direction:column;gap:10px}
 .mainCanvasWrap{background:#060a12;border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;justify-content:center;align-items:center;position:relative;overflow:visible}
 
 /* Montage mode: more compact layout */
-body.montage-mode .stage{gap:8px;padding:10px}
-body.montage-mode .canvasPanel{gap:6px}
-body.montage-mode .mainCanvasWrap{padding:8px}
+body.montage-mode .stage{gap:6px;padding:10px}
+body.montage-mode .canvasPanel{gap:4px}
+body.montage-mode .mainCanvasWrap{padding:6px}
 body.montage-mode .panelBlock{padding:8px;gap:6px}
+body.montage-mode #trimBar{margin-top:6px}
 canvas#main{width:512px;height:512px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:
   linear-gradient(45deg, #ccc 25%, transparent 25%),
   linear-gradient(-45deg, #ccc 25%, transparent 25%),
@@ -145,10 +147,14 @@ input[type="range"]{width:160px}
 /* Responsive layout - optimized for tablets and e-ink devices */
 /* Wide screens (laptops/desktops): Two-column layout, height-constrained */
 @media (min-width:981px){
-  .wrap{display:grid;grid-template-columns:1fr 320px;gap:14px;padding:14px;max-width:1200px;margin:0 auto;align-items:start;min-height:calc(100vh - 90px)}
-  .card{min-height:100%}
-  .stage{min-height:100%;overflow-y:hidden}
-  .sidebar{min-height:100%;overflow-y:auto}
+  .wrap{display:grid;grid-template-columns:1fr 320px;gap:14px;padding:14px;max-width:1200px;margin:0 auto;align-items:start;height:calc(100vh - 90px);max-height:calc(100vh - 90px)}
+  .card{height:100%;max-height:100%;overflow:hidden}
+  .stage{height:100%;max-height:100%;overflow-y:hidden;display:flex;flex-direction:column}
+  .sidebar{height:100%;max-height:100%;overflow-y:auto}
+  .canvasPanel{flex-shrink:0}
+  .framesWrap,.sidebar .section{overflow-y:auto}
+  /* Montage mode specific: reduce canvas size slightly to ensure scrubber is visible */
+  body.montage-mode canvas#main{width:480px;height:480px}
 }
 
 /* Narrow screens (tablets/phones): Single-column layout, width-constrained, scrollable */
@@ -268,7 +274,7 @@ input[type="range"]{width:160px}
 <header>
   <h1 id="title">Frame-by-Frame Animator</h1>
   <div id="headerHint" class="hint">
-    Space play/pause · [ / ] or ←/→ prev/next · A add frame · D duplicate · Del delete frame · Ctrl/Cmd+Z undo · Ctrl/Cmd+Y redo · S save · G GIF · L load · N new
+    Chunk mode: Space play/pause · ←/→ frame nav · A add · D duplicate · S save · Ctrl/Cmd+Z undo
   </div>
   <div style="display:flex;gap:8px;align-items:center">
     <button id="themeToggleBtn" title="Toggle theme (optimized for e-ink displays)" style="padding:8px 12px">☀️ Light</button>
@@ -349,7 +355,7 @@ input[type="range"]{width:160px}
       </div>
 
       <!-- Trim bar for montage chunk trimming (always visible; disabled until a chunk is selected) -->
-      <div id="trimBar" style="margin-top:10px;">
+      <div id="trimBar" style="margin-top:6px;">
         <div class="panelBlock">
           <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px;">
             <div style="font-size:12px;font-weight:600;color:var(--text)">Trim Range:</div>
@@ -605,6 +611,10 @@ let canvasZoom = 1.0; // Canvas zoom level (1.0 = 100%)
 let zoomLocked = false; // Lock zoom to prevent accidental pinch-zoom
 let cKeyPressed = false; // Track 'c' key state for canvas zoom
 let cursorPos = null; // Track cursor position on canvas for brush preview
+
+// Unsaved changes tracking
+let chunkEditorDirty = false; // Track unsaved changes in chunk editor
+let montageEditorDirty = false; // Track unsaved changes in montage editor
 
 // Selection tool state
 let selectionMode = 'rect'; // 'rect' or 'lasso'
@@ -1264,6 +1274,9 @@ function commitStroke(){
 
   activeStrokeMap = null;
   updateUndoRedoButtons();
+  
+  // Mark chunk editor as dirty after any drawing operation
+  chunkEditorDirty = true;
 }
 
 function applyDelta(frameIdx, idxs, values){
@@ -1331,6 +1344,9 @@ function insertFrame(afterIndex, sourceFrameOrNull){
   renderAllThumbs();
   setCurrent(insertAt);
   updateProjectMetaUI();
+  
+  // Mark chunk editor as dirty after adding/duplicating frames
+  chunkEditorDirty = true;
 }
 
 function addBlankAfterCurrent(){ insertFrame(current, null); }
@@ -1359,6 +1375,9 @@ function deleteCurrentFrame(){
   renderAllThumbs();
   renderMain();
   updateUI();
+  
+  // Mark chunk editor as dirty after deleting a frame
+  chunkEditorDirty = true;
 }
 
 // Insert a frame from index `from` so it appears immediately BEFORE the frame at index `to` (drop target).
@@ -1400,6 +1419,9 @@ function insertFrameBefore(from, to){
   renderAllThumbs();
   renderMain();
   updateUI();
+  
+  // Mark chunk editor as dirty after reordering frames
+  chunkEditorDirty = true;
 }
 
 // Swap two frames at indices `a` and `b`
@@ -1420,6 +1442,9 @@ function swapFrames(a, b){
   renderAllThumbs();
   renderMain();
   updateUI();
+  
+  // Mark chunk editor as dirty after swapping frames
+  chunkEditorDirty = true;
 }
 
 // -------------------- Project Save/Load (FPS fixed at 12) --------------------
@@ -1476,6 +1501,9 @@ function saveProject(){
 
   setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
   notify(`Project saved as ${a.download}`);
+  
+  // Clear dirty flag after successful save
+  chunkEditorDirty = false;
 }
 
 async function loadProject(file){
@@ -2195,6 +2223,17 @@ window.addEventListener('blur', ()=>{
   cKeyPressed = false;
 });
 
+// Warn before page unload if there are unsaved changes
+window.addEventListener('beforeunload', (ev)=>{
+  const isDirty = chunkEditorDirty || montageEditorDirty;
+  if(isDirty){
+    // Modern browsers ignore custom messages, but setting returnValue triggers the dialog
+    ev.preventDefault();
+    ev.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+    return ev.returnValue;
+  }
+});
+
 // Mouse wheel events for brush size and canvas zoom
 main.addEventListener('wheel', (ev)=>{
   // Only process wheel events in chunk mode and when not playing
@@ -2467,6 +2506,10 @@ saveProjectBtn.addEventListener('click', ()=>{
 
 loadProjectBtn.addEventListener('click', ()=>{
   if(isPlaying) return;
+  // Check for unsaved changes before loading
+  if(!checkUnsavedChanges('load a new project')){
+    return; // User cancelled
+  }
   loadProjectInput.value = '';
   loadProjectInput.click();
 });
@@ -2477,6 +2520,8 @@ loadProjectInput.addEventListener('change', async ()=>{
   if(!file) return;
   try{
     await loadProject(file);
+    // Clear dirty flag after successful load
+    chunkEditorDirty = false;
   }catch(err){
     console.error(err);
     notify(`Failed to load project: ${err && err.message ? err.message : String(err)}`);
@@ -2490,6 +2535,11 @@ saveBtn.addEventListener('click', ()=>{
 
 newBtn.addEventListener('click', ()=>{
   if(isPlaying) return;
+  
+  // Check for unsaved changes before creating new project
+  if(!checkUnsavedChanges('create a new project')){
+    return; // User cancelled
+  }
 
   // reset to 12 blank frames
   frames = Array.from({length: 12}, ()=>makeBlankFrame());
@@ -2506,6 +2556,9 @@ newBtn.addEventListener('click', ()=>{
   // Clear editing context when creating new project
   _editingChunkContext = null;
   updateMontageIntegrationButtons();
+  
+  // Clear dirty flag after creating new project
+  chunkEditorDirty = false;
 });
 
 // Montage integration buttons
@@ -2729,24 +2782,66 @@ window.addEventListener('keydown', e=>{
     return;
   }
 
-  // Frame navigation
+  // Navigation: Arrow keys handle both chunk and montage modes
   if(!isPlaying){
-    if(e.key === '[' || e.code === 'ArrowLeft'){
-      e.preventDefault();
-      setCurrent(current - 1);
-      return;
-    }
-    if(e.key === ']' || e.code === 'ArrowRight'){
-      e.preventDefault();
-      setCurrent(current + 1);
-      return;
+    // Montage mode: Arrow keys for frame/chunk navigation
+    if(currentMode === 'montage'){
+      if(e.code === 'ArrowLeft'){
+        e.preventDefault();
+        // Navigate to previous frame in montage
+        if(montageScrubber){
+          const pos = Math.max(1, Number(montageScrubber.value) - 1);
+          montageScrubber.value = String(pos);
+          montageScrubber.dispatchEvent(new Event('input'));
+        }
+        return;
+      }
+      if(e.code === 'ArrowRight'){
+        e.preventDefault();
+        // Navigate to next frame in montage
+        if(montageScrubber){
+          const totalFrames = computeMontageTotalFrames();
+          const pos = Math.min(totalFrames, Number(montageScrubber.value) + 1);
+          montageScrubber.value = String(pos);
+          montageScrubber.dispatchEvent(new Event('input'));
+        }
+        return;
+      }
+      if(e.code === 'ArrowUp'){
+        e.preventDefault();
+        // Navigate to previous chunk
+        if(selectedChunkIdx > 0){
+          selectMontageChunk(selectedChunkIdx - 1);
+        }
+        return;
+      }
+      if(e.code === 'ArrowDown'){
+        e.preventDefault();
+        // Navigate to next chunk
+        if(selectedChunkIdx < montageChunks.length - 1){
+          selectMontageChunk(selectedChunkIdx + 1);
+        }
+        return;
+      }
+    } else {
+      // Chunk mode: [ / ] or arrow keys for frame navigation
+      if(e.key === '[' || e.code === 'ArrowLeft'){
+        e.preventDefault();
+        setCurrent(current - 1);
+        return;
+      }
+      if(e.key === ']' || e.code === 'ArrowRight'){
+        e.preventDefault();
+        setCurrent(current + 1);
+        return;
+      }
     }
   }
 
-  // Delete current frame or clear selection
-  if(!isPlaying && (e.code === 'Delete' || e.code === 'Backspace')){
+  // Delete/Backspace: Clear selection only (no longer deletes frames)
+  if(!isPlaying && (e.code === 'Delete' || e.code === 'Backspace') && currentMode === 'chunk'){
     e.preventDefault();
-    // If selection tool is active and there's a selection, clear the selected area
+    // Only clear selection if selection tool is active and there's a selection
     if(tool === 'select' && selection){
       beginStroke();
       const frameArr = frames[current];
@@ -2796,8 +2891,6 @@ window.addEventListener('keydown', e=>{
       renderMain();
       renderThumb(current);
       notify('Selection cleared');
-    }else{
-      deleteCurrentFrame();
     }
     return;
   }
@@ -2946,29 +3039,12 @@ window.addEventListener('keydown', e=>{
   }
   
   // Do not run single-letter shortcuts when any modifier key is pressed — this avoids colliding
-  // with browser or OS shortcuts like Ctrl/Cmd+S, Ctrl/Cmd+G, etc.
+  // with browser or OS shortcuts like Ctrl/Cmd+S, etc.
   // Also only run these shortcuts in chunk mode to avoid interfering with montage mode
   const hasModifier = e.ctrlKey || e.metaKey || e.altKey || e.shiftKey;
   if(!hasModifier && currentMode === 'chunk'){
     if(k === 's'){
       if(!isPlaying){ e.preventDefault(); saveProject(); }
-    }else if(k === 'g'){
-      if(!isPlaying){ e.preventDefault(); saveGif(); }
-    }else if(k === 'l'){
-      if(!isPlaying){ e.preventDefault(); loadProjectInput.value = ''; loadProjectInput.click(); }
-    }else if(k === 'n'){
-      if(!isPlaying){
-        e.preventDefault();
-        frames = Array.from({length: 12}, ()=>makeBlankFrame());
-        undoStacks = [];
-        redoStacks = [];
-        ensureStacks(frames.length);
-        current = 0;
-        initThumbs(false);
-        renderAllThumbs();
-        renderMain();
-        updateUI();
-      }
     }else if(k === 'a'){
       if(!isPlaying){ e.preventDefault(); addBlankAfterCurrent(); }
     }else if(k === 'd'){
@@ -3307,8 +3383,8 @@ function updateTrimBar(){
 }
 
 // Trim apply/reset buttons
-const trimApplyBtnObs = function(){ const si = Number(document.getElementById('trimStartInput').value); const ei = Number(document.getElementById('trimEndInput').value); if(selectedChunkIdx>=0){ const ch = montageChunks[selectedChunkIdx]; ch.frameRange = {start: si, end: ei}; ch.derived = true; renderMontageChunks(); updateMontageMetaUI(); updateTrimBar(); updateMontageScrubberUI(); notify('Chunk trimmed (non-destructive).'); }};
-const trimResetBtnObs = function(){ if(selectedChunkIdx>=0){ const ch = montageChunks[selectedChunkIdx]; ch.frameRange = {start:0, end: (ch._project && (ch._project.frameCount || (ch._project.frames && ch._project.frames.length))) || ch.frameRange.end}; ch.derived = false; renderMontageChunks(); updateMontageMetaUI(); updateTrimBar(); updateMontageScrubberUI(); notify('Trim reset (restored full range).'); }};
+const trimApplyBtnObs = function(){ const si = Number(document.getElementById('trimStartInput').value); const ei = Number(document.getElementById('trimEndInput').value); if(selectedChunkIdx>=0){ const ch = montageChunks[selectedChunkIdx]; ch.frameRange = {start: si, end: ei}; ch.derived = true; renderMontageChunks(); updateMontageMetaUI(); updateTrimBar(); updateMontageScrubberUI(); notify('Chunk trimmed (non-destructive).'); montageEditorDirty = true; }};
+const trimResetBtnObs = function(){ if(selectedChunkIdx>=0){ const ch = montageChunks[selectedChunkIdx]; ch.frameRange = {start:0, end: (ch._project && (ch._project.frameCount || (ch._project.frames && ch._project.frames.length))) || ch.frameRange.end}; ch.derived = false; renderMontageChunks(); updateMontageMetaUI(); updateTrimBar(); updateMontageScrubberUI(); notify('Trim reset (restored full range).'); montageEditorDirty = true; }};
 
 // Global pointer handlers for draggable trim (single listeners to avoid accumulation)
 function _globalTrimPointerMove(ev){ 
@@ -3354,7 +3430,7 @@ function _globalTrimPointerMove(ev){
     }
   }
 }
-function _globalTrimPointerUp(ev){ if(!_trimDragging) return; _trimDragging = null; renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); notify('Chunk trimmed (non-destructive).'); }
+function _globalTrimPointerUp(ev){ if(!_trimDragging) return; _trimDragging = null; renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); notify('Chunk trimmed (non-destructive).'); montageEditorDirty = true; }
 window.addEventListener('pointermove', _globalTrimPointerMove);
 window.addEventListener('pointerup', _globalTrimPointerUp);
 
@@ -3369,10 +3445,36 @@ window.addEventListener('DOMContentLoaded', ()=>{
 
 });
 
+// Helper function to check for unsaved changes and confirm action
+// checkCurrentOnly: if true, only check current editor; if false, check both editors
+function checkUnsavedChanges(actionName = 'proceed', checkCurrentOnly = false){
+  const isDirty = checkCurrentOnly 
+    ? (currentMode === 'chunk' && chunkEditorDirty) || (currentMode === 'montage' && montageEditorDirty)
+    : (chunkEditorDirty || montageEditorDirty);
+  
+  if(!isDirty) return true;
+  
+  if(!checkCurrentOnly && chunkEditorDirty && montageEditorDirty){
+    return confirm(`You have unsaved changes in both chunk and montage editors. Are you sure you want to ${actionName}? All unsaved changes will be lost.`);
+  } else if(!checkCurrentOnly){
+    const mode = chunkEditorDirty ? 'chunk editor' : 'montage editor';
+    return confirm(`You have unsaved changes in the ${mode}. Are you sure you want to ${actionName}? Unsaved changes will be lost.`);
+  } else {
+    const mode = currentMode === 'chunk' ? 'chunk editor' : 'montage editor';
+    return confirm(`You have unsaved changes in the ${mode}. Are you sure you want to ${actionName}? Unsaved changes will be lost.`);
+  }
+}
+
 function setMode(mode){
   const isMontage = mode === 'montage';
   const newMode = isMontage ? 'montage' : 'chunk';
   if(currentMode === newMode){ console.debug('setMode: already', currentMode); return; }
+  
+  // Check for unsaved changes before switching (only check current editor)
+  if(!checkUnsavedChanges('switch editors', true)){
+    return; // User cancelled, don't switch
+  }
+  
   currentMode = newMode;
   console.debug('setMode ->', currentMode);
   notify(`Switched to ${currentMode === 'montage' ? 'Montage Editor' : 'Chunk Editor'}`);
@@ -3399,9 +3501,9 @@ function setMode(mode){
   const headerHint = document.getElementById('headerHint');
   if(headerHint){
     if(isMontage){
-      headerHint.textContent = 'Space play/pause · Click chunk to select · Drag trim handles to adjust range · Import chunks to assemble montage';
+      headerHint.textContent = 'Montage mode: ←/→ frame nav · ↑/↓ chunk nav · Space play/pause · Click chunk to select · Drag trim handles';
     }else{
-      headerHint.textContent = 'Space play/pause · [ / ] or ←/→ prev/next · A add frame · D duplicate · Del delete frame · Ctrl/Cmd+Z undo · Ctrl/Cmd+Y redo · S save · G GIF · L load · N new';
+      headerHint.textContent = 'Chunk mode: Space play/pause · ←/→ frame nav · A add · D duplicate · S save · Ctrl/Cmd+Z undo';
     }
   }
 
@@ -3490,6 +3592,9 @@ function addMontageChunk(obj, insertPosition = null){
   updateMontageScrubberUI();
   // select first chunk by default when first chunk added
   if(montageChunks.length === 1){ selectMontageChunk(0); }
+  
+  // Mark montage editor as dirty after adding a chunk
+  montageEditorDirty = true;
 }
 
 // -------------------- Chunk/Montage Editor Integration --------------------
@@ -3760,6 +3865,7 @@ function renderMontageChunks(){
         updateMontageMetaUI();
         updateMontageScrubberUI();
         notify('Chunk reordered');
+        montageEditorDirty = true;
       }
     });
 
@@ -3826,6 +3932,7 @@ function renderMontageChunks(){
       ch.color = colorPicker.value;
       updateChunkDelimiters(computeMontageTotalFrames());
       notify('Chunk color updated');
+      montageEditorDirty = true;
     });
     colorPicker.addEventListener('click', (e)=>e.stopPropagation());
     row1.appendChild(colorPicker);
@@ -3843,6 +3950,7 @@ function renderMontageChunks(){
       ch.alias = newValue || ch.name || generateId('cut');
       aliasInput.title = ch.alias; // Update tooltip
       updateMontageScrubberUI();
+      montageEditorDirty = true;
     });
     aliasInput.addEventListener('click', (e)=>e.stopPropagation());
     row1.appendChild(aliasInput);
@@ -3866,7 +3974,7 @@ function renderMontageChunks(){
     downBtn.addEventListener('click', (e)=>{ e.stopPropagation(); if(idx === montageChunks.length-1) return; [montageChunks[idx+1], montageChunks[idx]] = [montageChunks[idx], montageChunks[idx+1]]; renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); });
 
     const delBtn = document.createElement('button'); delBtn.className = 'iconBtn danger'; delBtn.title = 'Delete'; delBtn.textContent = '✖';
-    delBtn.addEventListener('click', (e)=>{ e.stopPropagation(); montageChunks.splice(idx,1); renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); });
+    delBtn.addEventListener('click', (e)=>{ e.stopPropagation(); montageChunks.splice(idx,1); renderMontageChunks(); updateMontageMetaUI(); updateMontageScrubberUI(); montageEditorDirty = true; });
 
     row2.appendChild(editBtn);
     row2.appendChild(upBtn);
@@ -4001,11 +4109,18 @@ saveMontageBtn.addEventListener('click', ()=>{
   a.remove();
   URL.revokeObjectURL(url);
   notify(`Montage saved as ${a.download}`);
+  
+  // Clear dirty flag after successful save
+  montageEditorDirty = false;
 });
 
 // Load Montage from JSON
 if(montageLoadBtn && montageLoadInputEl){
   montageLoadBtn.addEventListener('click', ()=>{
+    // Check for unsaved changes before loading
+    if(!checkUnsavedChanges('load a montage')){
+      return; // User cancelled
+    }
     montageLoadInputEl.value = '';
     montageLoadInputEl.click();
   });
@@ -4075,6 +4190,9 @@ if(montageLoadBtn && montageLoadInputEl){
       // Store filename for future saves
       lastMontagePath = file.name;
       notify(`Loaded ${file.name} with ${montageChunks.length} chunks`);
+      
+      // Clear dirty flag after successful load
+      montageEditorDirty = false;
     }catch(err){
       notify(`Failed to load montage: ${err.message}`);
       console.error('Load montage error:', err);

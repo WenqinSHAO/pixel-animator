@@ -2,19 +2,7 @@
 
 ## High Priority
 
-### Montage Editor
-
-- [ ] **Keyboard shortcuts** - left, right arrow keys for per frame navigation; up down arrow key for chunk navigation. remember to update hint.
-
-
-### Chunk Editor
-
-- [ ] **hot key simplification** - remove Del for detele frame, G for export GIF, L for load, N for new hotkeys. remember to update hint.
-
-### General UX
-
-- [ ] **Unsaved changes indicator** - Warn before switching modes or loading new project, ask user whether continue
-- [ ] **safeguard on pull refresh** - when page refresh triggered by page pull down, trigger unsave change indicator, applies to both montage and chunk editor
+(All high priority items completed! See Completed section below)
 
 
 ## Medium Priority
@@ -168,6 +156,21 @@
 - [x] **Color palette** - ✅ Quick-access grayscale palette (0, 64, 128, 192, 255 values) inline with tools
 - [x] **Mouse wheel support** - ✅ Scroll to adjust brush size, C+wheel or Ctrl/Cmd+wheel to zoom canvas
 - [x] **Canvas zoom** - ✅ Canvas zoom with reset button (50%-300%)
+- [x] **Montage Editor - Keyboard shortcuts** (December 2025) - ✅ Implemented arrow key navigation
+  - **Left/Right arrows**: Per-frame navigation across all chunks in montage
+  - **Up/Down arrows**: Navigate between chunks (previous/next chunk)
+  - **Impact**: Efficient keyboard-driven navigation for montage editing workflow
+- [x] **Chunk Editor - Hot key simplification** (December 2025) - ✅ Removed distracting single-letter shortcuts
+  - **Removed**: Del (delete frame), G (export GIF), L (load), N (new project) hotkeys
+  - **Kept**: A (add frame), D (duplicate), S (save) as essential workflow shortcuts
+  - **Reason**: Prevents accidental actions and conflicts with text input; users can still access via buttons
+  - **Impact**: Cleaner, less error-prone keyboard interaction
+- [x] **Unsaved changes indicator** (December 2025) - ✅ Comprehensive dirty state tracking
+  - **Chunk editor**: Tracks changes from drawing, frame add/delete/reorder operations
+  - **Montage editor**: Tracks chunk add/delete/reorder/edit/trim operations
+  - **Warnings**: Prompts before mode switching, loading projects, creating new projects
+  - **Safeguard on refresh**: beforeunload handler warns before page close/refresh
+  - **Impact**: Prevents data loss, gives users confidence when working with unsaved changes
 
 ## Notes
 
