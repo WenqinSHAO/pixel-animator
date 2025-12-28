@@ -3209,7 +3209,9 @@ function selectMontageChunk(idx, renderPreview = true){
   else selectedChunkIdx = clamp(idx, 0, montageChunks.length - 1);
 
   const container = document.getElementById('montageChunks');
-  Array.from(container.children).forEach((child,i)=> child.classList.toggle('active', i === selectedChunkIdx));
+  // Only toggle 'active' class on chunk-item elements (skip insert zones)
+  const chunkItems = container.querySelectorAll('.chunk-item');
+  chunkItems.forEach((child, i) => child.classList.toggle('active', i === selectedChunkIdx));
   const ch = montageChunks[selectedChunkIdx];
   const trimBar = document.getElementById('trimBar');
   // show trim bar only in montage mode
@@ -3252,13 +3254,21 @@ function selectMontageChunk(idx, renderPreview = true){
 
   updateTrimBar();
   
-  // Position playhead to start of selected chunk (always update position for sync)
-  let framesBefore = 0;
-  for(let i = 0; i < selectedChunkIdx; i++){
-    const c = montageChunks[i];
-    framesBefore += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
+  // Position playhead to start of selected chunk (only when not during playback)
+  // During playback, _montagePos is managed by the playback loop
+  if(renderPreview){
+    let framesBefore = 0;
+    for(let i = 0; i < selectedChunkIdx; i++){
+      const c = montageChunks[i];
+      framesBefore += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
+    }
+    _montagePos = { chunkIdx: selectedChunkIdx, frameIdx: 0 };
+    
+    // Update scrubber position to match selected chunk's start frame
+    if(currentMode === 'montage'){
+      updateMontageScrubberUI();
+    }
   }
-  _montagePos = { chunkIdx: selectedChunkIdx, frameIdx: 0 };
   
   // update canvas preview when in montage mode unless caller asked to skip render
   if(currentMode === 'montage' && renderPreview){ 
