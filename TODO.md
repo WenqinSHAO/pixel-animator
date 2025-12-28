@@ -20,6 +20,32 @@
 - [ ] **Tooltips enhancement** - Add helpful tooltips on all buttons and controls for better discoverability
 - [ ] **Keyboard shortcuts reference** - Show cheat sheet accessible via "?" key
 
+### E-ink Tablet Support (December 2025)
+
+- [x] **Light theme for e-ink displays** - ✅ High contrast black-on-white theme with toggle
+- [x] **Touch-friendly scrollbars** - ✅ 16px width with custom styling
+- [x] **Canvas rendering isolation** - ✅ Mode checks prevent chunk/montage canvas leakage
+- [x] **Touch gesture support** - ✅ Pinch-to-zoom with multi-touch detection
+- [x] **Canvas zoom positioning** - ✅ Floats on top when zoomed >100%
+- [x] **Drawing tool deselection** - ✅ Click active tool to deselect, prevents drawing when no tool selected
+- [x] **Zoom lock button** - ✅ Lock/unlock zoom (🔒/🔓) to prevent accidental pinch gestures
+- [x] **Automatic zoom-lock** - ✅ Selecting drawing tool auto-locks zoom, deselecting auto-unlocks
+- [x] **Flattened selection UI** - ✅ Dedicated Rect/Lasso buttons replace dropdown
+- [x] **Compact UI layout** - ✅ Zoom lock on first row, reduced spacing for more canvas space
+
+### Known Issues (Deferred to Future PR)
+
+- [ ] **Montage playback chunk sync** - Chunk panel selection still drifts out of sync during playback
+  - **Root cause**: Playback uses trimmed frames while chunk focus uses original frame indices
+  - **Required fix**: Link currently rendered frame to chunk ownership, update chunk panel accordingly
+- [ ] **Montage scrubber position sync** - When selecting a chunk, playback scrubber position doesn't update
+  - **Required fix**: Update scrubber position to match selected chunk's start frame
+- [ ] **Narrow mode scrolling** - Cannot scroll to reveal hidden content without triggering pull-to-refresh
+  - **Root cause**: `overflow:hidden` on body prevents scrolling to avoid accidental refresh
+  - **Required fix**: Implement scrollable app container that doesn't trigger pull-to-refresh
+- [ ] **Selection UI consolidation** - Select button could be removed, leaving only Rect/Lasso buttons
+  - **Reason**: Select tool is primarily a mode switcher; Rect/Lasso directly set selection mode
+
 ## Medium Priority
 
 ### Montage Editor

@@ -2,12 +2,38 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
 <title>Frame-by-Frame Animator</title>
 <style>
+/* Dark theme (default) */
 :root{--bg:#0b0f17;--panel:#121a27;--panel2:#0f1522;--text:#e6eefc;--muted:#9fb0cf;--accent:#5aa2ff;--danger:#ff5a7a;--border:#26344f}
+
+/* Light theme for e-ink devices (high contrast) */
+body.light-theme{--bg:#f5f5f5;--panel:#ffffff;--panel2:#fafafa;--text:#000000;--muted:#444444;--accent:#0066cc;--danger:#cc0000;--border:#cccccc}
+body.light-theme{background:#f5f5f5}
+body.light-theme .card{background:#ffffff;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+body.light-theme .mainCanvasWrap{background:#fafafa}
+body.light-theme button{background:#ffffff;border-color:#cccccc;color:#000000}
+body.light-theme button:hover{border-color:#999999;background:#f5f5f5}
+body.light-theme button.primary{border-color:#0066cc;background:#e6f2ff;color:#0066cc}
+body.light-theme button.danger{border-color:#cc0000;background:#ffe6e6;color:#cc0000}
+body.light-theme .thumb{background:#fafafa;border-color:#cccccc}
+body.light-theme .thumb .idx{background:rgba(255,255,255,.9);border-color:#cccccc;color:#000000}
+body.light-theme .panelBlock{background:#fafafa;border-color:#cccccc}
+body.light-theme .sidebar .section{background:#fafafa;border-color:#cccccc}
+body.light-theme .toast{background:#ffffff;border-color:#cccccc;color:#000000;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+body.light-theme .timeline-preview{background:#ffffff;border-color:#cccccc}
+body.light-theme #montageChunks .chunk-item{background:#fafafa;border-color:#cccccc}
+body.light-theme #montageChunks .chunk-item:hover{border-color:#999999}
+body.light-theme #montageChunks .chunk-item.active{border-color:#0066cc;background:#e6f2ff}
+body.light-theme #montageChunks .chunk-thumb{background:#ffffff;border-color:#cccccc}
+body.light-theme #montageChunks .chunk-alias{background:#ffffff;border-color:#cccccc}
+body.light-theme .pill{background:#fafafa;border-color:#cccccc}
+
 *{box-sizing:border-box}
-body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:linear-gradient(180deg,#081019,#070b12 55%,#05070c)}
+body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:linear-gradient(180deg,#081019,#070b12 55%,#05070c);overscroll-behavior:none;overflow:hidden}
 header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
 header h1{font-size:14px;margin:0;letter-spacing:.3px;color:var(--text);font-weight:600}
 header .hint{font-size:12px;color:var(--muted)}
@@ -29,7 +55,20 @@ canvas#main{width:512px;height:512px;border-radius:10px;border:1px solid rgba(25
   linear-gradient(-45deg, transparent 75%, #ccc 75%);
   background-size: 16px 16px;
   background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
-  background-color:#fff;image-rendering:pixelated;touch-action:none;cursor:crosshair;position:relative;z-index:10}
+  background-color:#fff;image-rendering:pixelated;touch-action:none;cursor:crosshair;position:relative;z-index:1;-webkit-user-select:none;user-select:none;transform-origin:center center}
+
+/* Canvas zoomed state - always on top when zoomed >100% */
+canvas#main.zoomed{position:fixed;z-index:10000;top:50%;left:50%;transform-origin:center center;pointer-events:auto}
+
+/* Touch-friendly enhancements */
+@media (pointer: coarse){
+  button{min-height:44px;min-width:44px;padding:10px 12px;font-size:13px}
+  .iconBtn{min-width:44px;min-height:44px;padding:8px}
+  input[type="range"]{height:44px}
+  .thumb{min-height:60px;cursor:grab}
+  .thumb:active{cursor:grabbing}
+  #montageChunks .chunk-item{padding:10px;min-height:60px}
+}
 
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
 .group{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -66,7 +105,7 @@ input[type="range"]{width:160px}
   text-transform:uppercase;
 }
 
-.sidebar{padding:12px;display:flex;flex-direction:column;height:100%;overflow-y:auto}
+.sidebar{padding:12px;display:flex;flex-direction:column;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
 .sidebar h2{display:none}
 .sidebar .section{padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(0,0,0,.18);margin-bottom:12px;flex-shrink:0}
 .sidebar .section:first-of-type{flex-shrink:1;display:flex;flex-direction:column;min-height:0}
@@ -74,7 +113,7 @@ input[type="range"]{width:160px}
 .sidebar .row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0;flex-wrap:wrap}
 .sidebar small{color:var(--muted)}
 .frames{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.framesWrap{flex:1;overflow:auto;padding-right:4px;min-height:0}
+.framesWrap{flex:1;overflow:auto;padding-right:4px;min-height:0;-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
 .thumb{border:1px solid var(--border);background:#060a12;border-radius:12px;padding:6px;cursor:pointer;position:relative}
 .thumb.active{outline:2px solid rgba(90,162,255,.8);border-color:rgba(90,162,255,.65)}
 .thumb.dragging{opacity:0.45}
@@ -103,15 +142,35 @@ input[type="range"]{width:160px}
 .timeline-preview canvas{width:80px;height:80px;border-radius:6px;background:#fff;image-rendering:pixelated;border:1px solid rgba(255,255,255,.06);display:block}
 .timeline-preview .info{font-size:10px;color:var(--muted);margin-top:4px;text-align:center}
 
-/* Responsive layout for tablets and narrow displays */
+/* Responsive layout - optimized for tablets and e-ink devices */
+/* Wide screens (laptops/desktops): Two-column layout, height-constrained */
+@media (min-width:981px){
+  .wrap{display:grid;grid-template-columns:1fr 320px;gap:14px;padding:14px;max-width:1200px;margin:0 auto;align-items:start;height:calc(100vh - 90px)}
+  .card{height:100%}
+  .stage{height:100%;overflow-y:hidden}
+  .sidebar{height:100%;overflow-y:auto}
+}
+
+/* Narrow screens (tablets/phones): Single-column layout, width-constrained, scrollable */
 @media (max-width:980px){
-  .wrap{grid-template-columns:1fr;gap:10px;padding:10px;height:calc(100vh - 80px)}
-  canvas#main{width:min(92vw,512px);height:min(92vw,512px)}
+  .wrap{grid-template-columns:1fr;gap:10px;padding:10px;height:auto;min-height:calc(100vh - 70px)}
+  canvas#main{width:min(95vw,600px);height:min(95vw,600px);max-width:calc(100vw - 20px)}
   .frames{grid-template-columns:repeat(4,1fr)}
   header{flex-wrap:wrap;padding:10px 12px}
   header .hint{display:none}
-  .card{overflow:hidden}
-  .stage{overflow-y:auto}
+  .card{overflow:visible;height:auto;width:100%}
+  .stage{overflow-y:visible;height:auto;-webkit-overflow-scrolling:touch;width:100%}
+  .sidebar{max-height:none;height:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;width:100%}
+  /* Stack stage above sidebar - maximize canvas width */
+  .wrap{display:flex;flex-direction:column;width:100%}
+}
+
+/* Tablet landscape optimization (768-1100px): Larger canvas */
+@media (min-width:768px) and (max-width:1100px){
+  .wrap{padding:12px;gap:12px}
+  canvas#main{width:min(90vw,700px);height:min(90vw,700px)}
+  .stage{padding:10px}
+  header{padding:12px 16px}
 }
 
 /* Mobile-friendly vertical layout for narrow screens */
@@ -169,7 +228,7 @@ input[type="range"]{width:160px}
 
 /* Montage sidebar styles */
 #montageSidebar .section{padding:10px}
-#montageChunks{overflow-y:auto;flex:1}
+#montageChunks{overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
 #montageChunks .chunk-item{display:grid;grid-template-columns:56px 1fr;grid-template-rows:auto auto;align-items:start;padding:8px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.02);cursor:move;gap:6px 8px;transition:opacity 0.2s ease}
 #montageChunks .chunk-item:hover{border-color:#35507c}
 #montageChunks .chunk-item.active{outline:2px solid rgba(90,162,255,.8);border-color:rgba(90,162,255,.65);background:linear-gradient(180deg,rgba(90,162,255,.06),rgba(255,255,255,.02))}
@@ -211,9 +270,12 @@ input[type="range"]{width:160px}
   <div id="headerHint" class="hint">
     Space play/pause · [ / ] or ←/→ prev/next · A add frame · D duplicate · Del delete frame · Ctrl/Cmd+Z undo · Ctrl/Cmd+Y redo · S save · G GIF · L load · N new
   </div>
-  <div id="editorToggle" style="display:flex;gap:8px;align-items:center">
-    <button id="toggleChunk" class="primary">Chunk Editor</button>
-    <button id="toggleMontage">Montage Editor</button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button id="themeToggleBtn" title="Toggle theme (optimized for e-ink displays)" style="padding:8px 12px">☀️ Light</button>
+    <div id="editorToggle" style="display:flex;gap:8px;align-items:center">
+      <button id="toggleChunk" class="primary">Chunk Editor</button>
+      <button id="toggleMontage">Montage Editor</button>
+    </div>
   </div>
 </header>
 
@@ -223,7 +285,7 @@ input[type="range"]{width:160px}
 
       <!-- Drawing Ops -->
       <div id="drawingPanel" class="panelBlock" style="padding:8px">
-        <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:6px">
           <!-- Tools row with color picker -->
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
             <button id="toolPencil" class="primary" style="padding:6px 10px">Pencil</button>
@@ -253,16 +315,16 @@ input[type="range"]{width:160px}
             
             <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
             <button id="toolSelect" style="padding:6px 10px">Select</button>
-            <select id="selectionMode" style="padding:4px 6px;font-size:11px;background:var(--bg-secondary);color:var(--fg);border:1px solid var(--border);border-radius:4px;cursor:pointer" title="Selection mode">
-              <option value="rect">Rectangular</option>
-              <option value="lasso">Free-form</option>
-            </select>
+            <button id="selRectBtn" class="primary" style="padding:6px 10px">Rect</button>
+            <button id="selLassoBtn" style="padding:6px 10px">Lasso</button>
             <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
             <button id="undoBtn" style="padding:6px 10px">Undo</button>
             <button id="redoBtn" style="padding:6px 10px">Redo</button>
+            <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
+            <button id="zoomLockBtn" style="padding:6px 10px" title="Lock/unlock canvas zoom">🔓 Zoom Unlocked</button>
           </div>
           <!-- Settings row -->
-          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11px">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:11px">
             <label style="gap:6px">Brush
               <input id="brushSize" type="range" min="1" max="8" value="1" style="width:100px"/>
               <span id="brushSizeLabel" class="pill" style="padding:3px 6px;font-size:10px">1</span>
@@ -541,6 +603,7 @@ let drawing = false;
 let lastPt = null;
 let gridEnabled = false;
 let canvasZoom = 1.0; // Canvas zoom level (1.0 = 100%)
+let zoomLocked = false; // Lock zoom to prevent accidental pinch-zoom
 let cKeyPressed = false; // Track 'c' key state for canvas zoom
 let cursorPos = null; // Track cursor position on canvas for brush preview
 
@@ -595,7 +658,6 @@ const toolPencil = document.getElementById('toolPencil');
 const toolEraser = document.getElementById('toolEraser');
 const toolSoft = document.getElementById('toolSoft');
 const toolSelect = document.getElementById('toolSelect');
-const selectionModeSelect = document.getElementById('selectionMode');
 
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
@@ -699,7 +761,33 @@ function updateUI(){
 }
 
 function setTool(next){
-  tool = next;
+  const prevTool = tool;
+  
+  // Allow deselecting tools by clicking the active tool again
+  if(tool === next){
+    tool = null; // No tool selected
+  } else {
+    tool = next;
+  }
+  
+  // Auto zoom lock: lock when drawing tool selected, unlock when deselected
+  const zoomLockBtn = document.getElementById('zoomLockBtn');
+  if(tool !== null && tool !== 'select' && (prevTool === null || prevTool === 'select')){
+    // Just selected a drawing tool (pencil, soft, eraser) - lock zoom
+    zoomLocked = true;
+    if(zoomLockBtn){
+      zoomLockBtn.textContent = '🔒 Zoom Locked';
+      zoomLockBtn.classList.add('primary');
+    }
+  } else if(tool === null && prevTool !== null && prevTool !== 'select'){
+    // Just deselected a drawing tool - unlock zoom
+    zoomLocked = false;
+    if(zoomLockBtn){
+      zoomLockBtn.textContent = '🔓 Zoom Unlocked';
+      zoomLockBtn.classList.remove('primary');
+    }
+  }
+  
   toolPencil.classList.toggle('primary', tool === 'pencil');
   toolEraser.classList.toggle('primary', tool === 'eraser');
   toolSoft.classList.toggle('primary', tool === 'soft');
@@ -717,6 +805,8 @@ function setTool(next){
     main.style.cursor = 'crosshair';
   } else if(currentMode === 'montage'){
     main.style.cursor = 'default';
+  } else if(tool === null){
+    main.style.cursor = 'default'; // No tool selected
   } else {
     main.style.cursor = 'crosshair';
   }
@@ -1836,6 +1926,10 @@ function applyStroke(from, to){
 main.addEventListener('pointerdown', ev=>{
   if(isPlaying) return;
   if(currentMode !== 'chunk') return; // disable drawing in montage mode
+  if(isPinching) return; // prevent drawing during pinch gesture
+  // Also check if this is a touch pointer type and we have multiple touches
+  if(ev.pointerType === 'touch' && (activeTouchIds.size > 1 || touchStartDistance > 0)) return;
+  if(tool === null) return; // No tool selected - don't draw
   
   const pt = getPointerXY(ev);
   
@@ -2156,6 +2250,21 @@ if(canvasZoomResetBtn){
   });
 }
 
+// Zoom lock button
+const zoomLockBtn = document.getElementById('zoomLockBtn');
+if(zoomLockBtn){
+  zoomLockBtn.addEventListener('click', ()=>{
+    zoomLocked = !zoomLocked;
+    zoomLockBtn.textContent = zoomLocked ? '🔒 Zoom Locked' : '🔓 Zoom Unlocked';
+    zoomLockBtn.classList.toggle('primary', zoomLocked);
+    if(zoomLocked){
+      notify('Zoom locked - pinch gestures disabled');
+    } else {
+      notify('Zoom unlocked - pinch gestures enabled');
+    }
+  });
+}
+
 // -------------------- UI events --------------------
 
 toolPencil.addEventListener('click', ()=>setTool('pencil'));
@@ -2163,10 +2272,27 @@ toolEraser.addEventListener('click', ()=>setTool('eraser'));
 toolSoft.addEventListener('click', ()=>setTool('soft'));
 toolSelect.addEventListener('click', ()=>setTool('select'));
 
-// Selection mode dropdown
-if(selectionModeSelect){
-  selectionModeSelect.addEventListener('change', ()=>{
-    selectionMode = selectionModeSelect.value;
+// Selection mode buttons (replacing dropdown)
+const selRectBtn = document.getElementById('selRectBtn');
+const selLassoBtn = document.getElementById('selLassoBtn');
+
+if(selRectBtn && selLassoBtn){
+  selRectBtn.addEventListener('click', ()=>{
+    selectionMode = 'rect';
+    selRectBtn.classList.add('primary');
+    selLassoBtn.classList.remove('primary');
+    // Clear current selection when switching modes
+    if(selection && !selectionFloating){
+      selection = null;
+      lassoPath = [];
+      renderMain();
+    }
+  });
+  
+  selLassoBtn.addEventListener('click', ()=>{
+    selectionMode = 'lasso';
+    selLassoBtn.classList.add('primary');
+    selRectBtn.classList.remove('primary');
     // Clear current selection when switching modes
     if(selection && !selectionFloating){
       selection = null;
@@ -3125,17 +3251,18 @@ function selectMontageChunk(idx, renderPreview = true){
   if(trimReset) trimReset.disabled = !hasProject;
 
   updateTrimBar();
+  
+  // Position playhead to start of selected chunk (always update position for sync)
+  let framesBefore = 0;
+  for(let i = 0; i < selectedChunkIdx; i++){
+    const c = montageChunks[i];
+    framesBefore += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
+  }
+  _montagePos = { chunkIdx: selectedChunkIdx, frameIdx: 0 };
+  
   // update canvas preview when in montage mode unless caller asked to skip render
   if(currentMode === 'montage' && renderPreview){ 
     renderMontagePreviewChunk(selectedChunkIdx); 
-    
-    // Position playhead to start of selected chunk
-    let framesBefore = 0;
-    for(let i = 0; i < selectedChunkIdx; i++){
-      const c = montageChunks[i];
-      framesBefore += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
-    }
-    _montagePos = { chunkIdx: selectedChunkIdx, frameIdx: 0 };
     updateMontageMetaUI();
   }
 }
@@ -4318,11 +4445,10 @@ function startMontagePlayback(){
     };
     renderPreviewFrameBytes(bytes, chunkInfo);
 
-    // only update the selected chunk when we actually moved to a new chunk
-    if(lastChunkIdx !== _montagePos.chunkIdx){
-      // update selection highlight but do not force a chunk-start preview render
+    // Update chunk selection EVERY frame to ensure proper sync
+    // This ensures the highlighted chunk matches the currently playing frame
+    if(selectedChunkIdx !== _montagePos.chunkIdx){
       selectMontageChunk(_montagePos.chunkIdx, false);
-      lastChunkIdx = _montagePos.chunkIdx;
     }
 
       // update playback position UI (global frame index)
@@ -4384,6 +4510,155 @@ function stopMontagePlayback(){
 montagePlayBtn.addEventListener('click', ()=>{
   if(montagePlaying) stopMontagePlayback(); else startMontagePlayback();
 });
+
+// -------------------- Theme Toggle --------------------
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+let currentTheme = localStorage.getItem('theme') || 'dark';
+
+function applyTheme(theme){
+  if(theme === 'light'){
+    document.body.classList.add('light-theme');
+    themeToggleBtn.textContent = '🌙 Dark';
+  }else{
+    document.body.classList.remove('light-theme');
+    themeToggleBtn.textContent = '☀️ Light';
+  }
+  localStorage.setItem('theme', theme);
+  currentTheme = theme;
+}
+
+// Apply saved theme on load
+applyTheme(currentTheme);
+
+themeToggleBtn.addEventListener('click', ()=>{
+  applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+  notify(`Switched to ${currentTheme} theme`);
+});
+
+// -------------------- Touch Gesture Support --------------------
+// Pinch-to-zoom gesture support for canvas
+let touchStartDistance = 0;
+let touchStartZoom = 1.0;
+let lastTouchTime = 0;
+let lastTouchCount = 0;
+let isPinching = false; // Flag to prevent drawing during pinch
+let activeTouchIds = new Set(); // Track active touch IDs
+
+// Get mainCanvasWrap element for zoom support
+const mainCanvasWrap = document.querySelector('.mainCanvasWrap');
+
+// Combined touchstart handler for both pinch and drawing
+function handleTouchStart(e){
+  // Only process if in chunk mode
+  if(currentMode !== 'chunk') return;
+  
+  // Check if zoom is locked - if so, ignore pinch gestures
+  if(zoomLocked && e.touches.length >= 2){
+    e.preventDefault();
+    return; // Don't process pinch when locked
+  }
+  
+  if(e.touches.length >= 2){
+    // Two-finger pinch detected
+    e.preventDefault();
+    e.stopPropagation();
+    isPinching = true;
+    const touch1 = e.touches[0];
+    const touch2 = e.touches[1];
+    touchStartDistance = Math.hypot(
+      touch2.clientX - touch1.clientX,
+      touch2.clientY - touch1.clientY
+    );
+    touchStartZoom = canvasZoom;
+    lastTouchCount = 2;
+    activeTouchIds.clear();
+    activeTouchIds.add(touch1.identifier);
+    activeTouchIds.add(touch2.identifier);
+  } else if(e.touches.length === 1 && !isPinching){
+    // Single finger - allow drawing
+    lastTouchCount = 1;
+  }
+}
+
+function handleTouchMove(e){
+  // Only process if in chunk mode
+  if(currentMode !== 'chunk') return;
+  
+  if(e.touches.length === 2 && touchStartDistance > 0){
+    // Calculate pinch zoom
+    e.preventDefault();
+    e.stopPropagation();
+    isPinching = true;
+    const touch1 = e.touches[0];
+    const touch2 = e.touches[1];
+    const distance = Math.hypot(
+      touch2.clientX - touch1.clientX,
+      touch2.clientY - touch1.clientY
+    );
+    
+    const scale = distance / touchStartDistance;
+    const newZoom = clamp(touchStartZoom * scale, 0.5, 3.0);
+    
+    if(Math.abs(newZoom - canvasZoom) > 0.01){
+      canvasZoom = newZoom;
+      
+      // Always use fixed positioning when zoomed for smooth experience
+      if(canvasZoom > 1.0){
+        main.classList.add('zoomed');
+        main.style.transform = `translate(-50%, -50%) scale(${canvasZoom})`;
+      } else {
+        main.classList.remove('zoomed');
+        main.style.transform = `scale(1.0)`;
+      }
+      
+      // Update zoom button text
+      const zoomBtn = document.getElementById('canvasZoomResetBtn');
+      if(zoomBtn){
+        zoomBtn.textContent = `Zoom ${Math.round(canvasZoom * 100)}%`;
+      }
+    }
+  }
+}
+
+function handleTouchEnd(e){
+  // Only process if in chunk mode
+  if(currentMode !== 'chunk') return;
+  
+  if(e.touches.length < 2){
+    touchStartDistance = 0;
+    // Clear pinch flag after a delay to prevent accidental drawing
+    setTimeout(() => { 
+      isPinching = false;
+      activeTouchIds.clear();
+    }, 200);
+  }
+  
+  // Double-tap to reset zoom (only for single touch releases)
+  const now = Date.now();
+  if(e.touches.length === 0 && lastTouchCount === 1 && now - lastTouchTime < 300 && !isPinching){
+    canvasZoom = 1.0;
+    main.classList.remove('zoomed');
+    main.style.transform = 'scale(1.0)';
+    const zoomBtn = document.getElementById('canvasZoomResetBtn');
+    if(zoomBtn){
+      zoomBtn.textContent = 'Zoom 100%';
+    }
+    notify('Canvas zoom reset');
+  }
+  lastTouchTime = now;
+  if(e.touches.length === 0) lastTouchCount = 0;
+}
+
+// Attach handlers to both canvas and mainCanvasWrap
+main.addEventListener('touchstart', handleTouchStart, {passive: false});
+main.addEventListener('touchmove', handleTouchMove, {passive: false});
+main.addEventListener('touchend', handleTouchEnd, {passive: false});
+
+if(mainCanvasWrap){
+  mainCanvasWrap.addEventListener('touchstart', handleTouchStart, {passive: false});
+  mainCanvasWrap.addEventListener('touchmove', handleTouchMove, {passive: false});
+  mainCanvasWrap.addEventListener('touchend', handleTouchEnd, {passive: false});
+}
 
 // -------------------- Init --------------------
 // Initializes a default 12-frame blank project. Modify this to change default
