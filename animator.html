@@ -1087,7 +1087,7 @@ function renderCanvas(){
 function renderMain(){
   // Safety check: only render chunk editor content in chunk mode
   if(currentMode !== 'chunk'){
-    console.warn('renderMain() called in montage mode - this may cause canvas leakage');
+    console.warn('renderMain() called in montage mode - use renderCanvas() instead to prevent canvas leakage');
     return;
   }
   
@@ -1105,7 +1105,6 @@ function renderMain(){
   ctx.drawImage(off, 0, 0, main.width, main.height);
   
   // Draw layout guide overlay if enabled (rule of thirds)
-  // Note: currentMode check already done at function entry, but kept for clarity
   if(gridEnabled){
     ctx.save();
     ctx.strokeStyle = 'rgba(90, 162, 255, 0.4)';
@@ -1196,7 +1195,6 @@ function renderMain(){
   }
   
   // Draw brush preview indicator (thin box showing impacted pixels)
-  // Note: currentMode check already done at function entry
   if(cursorPos && (tool === 'pencil' || tool === 'soft' || tool === 'eraser')){
     const scale = main.width / W;
     const halfBrush = Math.floor(brush / 2);
