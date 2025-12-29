@@ -738,6 +738,9 @@ function decodeBase64ToBytes(base64String){
 // Helper: Calculate global frame position in montage from chunk index and frame index
 // Returns the 1-based global frame number (for display in UI)
 function calculateGlobalFramePosition(chunkIdx, frameIdx){
+  if(!montageChunks || !Array.isArray(montageChunks)){
+    return 1; // Return 1 if montageChunks is not available
+  }
   let before = 0;
   const validIdx = Math.min(chunkIdx, montageChunks.length);
   for(let i = 0; i < validIdx; i++){
