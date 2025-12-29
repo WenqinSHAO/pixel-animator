@@ -166,6 +166,8 @@ The application is built as a single self-contained HTML file (~5000 lines) with
 - **GIF Export**: Uses gif.js library with web worker for encoding
 - **Touch Support**: Pinch-to-zoom, zoom lock, and touch-optimized UI elements
 
+> **For Developers**: Detailed information about the dual-mode architecture, mode switching logic, and UI layout system can be found in [ARCHITECTURE.md](./ARCHITECTURE.md).
+
 ## Configuration & Customization
 
 **Basic configuration** (edit constants in `animator.html`):
