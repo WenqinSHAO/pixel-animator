@@ -3919,19 +3919,14 @@ function renderMontageChunks(){
         thumbCtx.imageSmoothingEnabled = false;
         
         // Decode frame bytes and render to thumbnail
-        const frameBytes = _decodeFrameFromProject(ch._project, thumbFrameIdx);
-        const imgData = new Uint8ClampedArray(w * h * 4);
-        for(let p=0, o=0; p<frameBytes.length; p++, o+=4){
-          const v = frameBytes[p];
-          imgData[o] = v; imgData[o+1] = v; imgData[o+2] = v; imgData[o+3] = 255;
-        }
+        const frameBytes = _decodeFrameFromProject(ch._project, thumbFrameIdx); // Already RGBA
         
         // Create temporary canvas for source frame
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = w;
         tempCanvas.height = h;
         const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.putImageData(new ImageData(imgData, w, h), 0, 0);
+        tempCtx.putImageData(new ImageData(frameBytes, w, h), 0, 0);
         
         // Scale to thumbnail size
         thumbCtx.drawImage(tempCanvas, 0, 0, 56, 56);
@@ -4442,13 +4437,8 @@ if(exportMontageMp4Btn){
           return;
         }
         
-        const frameBytes = allFrames[frameIdx];
-        const imgData = new Uint8ClampedArray(W*H*4);
-        for(let p=0, o=0; p<frameBytes.length; p++, o+=4){
-          const v = frameBytes[p];
-          imgData[o]=v; imgData[o+1]=v; imgData[o+2]=v; imgData[o+3]=255;
-        }
-        offCtx.putImageData(new ImageData(imgData, W, H), 0, 0);
+        const frameBytes = allFrames[frameIdx]; // Already RGBA from _decodeFrameFromProject
+        offCtx.putImageData(new ImageData(frameBytes, W, H), 0, 0);
         
         rctx.setTransform(1,0,0,1,0,0);
         rctx.clearRect(0,0,DISPLAY,DISPLAY);
