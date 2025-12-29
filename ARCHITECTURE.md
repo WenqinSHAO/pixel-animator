@@ -6,6 +6,7 @@ This document provides detailed technical information about the dual-mode editor
 - [Design Principles](#design-principles)
 - [Mode Switching Architecture](#mode-switching-architecture)
 - [UI Layout System](#ui-layout-system)
+- [Responsive UI Adaptation](#responsive-ui-adaptation)
 - [State Management](#state-management)
 - [Canvas Rendering Strategy](#canvas-rendering-strategy)
 - [Key Implementation Details](#key-implementation-details)
@@ -180,6 +181,415 @@ document.querySelector('.sidebar').style.display = isMontage ? 'none' : '';
 document.getElementById('montageSidebar').style.display = isMontage ? '' : 'none';
 document.getElementById('trimBar').style.display = isMontage ? '' : 'none';
 ```
+
+---
+
+## Responsive UI Adaptation
+
+The application implements a comprehensive responsive design system to provide optimal user experience across different device types, from desktop workstations to touch-enabled tablets and e-ink devices.
+
+### Design Philosophy
+
+**Multi-Device Support Goals**:
+- **Desktop/Laptop**: Maximize canvas size, side-by-side layout, keyboard-optimized
+- **Touch Tablets**: Touch-friendly controls, gesture support, adaptive layout
+- **E-ink Devices**: High-contrast theme, minimal animations, touch-optimized
+- **Mobile Phones**: Vertical stacking, compact controls, essential features only
+
+### Breakpoint Strategy
+
+**Location**: `animator.html` lines ~148-234 (CSS media queries)
+
+The application uses a **mobile-first responsive design** with four breakpoint tiers:
+
+| Breakpoint | Target Devices | Layout Strategy | Canvas Size |
+|------------|----------------|-----------------|-------------|
+| **≥981px** | Desktop/Laptop | Two-column (stage + sidebar), height-constrained | 512×512px (480×480 in montage) |
+| **768-980px** | Tablet Landscape | Single-column, width-constrained, scrollable | up to 800×800px |
+| **481-767px** | Tablet Portrait / Large Phone | Single-column, compact controls | up to 500×500px |
+| **≤480px** | Small Phone | Ultra-compact, vertical stack | up to 400×400px |
+
+**Implementation**:
+```css
+/* Wide screens: Two-column layout with fixed height */
+@media (min-width:981px) {
+  .wrap {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    height: calc(100vh - 60px);
+  }
+  body.montage-mode canvas#main {
+    width: 480px; height: 480px; /* Reduced for scrubber visibility */
+  }
+}
+
+/* Narrow screens: Single-column with dynamic width */
+@media (max-width:980px) {
+  .wrap {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+  canvas#main {
+    width: min(calc(100vw - 40px), 700px);
+    height: min(calc(100vw - 40px), 700px);
+  }
+}
+```
+
+### Touch-Friendly Enhancements
+
+**Location**: `animator.html` lines ~66-74 (CSS), ~4706-4865 (JavaScript)
+
+#### CSS Adaptations
+
+**Media Query**: `@media (pointer: coarse)` - Targets touch-enabled devices
+
+**Enhancements**:
+```css
+@media (pointer: coarse) {
+  button {
+    min-height: 44px;    /* Apple's touch target minimum */
+    min-width: 44px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  .iconBtn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  input[type="range"] {
+    height: 44px;        /* Easier slider thumb grabbing */
+  }
+  .thumb {
+    min-height: 60px;
+    cursor: grab;        /* Visual affordance for dragging */
+  }
+  .thumb:active {
+    cursor: grabbing;
+  }
+}
+```
+
+**Rationale**: Touch targets below 44×44px are difficult to tap accurately (Apple HIG, Material Design)
+
+#### Smooth Scrolling
+
+**Implementation**:
+```css
+.sidebar, .framesWrap, #montageChunks {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;  /* iOS momentum scrolling */
+  scroll-behavior: smooth;            /* Smooth programmatic scrolls */
+}
+```
+
+**Benefit**: Native-like scrolling feel on mobile devices
+
+### Touch Gesture Support
+
+#### Pinch-to-Zoom
+
+**Location**: `animator.html` lines ~4706-4832
+
+**Purpose**: Canvas zoom via two-finger pinch gesture (chunk mode only)
+
+**Key Variables**:
+```javascript
+let touchStartDistance = 0;      // Distance between touch points at start
+let touchStartZoom = 1.0;        // Zoom level at gesture start
+let isPinching = false;          // Flag to prevent drawing during pinch
+let activeTouchIds = new Set();  // Track active touch IDs
+let zoomLocked = false;          // User-controlled zoom lock
+```
+
+**Implementation Flow**:
+```
+touchstart (2+ fingers)
+  ├─> Check zoomLocked (abort if locked)
+  ├─> Calculate initial touch distance
+  ├─> Set isPinching = true
+  └─> Store touchStartZoom
+
+touchmove (2 fingers)
+  ├─> Check zoomLocked (abort if locked)
+  ├─> Calculate current touch distance
+  ├─> Compute scale = currentDistance / touchStartDistance
+  ├─> Apply newZoom = touchStartZoom × scale (clamped 0.5-3.0)
+  ├─> Update canvas transform
+  └─> Update zoom button label
+
+touchend (< 2 fingers remaining)
+  ├─> Clear touchStartDistance
+  ├─> Set isPinching = false (with 200ms delay)
+  └─> Double-tap detection → reset zoom to 100%
+```
+
+**Mode Safety**: Pinch gesture only active in chunk mode
+```javascript
+function handleTouchStart(e) {
+  if(currentMode !== 'chunk') return; // Guard
+  if(zoomLocked && e.touches.length >= 2) {
+    e.preventDefault();
+    return; // Respect zoom lock
+  }
+  // ... gesture handling
+}
+```
+
+**Drawing Protection**: Prevents accidental strokes during pinch
+```javascript
+function startDraw(ev) {
+  if(isPinching) return;
+  if(ev.pointerType === 'touch' && activeTouchIds.size > 1) return;
+  // ... drawing logic
+}
+```
+
+#### Zoom Lock Feature
+
+**Location**: `animator.html` line ~330 (UI button), ~2344 (handler)
+
+**Purpose**: Prevent accidental pinch-zoom when drawing with stylus on tablets
+
+**UI Control**:
+```html
+<button id="zoomLockBtn">🔓 Zoom Unlocked</button>
+```
+
+**Behavior**:
+- **Manual Toggle**: User clicks button to lock/unlock zoom
+- **Automatic Lock**: Selecting drawing tool (pencil/soft/eraser) auto-locks
+- **Automatic Unlock**: Deselecting tool (click active tool again) auto-unlocks
+
+**Implementation**:
+```javascript
+function setTool(next) {
+  const prevTool = tool;
+  tool = (tool === next) ? null : next;
+  
+  // Auto zoom lock on drawing tool selection
+  if(tool !== null && tool !== 'select' && prevTool === null) {
+    zoomLocked = true;
+    zoomLockBtn.textContent = '🔒 Zoom Locked';
+  } else if(tool === null && prevTool !== null) {
+    zoomLocked = false;
+    zoomLockBtn.textContent = '🔓 Zoom Unlocked';
+  }
+}
+```
+
+**Rationale**: Artists using stylus on tablets often accidentally trigger pinch gestures while drawing. Auto-lock prevents this frustration.
+
+### E-ink Device Optimizations
+
+**Location**: `animator.html` lines ~13-34 (CSS theme)
+
+#### Light Theme
+
+**Purpose**: High-contrast black-on-white theme for e-ink displays (e.g., reMarkable, Boox tablets)
+
+**CSS Variables**:
+```css
+/* Dark theme (default) */
+:root {
+  --bg: #0b0f17;
+  --text: #e6eefc;
+  --accent: #5aa2ff;
+}
+
+/* Light theme for e-ink */
+body.light-theme {
+  --bg: #f5f5f5;
+  --text: #000000;
+  --accent: #0066cc;
+  --panel: #ffffff;
+  --border: #cccccc;
+}
+```
+
+**Key Characteristics**:
+- Pure white backgrounds (#ffffff) - maximizes e-ink contrast
+- Pure black text (#000000) - no gradients, no gray text
+- Simplified shadows - e-ink doesn't render gradients well
+- No blur effects - backdrop-filter removed
+
+**Toggle UI**:
+```html
+<button id="themeToggleBtn">☀️ Light</button>
+```
+
+**Persistence**:
+```javascript
+// Save theme to localStorage
+localStorage.setItem('theme', theme);
+
+// Restore on page load
+const currentTheme = localStorage.getItem('theme') || 'dark';
+applyTheme(currentTheme);
+```
+
+#### Touch-Friendly Scrollbars
+
+**Implementation**:
+```css
+/* Custom scrollbar styling (not shown in code, but implicit) */
+/* Wider scrollbars (16px) for easier touch dragging */
+```
+
+### Canvas Scaling Strategy
+
+**Location**: `animator.html` lines ~148-234 (responsive media queries)
+
+**Challenge**: Canvas must scale to maximize screen space while maintaining aspect ratio
+
+**Solution**: Dynamic size calculation with breakpoint-specific maximums
+
+**Desktop Strategy** (≥981px):
+```css
+canvas#main {
+  width: 512px;
+  height: 512px;
+}
+body.montage-mode canvas#main {
+  width: 480px;  /* Reduced to ensure scrubber visible */
+  height: 480px;
+}
+```
+
+**Mobile Strategy** (≤980px):
+```css
+canvas#main {
+  width: min(calc(100vw - 40px), 700px);
+  height: min(calc(100vw - 40px), 700px);
+  max-width: calc(100vw - 40px);
+}
+```
+
+**Benefits**:
+- Adapts to actual viewport width
+- Leaves margin for UI chrome
+- Prevents horizontal scrolling
+- Maintains square aspect ratio
+
+### Responsive Frame Grid
+
+**Location**: `animator.html` line ~118 (CSS)
+
+**Adaptation Strategy**:
+
+| Screen Width | Grid Columns | Thumbnail Size | Rationale |
+|--------------|--------------|----------------|-----------|
+| ≥981px (Desktop) | 4 columns | ~120px | Maximize preview detail |
+| 481-980px (Tablet) | 4 columns | ~100px | Balance detail vs space |
+| ≤480px (Phone) | 2 columns | ~80px | Fit narrow screens |
+
+**CSS Implementation**:
+```css
+.frames {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);  /* Default */
+  gap: 12px;
+}
+
+@media (max-width:768px) {
+  .frames {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width:480px) {
+  .frames {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+```
+
+### Header Double-Tap Scroll
+
+**Location**: `animator.html` lines ~4836-4865
+
+**Purpose**: Quick scroll-to-top on narrow layouts where header is off-screen
+
+**Implementation**:
+```javascript
+let headerLastTouchTime = 0;
+
+headerElement.addEventListener('touchend', (e) => {
+  const now = Date.now();
+  const timeSinceLastTap = now - headerLastTouchTime;
+  
+  if(timeSinceLastTap < 300 && timeSinceLastTap > 0) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    notify('Scrolled to top');
+    headerLastTouchTime = 0; // Reset
+  } else {
+    headerLastTouchTime = now;
+  }
+});
+```
+
+**UX Enhancement**: On long pages (tablets in portrait), users can quickly return to top by double-tapping sticky header
+
+### Pull-to-Refresh Prevention
+
+**Location**: `animator.html` line ~37 (CSS)
+
+**Problem**: Mobile browsers trigger pull-to-refresh when scrolling past top
+
+**Solution**:
+```css
+body {
+  overscroll-behavior: none;  /* Prevent pull-to-refresh */
+  overflow: auto;             /* Allow scrolling */
+  min-height: 100vh;
+}
+```
+
+**Benefit**: Drawing gestures don't accidentally trigger browser refresh
+
+### Performance Considerations
+
+#### Touch Event Optimization
+
+**Passive Event Listeners**: Used where possible to improve scroll performance
+```javascript
+// Passive listeners for non-blocking scroll
+headerElement.addEventListener('touchend', handler, {passive: true});
+
+// Non-passive where preventDefault needed
+main.addEventListener('touchstart', handleTouchStart, {passive: false});
+```
+
+#### Canvas Transform vs Redraw
+
+**Strategy**: Use CSS transforms for zoom (GPU-accelerated) rather than redrawing
+```javascript
+// Fast: Transform existing canvas
+main.style.transform = `translate(-50%, -50%) scale(${canvasZoom})`;
+
+// Slow: Redraw at new size (avoided)
+// main.width = DISPLAY * canvasZoom;  // ❌ Triggers expensive redraw
+```
+
+### Testing Responsive Behavior
+
+**Browser DevTools**:
+1. Open Chrome DevTools → Device Toolbar (Ctrl+Shift+M)
+2. Test breakpoints: 1200px, 980px, 768px, 480px, 320px
+3. Test touch emulation: Enable touch simulation
+4. Test zoom: Use pinch gesture emulation
+
+**Real Device Testing**:
+- **iPad/Android Tablet**: Test pinch-to-zoom, zoom lock, touch targets
+- **E-ink Tablet**: Test light theme contrast, scrollbar visibility
+- **Phone**: Test vertical scrolling, compact layout, button sizes
+
+### Known Responsive Issues
+
+1. **Canvas Zoom in Montage Mode**: Not implemented (by design - read-only preview)
+2. **Zoom Lock Persistence**: Not saved to localStorage (resets on page reload)
+3. **Touch Rejection**: May not distinguish palm vs finger on all devices
+4. **Landscape Phone Layout**: Uses portrait strategy (could be optimized)
 
 ---
 
@@ -600,6 +1010,8 @@ Never mix playback states or timers between modes.
 
 ## Known Limitations
 
+> **Note**: This section is synchronized with TODO.md. Items marked "See TODO.md" are tracked as future work.
+
 ### 1. Single Canvas Element
 
 **Limitation**: Both modes share the same `<canvas>` DOM element
@@ -607,6 +1019,8 @@ Never mix playback states or timers between modes.
 **Implication**: Canvas state (transform, zoom) must be fully reset during mode switches
 
 **Workaround**: `setMode()` explicitly resets canvas transforms when leaving chunk mode
+
+**Future**: Consider canvas pool architecture (see Future Improvements #3)
 
 ### 2. No Undo Across Mode Switches
 
@@ -616,6 +1030,8 @@ Never mix playback states or timers between modes.
 
 **Rationale**: Undo stacks are structurally incompatible (pixel deltas vs chunk operations)
 
+**Status**: By design - unlikely to change
+
 ### 3. Mode State Not Persisted
 
 **Limitation**: Chunk editor state (zoom, selection, tool) is cleared on mode exit
@@ -623,6 +1039,8 @@ Never mix playback states or timers between modes.
 **Implication**: Users must reconfigure UI after returning to chunk mode
 
 **Rationale**: Simplifies state management and prevents edge cases
+
+**Future**: State restoration feature proposed (see Future Improvements #1)
 
 ### 4. Canvas Zoom Only in Chunk Mode
 
@@ -632,66 +1050,232 @@ Never mix playback states or timers between modes.
 
 **Rationale**: Montage previews are meant to be read-only at fixed scale
 
+**Status**: By design
+
+### 5. Lasso Selection Incomplete
+
+**Limitation**: Lasso cut/copy/paste partially implemented (visual selection only)
+
+**Implication**: Users can draw lasso selection but can't extract/paste the selected region
+
+**Status**: See TODO.md - Low Priority enhancement
+
+### 6. No Recent Files List
+
+**Limitation**: No persistent history of recently loaded projects/montages
+
+**Implication**: Users must navigate file system to reload recent work
+
+**Status**: See TODO.md - Medium Priority enhancement (localStorage-based)
+
+### 7. Limited Drawing Tools
+
+**Limitation**: Only pencil, soft brush, and eraser available
+
+**Implication**: No line, rectangle, circle, or fill tools
+
+**Status**: See TODO.md - Low Priority enhancement
+
+### 8. No Import from GIF/Video
+
+**Limitation**: Can't import existing GIF or video files as frame sequences
+
+**Implication**: Only supports creating animations from scratch or loading project JSON
+
+**Status**: See TODO.md - Extensibility feature (requires gif.js decoder / ffmpeg.wasm)
+
+### 9. Zoom Lock Not Persistent
+
+**Limitation**: Zoom lock state resets on page reload
+
+**Implication**: Users must re-enable zoom lock each session
+
+**Rationale**: Simplifies state management; unclear if users want persistent lock
+
+**Future**: Could be added to localStorage preferences
+
+### 10. No Performance Optimizations for Large Projects
+
+**Limitation**: All frames/chunks loaded in memory; no lazy loading or virtual scrolling
+
+**Implication**: Performance degrades with 100+ frames or chunks
+
+**Status**: See TODO.md - Performance Optimizations (lazy loading, virtual scrolling, web workers)
+
 ---
 
 ## Future Improvements
 
-### Potential Enhancements
+> **Note**: This section is synchronized with TODO.md. For implementation status, check TODO.md.
+
+### Architecture & Core Features
 
 1. **State Restoration**
    - **Goal**: Remember chunk editor state (zoom, tool, selection) when returning from montage
    - **Implementation**: Save chunk state snapshot on mode exit, restore on return
    - **Benefit**: Better user experience for round-trip editing workflows
+   - **Status**: TODO.md - Not scheduled
 
 2. **Unified Playback System**
    - **Goal**: Single playback engine that handles both modes
    - **Implementation**: Abstract playback into `Playback` class with mode-specific renderers
    - **Benefit**: Simpler code, easier to maintain
+   - **Status**: TODO.md - Not scheduled
 
 3. **Canvas Pool Architecture**
    - **Goal**: Separate `<canvas>` elements for chunk and montage modes
    - **Implementation**: Two canvas elements, swap visibility on mode switch
    - **Benefit**: Eliminates need for canvas state cleanup, faster mode switches
+   - **Status**: TODO.md - Not scheduled
 
 4. **Lazy UI Initialization**
    - **Goal**: Don't create montage UI until first use
    - **Implementation**: Defer montage sidebar rendering until mode switch
    - **Benefit**: Faster initial load, smaller DOM tree
+   - **Status**: TODO.md - Performance Optimizations
 
 5. **Mode Transition Animations**
    - **Goal**: Smooth fade/slide transitions between modes
    - **Implementation**: CSS transitions on visibility changes
    - **Benefit**: More polished user experience
+   - **Status**: TODO.md - Not scheduled
 
 6. **Mode-Specific Keyboard Maps**
    - **Goal**: More extensive keyboard shortcuts per mode
    - **Implementation**: Keyboard shortcut registry with mode filtering
    - **Benefit**: Power users can work faster
+   - **Status**: TODO.md - Not scheduled
+
+### User Experience Enhancements
+
+7. **Recent Files List**
+   - **Goal**: Quick access to recently loaded projects/montages
+   - **Implementation**: localStorage-based history with file paths
+   - **Benefit**: Faster workflow for users working on multiple projects
+   - **Status**: TODO.md - Medium Priority
+
+8. **Project Metadata Fields**
+   - **Goal**: Optional title, author, description for better organization
+   - **Implementation**: Add metadata fields to project JSON schema
+   - **Benefit**: Better project management, especially in montage assembly
+   - **Status**: TODO.md - Medium Priority
+
+9. **Export Presets**
+   - **Goal**: Save common GIF/WebM export settings
+   - **Implementation**: localStorage presets with size, quality, loop count
+   - **Benefit**: Faster exports for users with standard output formats
+   - **Status**: TODO.md - Medium Priority
+
+### Drawing Tools & Features
+
+10. **Drawing Tools Expansion**
+    - **Goal**: Add line, rectangle, circle, fill tools
+    - **Implementation**: Extend `tool` variable and `applyStroke()` logic
+    - **Benefit**: More creative flexibility for artists
+    - **Status**: TODO.md - Low Priority
+
+11. **Lasso Selection Completion**
+    - **Goal**: Implement cut/copy/paste for lasso selections
+    - **Implementation**: Extend selection logic to extract polygon-bounded pixels
+    - **Benefit**: More flexible selection workflow
+    - **Status**: TODO.md - Low Priority (partially implemented)
+
+### Extensibility & Import/Export
+
+12. **Import from GIF**
+    - **Goal**: Convert GIF to frame sequences
+    - **Implementation**: Use gif.js decoder or similar library
+    - **Benefit**: Allows editing existing GIF animations
+    - **Status**: TODO.md - Extensibility
+
+13. **Import from Video**
+    - **Goal**: Convert video files to frame sequences
+    - **Implementation**: Use ffmpeg.wasm for frame extraction
+    - **Benefit**: Enables video-to-animation workflow
+    - **Status**: TODO.md - Extensibility
+
+### Effects & Filters
+
+14. **Basic Image Processing**
+    - **Goal**: Invert, brightness, contrast adjustments
+    - **Implementation**: Canvas pixel manipulation with ImageData
+    - **Benefit**: Quick corrections without external tools
+    - **Status**: TODO.md - Effects & Filters
+
+15. **Blur/Sharpen Filters**
+    - **Goal**: Applied to frames or ranges
+    - **Implementation**: Convolution filters on pixel data
+    - **Benefit**: Post-processing effects
+    - **Status**: TODO.md - Effects & Filters
+
+16. **Color Adjustments**
+    - **Goal**: Grayscale curve editor
+    - **Implementation**: Lookup table-based color remapping
+    - **Benefit**: Fine-tuned color grading
+    - **Status**: TODO.md - Effects & Filters
+
+17. **Interpolation (Tweening)**
+    - **Goal**: Auto-generate in-between frames
+    - **Implementation**: Linear or ease-based pixel interpolation
+    - **Benefit**: Smoother animations with less manual work
+    - **Status**: TODO.md - Effects & Filters
 
 ### Performance Optimizations
 
-1. **Defer Canvas Clears**
-   - Only clear canvas when actually switching modes (not on mode check)
-   - Reduces unnecessary redraws
+18. **Lazy Loading**
+    - **Goal**: Load chunk frames on-demand rather than all at once
+    - **Implementation**: Async frame decoding with loading indicators
+    - **Benefit**: Faster montage loading, lower memory usage
+    - **Status**: TODO.md - Performance Optimizations
 
-2. **Throttle Mode Guards**
-   - Cache mode check results for high-frequency event handlers
-   - Reduces conditional checks in tight loops
+19. **Web Workers**
+    - **Goal**: Move GIF encoding/decoding to background threads
+    - **Implementation**: Offload heavy computation to workers
+    - **Benefit**: Non-blocking UI during export/import
+    - **Status**: TODO.md - Performance Optimizations (GIF encoding already uses worker)
 
-3. **Virtual Scrolling for Montage**
-   - Render only visible chunks in montage sidebar
-   - Improves performance with 100+ chunks
+20. **Virtual Scrolling**
+    - **Goal**: Render only visible chunks/frames in lists
+    - **Implementation**: Intersection Observer API with dynamic DOM updates
+    - **Benefit**: Better performance with 100+ items
+    - **Status**: TODO.md - Performance Optimizations
+
+21. **Canvas Optimization**
+    - **Goal**: Use OffscreenCanvas where supported
+    - **Implementation**: Feature detection + worker-based rendering
+    - **Benefit**: Better performance, reduced main thread blocking
+    - **Status**: TODO.md - Performance Optimizations
+
+22. **Incremental Thumbnail Rendering**
+    - **Goal**: Don't block UI while generating all thumbnails
+    - **Implementation**: requestIdleCallback or chunked rendering
+    - **Benefit**: Smoother UI during project load
+    - **Status**: TODO.md - Performance Optimizations
 
 ### Code Organization
 
-1. **Extract Mode Logic to Modules**
-   - `ChunkEditorMode.js` - Chunk-specific logic
-   - `MontageEditorMode.js` - Montage-specific logic
-   - `ModeManager.js` - Mode switching orchestration
+23. **Extract Mode Logic to Modules**
+    - **Goal**: Split monolithic HTML file into maintainable modules
+    - **Implementation**: 
+      - `ChunkEditorMode.js` - Chunk-specific logic
+      - `MontageEditorMode.js` - Montage-specific logic
+      - `ModeManager.js` - Mode switching orchestration
+    - **Benefit**: Better code organization, easier testing, clearer separation of concerns
+    - **Status**: Long-term refactoring (would break self-contained architecture)
 
-2. **Formalize Mode API**
-   - Define `IEditorMode` interface
-   - Each mode implements: `enter()`, `exit()`, `render()`, `handleEvent()`
+24. **Formalize Mode API**
+    - **Goal**: Define `IEditorMode` interface with standard methods
+    - **Implementation**: Each mode implements: `enter()`, `exit()`, `render()`, `handleEvent()`
+    - **Benefit**: Consistent mode behavior, easier to add new modes
+    - **Status**: Dependent on #23 (module extraction)
+
+### Montage-Specific
+
+25. **Chunk Groups/Folders**
+    - **Goal**: Organize chunks into logical groups for large projects
+    - **Implementation**: Add grouping metadata to montage JSON
+    - **Benefit**: Better organization for complex montages (50+ chunks)
+    - **Status**: TODO.md - Low Priority
 
 ---
 
