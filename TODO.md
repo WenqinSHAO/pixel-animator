@@ -24,7 +24,7 @@
 - [ ] **Drawing tools expansion** - Add line, rectangle, circle, fill tools
 
 
-## Adavanced features
+## Advanced features
 
 ### Color and Transparency Support
 
@@ -171,6 +171,11 @@
   - **Warnings**: Prompts before mode switching, loading projects, creating new projects
   - **Safeguard on refresh**: beforeunload handler warns before page close/refresh
   - **Impact**: Prevents data loss, gives users confidence when working with unsaved changes
+- [x] **Code refactoring** (December 2025) - ✅ Improved code quality and maintainability
+  - **Helper functions**: Extracted `decodeBase64ToBytes()` and `calculateGlobalFramePosition()` to eliminate duplicate code
+  - **Error handling**: Improved empty catch blocks with proper logging
+  - **Code cleanup**: Removed unnecessary console statements, reduced redundancy
+  - **Impact**: More maintainable codebase, easier debugging, reduced bundle size
 
 ## Notes
 
