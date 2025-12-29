@@ -4,7 +4,7 @@ A minimal browser-based frame-by-frame animator and GIF exporter, optimized for 
 
 ## What it is for
 
-- Create simple animations in the browser and export them as a project JSON or a GIF/webm.
+- Create simple animations in the browser and export them as a project JSON or a GIF/WebM video.
 - Small, dependency-light implementation using `animator.html` and `vendor/gif.js`.
 - **NEW**: Optimized for e-ink tablets (reMarkable, Boox, Kindle) with light theme and touch gestures.
 

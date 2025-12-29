@@ -11,7 +11,7 @@
 
 - [ ] **Recent files list** - Quick access to recently loaded projects/montages (localStorage)
 - [ ] **Project metadata fields** - Optional title, author, description for better organization
-- [ ] **Export presets** - Save common GIF/MP4 export settings (size, quality, loop count)
+- [ ] **Export presets** - Save common GIF/WebM export settings (size, quality, loop count)
 
 ## Low Priority
 
