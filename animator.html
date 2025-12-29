@@ -1067,7 +1067,30 @@ function composeFrameOnly(frameIndex){
   return new ImageData(out, W, H);
 }
 
+// Mode-aware canvas rendering wrapper
+// Routes canvas rendering to the appropriate mode-specific function
+// This is the ONLY function that should be called on window resize or other global events
+function renderCanvas(){
+  if(currentMode === 'montage'){
+    // In montage mode: render the selected chunk preview
+    renderMontagePreviewChunk(selectedChunkIdx);
+  } else {
+    // In chunk mode: render the current frame with editor features
+    renderMain();
+  }
+}
+
+// Chunk Editor Canvas Renderer
+// Renders the current frame with onion skinning, grid overlay, selection tools, and brush preview
+// WARNING: This function should ONLY be called when currentMode === 'chunk'
+// For mode-agnostic rendering, use renderCanvas() instead
 function renderMain(){
+  // Safety check: only render chunk editor content in chunk mode
+  if(currentMode !== 'chunk'){
+    console.warn('renderMain() called in montage mode - use renderCanvas() instead to prevent canvas leakage');
+    return;
+  }
+  
   const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
   const target = DISPLAY * dpr;
   if(main.width !== target || main.height !== target){
@@ -1082,7 +1105,7 @@ function renderMain(){
   ctx.drawImage(off, 0, 0, main.width, main.height);
   
   // Draw layout guide overlay if enabled (rule of thirds)
-  if(gridEnabled && currentMode === 'chunk'){
+  if(gridEnabled){
     ctx.save();
     ctx.strokeStyle = 'rgba(90, 162, 255, 0.4)';
     ctx.lineWidth = 2;
@@ -1172,7 +1195,7 @@ function renderMain(){
   }
   
   // Draw brush preview indicator (thin box showing impacted pixels)
-  if(cursorPos && (tool === 'pencil' || tool === 'soft' || tool === 'eraser') && currentMode === 'chunk'){
+  if(cursorPos && (tool === 'pencil' || tool === 'soft' || tool === 'eraser')){
     const scale = main.width / W;
     const halfBrush = Math.floor(brush / 2);
     const x1 = (cursorPos.x - halfBrush) * scale;
@@ -3483,13 +3506,25 @@ function setMode(mode){
   if(isPlaying) setPlaying(false);
   if(montagePlaying) stopMontagePlayback();
 
-  // Reset canvas zoom/transform when switching to montage mode (fixes canvas misalignment)
+  // Clean up chunk-editor-specific state when leaving chunk mode
   if(isMontage){
+    // Clear selection tool state to prevent leakage
+    selection = null;
+    selectionData = null;
+    selectionFloating = false;
+    selectionDragging = false;
+    lassoPath = [];
+    
+    // Clear cursor position (brush preview)
+    cursorPos = null;
+    
+    // Reset canvas zoom/transform (fixes canvas misalignment)
     canvasZoom = 1.0;
     main.classList.remove('zoomed'); // Remove zoomed class to prevent canvas leak
     main.style.transform = '';
     const btn = document.getElementById('canvasZoomResetBtn');
     if(btn) btn.textContent = `Zoom 100%`;
+    
     // Add body class for compact montage styling
     document.body.classList.add('montage-mode');
   }else{
@@ -4441,7 +4476,17 @@ if(exportMontageMp4Btn){
 let _montageTimer = null;
 let _montagePos = { chunkIdx: 0, frameIdx: 0 };
 
+// Montage Editor Canvas Renderer
+// Renders raw frame bytes with optional chunk info overlay for montage preview
+// WARNING: This function should ONLY be called when currentMode === 'montage'
+// For mode-agnostic rendering, use renderCanvas() instead
 function renderPreviewFrameBytes(bytes, chunkInfo = null){
+  // Safety check: only render montage content in montage mode
+  if(currentMode !== 'montage'){
+    console.warn('renderPreviewFrameBytes() called in chunk mode - skipping render');
+    return;
+  }
+  
   // bytes: Uint8ClampedArray of length W*H*4 (RGBA)
   // chunkInfo: {name, alias, frameIdx, totalFrames} - optional chunk info for overlay
   const id = new ImageData(bytes, W, H);
@@ -4453,7 +4498,7 @@ function renderPreviewFrameBytes(bytes, chunkInfo = null){
   ctx.drawImage(off, 0, 0, main.width, main.height);
   
   // Render chunk info overlay if in montage mode
-  if(chunkInfo && currentMode === 'montage'){
+  if(chunkInfo){
     ctx.save();
     ctx.font = '14px sans-serif';
     const displayName = chunkInfo.alias || chunkInfo.name;
@@ -4830,7 +4875,8 @@ function init(){
   // Initialize montage integration button visibility
   updateMontageIntegrationButtons();
 
-  window.addEventListener('resize', ()=>renderMain());
+  // Use mode-aware canvas rendering on window resize to prevent canvas leakage
+  window.addEventListener('resize', ()=>renderCanvas());
 }
 
 init();
