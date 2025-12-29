@@ -724,6 +724,29 @@ function roundTo(n, decimals=2){
   return Math.round(n*p)/p;
 }
 
+// Helper: Decode base64 string to Uint8ClampedArray
+// Used for loading frame data from project JSON files
+function decodeBase64ToBytes(base64String){
+  const binary = atob(base64String);
+  const arr = new Uint8ClampedArray(binary.length);
+  for(let i = 0; i < binary.length; i++){
+    arr[i] = binary.charCodeAt(i);
+  }
+  return arr;
+}
+
+// Helper: Calculate global frame position in montage from chunk index and frame index
+// Returns the 1-based global frame number (for display in UI)
+function calculateGlobalFramePosition(chunkIdx, frameIdx){
+  let before = 0;
+  const validIdx = Math.min(chunkIdx, montageChunks.length);
+  for(let i = 0; i < validIdx; i++){
+    const c = montageChunks[i];
+    before += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
+  }
+  return before + (frameIdx || 0) + 1;
+}
+
 function makeBlankFrame(){
   // Creates a blank RGBA frame as a Uint8ClampedArray (4 bytes per pixel: R, G, B, A).
   // Default fill is transparent (0, 0, 0, 0).
@@ -751,8 +774,7 @@ function updateProjectMetaUI(){
     if(currentMode === 'montage'){
       const totalMontage = Math.max(1, computeMontageTotalFrames());
       montageScrubber.max = String(totalMontage);
-      let before = 0; for(let i=0;i<Math.min(_montagePos.chunkIdx, montageChunks.length);i++){ const c = montageChunks[i]; before += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0; }
-      const pos = Math.max(1, (before + (_montagePos.frameIdx || 0) + 1));
+      const pos = Math.max(1, calculateGlobalFramePosition(_montagePos.chunkIdx, _montagePos.frameIdx));
       montageScrubber.value = String(Math.min(pos, totalMontage));
       montageScrubber.style.display = '';
     }else{
@@ -1576,9 +1598,7 @@ async function loadProject(file){
   for(let i=0; i<nextCount; i++){
     if(i < project.frames.length){
       const base64 = project.frames[i];
-      const binary = atob(base64);
-      const arr = new Uint8ClampedArray(binary.length);
-      for(let j=0; j<binary.length; j++) arr[j] = binary.charCodeAt(j);
+      const arr = decodeBase64ToBytes(base64);
       
       if(isLegacyGrayscale){
         // Convert v1.x grayscale (1 byte per pixel) to v2.0 RGBA (4 bytes per pixel)
@@ -1636,7 +1656,6 @@ async function getGifWorkerBlobUrl(){
       const text = await resp.text();
       const blob = new Blob([text], { type: 'application/javascript' });
       _gifWorkerBlobUrl = URL.createObjectURL(blob);
-      console.info('Loaded gif.worker from', url);
       return _gifWorkerBlobUrl;
     }catch(err){
       console.warn('Failed to fetch worker from', url, err);
@@ -1734,7 +1753,7 @@ async function saveGif(){
 
         // revoke worker blob URL if we generated it
         if(workerUrl && workerUrl.startsWith('blob:')){
-          try{ URL.revokeObjectURL(workerUrl); }catch(_){ }
+          try{ URL.revokeObjectURL(workerUrl); }catch(e){ console.error('Failed to revoke worker URL:', e); }
           if(workerUrl === _gifWorkerBlobUrl) _gifWorkerBlobUrl = null;
         }
 
@@ -1748,7 +1767,7 @@ async function saveGif(){
         notify(`Failed to render GIF: ${err && err.message ? err.message : String(err)}`);
         // revoke worker url on error
         if(workerUrl && workerUrl.startsWith('blob:')){
-          try{ URL.revokeObjectURL(workerUrl); }catch(_){ }
+          try{ URL.revokeObjectURL(workerUrl); }catch(e){ console.error('Failed to revoke worker URL:', e); }
           if(workerUrl === _gifWorkerBlobUrl) _gifWorkerBlobUrl = null;
         }
         setExporting(false);
@@ -3138,7 +3157,6 @@ function addImportLog(msg){
     // keep last ~200 lines bounded
     while(el.children.length > 200) el.removeChild(el.firstChild);
     el.scrollTop = el.scrollHeight;
-    console.debug('ImportLog:', msg);
   }catch(e){ console.error('addImportLog error', e); }
 }
 
@@ -4314,7 +4332,7 @@ if(exportMontageGifBtn){
           setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
           
           if(workerUrl && workerUrl.startsWith('blob:')){
-            try{ URL.revokeObjectURL(workerUrl); }catch(_){ }
+            try{ URL.revokeObjectURL(workerUrl); }catch(e){ console.error('Failed to revoke worker URL:', e); }
             if(workerUrl === _gifWorkerBlobUrl) _gifWorkerBlobUrl = null;
           }
           
@@ -4327,7 +4345,7 @@ if(exportMontageGifBtn){
           console.error('GIF render error', err);
           notify(`Failed to render GIF: ${err && err.message ? err.message : String(err)}`);
           if(workerUrl && workerUrl.startsWith('blob:')){
-            try{ URL.revokeObjectURL(workerUrl); }catch(_){ }
+            try{ URL.revokeObjectURL(workerUrl); }catch(e){ console.error('Failed to revoke worker URL:', e); }
             if(workerUrl === _gifWorkerBlobUrl) _gifWorkerBlobUrl = null;
           }
           setExporting(false);
@@ -4518,9 +4536,7 @@ function renderPreviewFrameBytes(bytes, chunkInfo = null){
 
 function _decodeFrameFromProject(project, idx){
   const base64 = project.frames[idx];
-  const binary = atob(base64);
-  const arr = new Uint8ClampedArray(binary.length);
-  for(let j=0;j<binary.length;j++) arr[j] = binary.charCodeAt(j);
+  const arr = decodeBase64ToBytes(base64);
   
   // Convert legacy grayscale to RGBA if needed
   const isLegacyGrayscale = !project.version || project.version.startsWith('1.');
@@ -4616,12 +4632,7 @@ function startMontagePlayback(){
 
       // update playback position UI (global frame index)
     const totalMontage = computeMontageTotalFrames();
-    let before = 0;
-    for(let i=0;i<_montagePos.chunkIdx;i++){
-      const c = montageChunks[i];
-      before += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
-    }
-    const pos = before + _montagePos.frameIdx + 1;
+    const pos = calculateGlobalFramePosition(_montagePos.chunkIdx, _montagePos.frameIdx);
     if(playPosEl) playPosEl.textContent = `${pos} / ${totalMontage}f`;
     updateMontageTimeDisplay(pos); // Update time display during playback
     // sync montageScrubber if present
@@ -4643,12 +4654,7 @@ function stopMontagePlayback(){
   // Keep current position when paused - don't reset
   const playPosEl = document.getElementById('montagePlayPos'); 
   const totalMontage = computeMontageTotalFrames();
-  let before = 0;
-  for(let i = 0; i < Math.min(_montagePos.chunkIdx, montageChunks.length); i++){
-    const c = montageChunks[i];
-    before += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
-  }
-  const pos = before + (_montagePos.frameIdx || 0) + 1;
+  const pos = calculateGlobalFramePosition(_montagePos.chunkIdx, _montagePos.frameIdx);
   if(playPosEl) playPosEl.textContent = `${pos} / ${totalMontage}f`;
   // sync montage scrubber to current position and visibility
   if(currentMode === 'montage'){
@@ -4656,12 +4662,7 @@ function stopMontagePlayback(){
     if(montageScrubber){
       montageScrubber.step = '1';
       montageScrubber.max = String(totalMontage);
-      let before = 0;
-      for(let i = 0; i < Math.min(_montagePos.chunkIdx, montageChunks.length); i++){
-        const c = montageChunks[i];
-        before += (c.frameRange && (c.frameRange.end - c.frameRange.start)) || 0;
-      }
-      montageScrubber.value = String(Math.min(before + (_montagePos.frameIdx || 0) + 1, totalMontage));
+      montageScrubber.value = String(Math.min(calculateGlobalFramePosition(_montagePos.chunkIdx, _montagePos.frameIdx), totalMontage));
       montageScrubber.style.display = '';
     }
   }else{
