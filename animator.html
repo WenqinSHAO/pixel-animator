@@ -4831,6 +4831,38 @@ if(mainCanvasWrap){
   mainCanvasWrap.addEventListener('touchend', handleTouchEnd, {passive: false});
 }
 
+// -------------------- Header Double-Tap Scroll to Top --------------------
+// Double-tap the sticky header to scroll back to the top of the page
+// Useful for narrow layouts where the page scrolls
+let headerLastTouchTime = 0;
+
+const headerElement = document.querySelector('header');
+if(headerElement){
+  headerElement.addEventListener('touchend', (e)=>{
+    const now = Date.now();
+    const timeSinceLastTap = now - headerLastTouchTime;
+    
+    if(timeSinceLastTap < 300 && timeSinceLastTap > 0){
+      // Double-tap detected - scroll to top with smooth animation
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+      notify('Scrolled to top');
+      // Reset to prevent triple-tap from triggering
+      headerLastTouchTime = 0;
+    } else {
+      headerLastTouchTime = now;
+    }
+  }, {passive: true});
+  
+  // Add visual feedback - make header slightly interactive on touch
+  headerElement.style.cursor = 'pointer';
+  headerElement.style.userSelect = 'none';
+  headerElement.style.webkitUserSelect = 'none';
+  headerElement.style.webkitTouchCallout = 'none';
+}
+
 // -------------------- Init --------------------
 // Initializes a default 12-frame blank project. Modify this to change default
 // startup state (e.g., load a sample file or change initial frame count).
