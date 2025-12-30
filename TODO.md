@@ -176,6 +176,10 @@
   - **Error handling**: Improved empty catch blocks with proper logging
   - **Code cleanup**: Removed unnecessary console statements, reduced redundancy
   - **Impact**: More maintainable codebase, easier debugging, reduced bundle size
+- [x] **Validation & UI polish** (January 2026)
+  - Project/montage validator now checks correct byte lengths for RGBA v2.0 while keeping legacy v1.x grayscale support
+  - GIF encoder loads from bundled `vendor/gif.js` (offline-first, no CDN dependency)
+  - Montage chunk thumbnails use consistent 56px canvas sizing to match UI
 
 ## Notes
 

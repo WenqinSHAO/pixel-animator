@@ -5,7 +5,7 @@ A minimal browser-based frame-by-frame animator and GIF exporter, optimized for 
 ## What it is for
 
 - Create simple animations in the browser and export them as a project JSON or a GIF/WebM video.
-- Small, dependency-light implementation using `animator.html` and `vendor/gif.js`.
+- Small, dependency-light implementation using `animator.html` and bundled `vendor/gif.js` (loaded locally, no CDN required).
 - **NEW**: Optimized for e-ink tablets (reMarkable, Boox, Kindle) with light theme and touch gestures.
 
 ## Features
@@ -58,7 +58,7 @@ Schema (concise):
 - `timestamp`: ISO timestamp when exported.
 - `frames`: ordered array of base64-encoded RGBA image data (one per frame, W×H×4 bytes each).
 
-> Note: frames are stored as base64-encoded raw pixel data (RGBA format). The app expects the array order to be the playback order. Legacy v1.x grayscale projects are automatically converted to RGBA when loaded.
+> Note: frames are stored as base64-encoded raw pixel data (RGBA format). Validation enforces byte lengths (v2.0: W×H×4, legacy v1.x: W×H×1). The app expects the array order to be the playback order. Legacy v1.x grayscale projects are automatically converted to RGBA when loaded.
 
 ## Montage (Film) Editor
 
@@ -187,4 +187,3 @@ The application is built as a single self-contained HTML file (~5000 lines) with
 - Project files automatically validate dimensions and frame counts
 - GIF export flattens transparency to white background
 - All data processing happens client-side (no server required)
-
